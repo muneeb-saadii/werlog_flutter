@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "4260918967",
+    "project_id": "aurawellnessclubs-app",
+    "storage_bucket": "aurawellnessclubs-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:4260918967:android:59f9ae9510b8d6f88d3f32",
+        "android_client_info": {
+          "package_name": "com.app.gym.wellness"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9BOitQ3cs1xZ4F8rKDJ_YRzlv2Qz10dM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
