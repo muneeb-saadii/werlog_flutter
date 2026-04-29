@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:wellness/ui/tset/dashboard.dart';
 import 'package:wellness/ui/views/splash/splash_view.dart';
 // import 'package:wellness/ui/views/add_schdule_request/add_schedule_request.dart';
 // import 'package:wellness/ui/views/admin_side/dashboard/admin_dashboard.dart';
@@ -54,11 +55,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      home: Dashboard(), // ✅ nothing wrapping this
+    );/*MaterialApp(
       title: 'Wellness',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
       home: AppNavigator(),
-      /*initialRoute: '/splash',
+      *//*initialRoute: '/splash',
       routes: {
         '/splash': (context) => const SplashView(),
         // '/login': (context) => const LoginView(),
@@ -87,7 +90,7 @@ class MyApp extends StatelessWidget {
         // '/trainer-track-progress-screen': (context) => TrainerProgressTrackScreen(),
         // '/nutrition-screen': (context) => NutritionScreen(),
         // '/client-dashboard-screen': (context) => ClientDashboardScreen(),
-      },*/
-    );
+      },*//*
+    );*/
   }
 }

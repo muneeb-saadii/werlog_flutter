@@ -116,9 +116,9 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
               ],
             ),
           ),
-          _SharedBottomNav(
+          /*_SharedBottomNav(
               selected: widget.currentTab,
-              onTap: widget.onTabChanged),
+              onTap: widget.onTabChanged),*/
         ],
       ),
     );
@@ -464,35 +464,38 @@ class ReportsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: WerlogColors.background,
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                        gradient: WerlogGradients.pageHeader()),
-                    child: Column(
-                      children: [
-                        const FakeStatusBar(),
-                        _ReportsHeader(d: d),
-                      ],
+      body: Container(
+        margin: const EdgeInsets.only(top: 14),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                          gradient: WerlogGradients.pageHeader()),
+                      child: Column(
+                        children: [
+                          // const FakeStatusBar(),
+                          _ReportsHeader(d: d),
+                        ],
+                      ),
                     ),
-                  ),
-                  _TotalCard(d: d),
-                  _MonthlyTrendSection(d: d),
-                  _CategorySection(d: d),
-                  _ExportBanner(onTap: onExport),
-                  const SizedBox(height: 14),
-                ],
+                    _TotalCard(d: d),
+                    _MonthlyTrendSection(d: d),
+                    _CategorySection(d: d),
+                    _ExportBanner(onTap: onExport),
+                    const SizedBox(height: 14),
+                  ],
+                ),
               ),
             ),
-          ),
-          _SharedBottomNav(
-              selected: currentTab, onTap: onTabChanged),
-        ],
+            /*_SharedBottomNav(
+                selected: currentTab, onTap: onTabChanged),*/
+          ],
+        ),
       ),
     );
   }
@@ -1094,9 +1097,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          _SharedBottomNav(
+          /*_SharedBottomNav(
               selected: widget.currentTab,
-              onTap: widget.onTabChanged),
+              onTap: widget.onTabChanged),*/
         ],
       ),
     );

@@ -95,12 +95,12 @@ class _CustomerDashboardScreenState
                 ),
               ),
             ),
-            _BottomNavBar(
+            /*_BottomNavBar(
               tabs:      _tabs,
               selected:  _tab,
               onTap:     _onTabTap,
               onScan:    widget.onScan,
-            ),
+            ),*/
           ],
         ),
       ),

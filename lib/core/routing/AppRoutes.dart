@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../../ui/screens/screen_04_ocr_flow.dart';
 import '../../ui/screens/screen_05_invoice_detail.dart';
+import '../../ui/screens/screen_06_dashboard.dart';
 import '../../ui/screens/screen_06_list_reports_profile.dart';
+import '../models/app_models.dart';
 import '../models/app_models_extended.dart';
 
 class AppRoutes {
@@ -185,6 +187,36 @@ class AppRoutes {
           onTabChanged: onTabChanged,
           currentTab: currentTab,
         ),
+      ),
+    );
+  }
+
+  static Future<void> openCustomerDashboard(
+      BuildContext context, {
+        UserData? user,
+        DashboardStats? stats,
+        WarrantyAlert? alert,
+        List<TransactionItem>? transactions,
+        VoidCallback? onScan,
+        VoidCallback? onViewAllTransactions,
+        VoidCallback? onAlertAction,
+        void Function(int index)? onTabChanged,
+        int currentTab = 0,
+      }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            CustomerDashboardScreen(
+              user: user,
+              stats: stats,
+              alert: alert,
+              transactions: transactions,
+              onScan: onScan,
+              onViewAllTransactions: onViewAllTransactions,
+              onAlertAction: onAlertAction,
+              onTabChanged: onTabChanged,
+            ),
       ),
     );
   }
