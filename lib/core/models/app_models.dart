@@ -141,7 +141,7 @@ class SubscriptionPlan {
   String yearlyPrice;
   String? originalMonthlyPrice;
   String? originalYearlyPrice;
-  String pricePeriod;         // "/mo" or "/forever"
+  String pricePeriod;         // "/month" or "/forever"
   List<String> features;
   bool isFeatured;
   String? featuredBadge;
@@ -169,19 +169,19 @@ List<SubscriptionPlan> defaultPlans = [
     monthlyPrice: '\$0',
     yearlyPrice: '\$0',
     pricePeriod: '/forever',
-    features: ['10 scans/mo', 'Basic OCR', '1 device', 'With ads'],
+    features: ['10 scans/month', 'Basic OCR', '1 device', 'With ads'],
   ),
   SubscriptionPlan(
     id: 'pro',
     name: 'Pro',
-    tagline: 'Power users & freelancers',
+    tagline: 'Power users ',
     monthlyPrice: '\$29',
     yearlyPrice: '\$23',
     originalMonthlyPrice: null,
     originalYearlyPrice: '\$29',
-    pricePeriod: '/mo',
+    pricePeriod: '/month',
     features: [
-      '1,000 scans/mo', 'GPT-4 AI OCR', 'Line items',
+      '1,000 scans/month', 'AI-based OCR', 'Line items',
       'No ads', 'Priority queue', 'All exports',
     ],
     isFeatured: true,
@@ -195,8 +195,8 @@ List<SubscriptionPlan> defaultPlans = [
     yearlyPrice: '\$7',
     originalMonthlyPrice: null,
     originalYearlyPrice: '\$9',
-    pricePeriod: '/mo',
-    features: ['100 scans/mo', 'Google Vision', '3 devices', 'No ads'],
+    pricePeriod: '/month',
+    features: ['100 scans/month', 'Moderate OCR', '3 devices', 'No ads'],
   ),
 ];
 
@@ -205,7 +205,7 @@ class CheckoutData {
   String planDisplayName;   // "Pro · Yearly"
   String priceLabel;        // "\$276"
   String pricePeriod;       // "/year"
-  String billingNote;       // "\$23/mo · billed annually · 7-day free trial"
+  String billingNote;       // "\$23/month · billed annually · 7-day free trial"
 
   // Payment card
   String cardBrand;         // "VISA"
@@ -225,7 +225,7 @@ class CheckoutData {
     this.planDisplayName = 'Pro · Yearly',
     this.priceLabel      = '\$276',
     this.pricePeriod     = '/year',
-    this.billingNote     = '\$23/mo · billed annually · 7-day free trial',
+    this.billingNote     = '\$23/month · billed annually · 7-day free trial',
     this.cardBrand       = 'VISA',
     this.cardLast4       = '4242',
     this.billingAddress  = '123 Market St, SF, CA 94103',

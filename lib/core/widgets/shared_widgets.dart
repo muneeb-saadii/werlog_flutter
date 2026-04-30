@@ -12,7 +12,7 @@ class FakeStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 0)
-          .copyWith(top: 12, bottom: 8),
+          .copyWith(top: 8, bottom: 8),
       child: Visibility(
         visible: false,
         child: Row(

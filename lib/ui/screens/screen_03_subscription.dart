@@ -57,123 +57,137 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WerlogColors.background,
-      body: Column(
-        children: [
-          const FakeStatusBar(),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Header ─────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(child: StepDots(total: 4, current: 2)),
-                            const SizedBox(width: 12),
-                            GestureDetector(
-                              onTap: widget.onSkip,
-                              child: Text('Skip →',
-                                  style: WerlogTextStyles.bodySmall
-                                      .copyWith(fontWeight: FontWeight.w500)),
+      backgroundColor: WerlogColors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: WerlogGradients.pageHeader(),
+        ),
+        child: Column(
+          children: [
+            const FakeStatusBar(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ── Header ─────────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: StepDots(total: 4, current: 2)),
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: widget.onSkip,
+                                child: Text('Skip →',
+                                    style: WerlogTextStyles.bodySmall
+                                        .copyWith(fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Text('Choose your plan',
+                              style: WerlogTextStyles.pageTitle),
+                          const SizedBox(height: 6),
+                          Text('Start free, upgrade anytime. No hidden fees.',
+                              style: WerlogTextStyles.bodySmall),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 14,),
+                    // ── Cycle toggle ────────────────────────────
+                    _CycleToggle(
+                      selected: _cycle,
+                      onChanged: (v) => setState(() => _cycle = v),
+                    ),
+                    // ── Plan cards ──────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        children: List.generate(_plans.length, (i) {
+                          final p = _plans[i];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: _PlanCard(
+                              plan:       p,
+                              price:      _price(p),
+                              original:   _original(p),
+                              isSelected: i == _selected,
+                              onTap: () => setState(() => _selected = i),
                             ),
-                          ],
+                          );
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // ── CTA footer ──────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 14),
+              decoration: const BoxDecoration(
+                color: WerlogColors.tealSurface,
+                border: Border(
+                    top: BorderSide(color: WerlogColors.border, width: 0.5)),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+              ),
+              child: Column(
+                children: [
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      style: WerlogTextStyles.caption,
+                      children: [
+                        TextSpan(
+                          text: '7 days free',
+                          style: WerlogTextStyles.caption.copyWith(
+                              color: WerlogColors.textPrimary,
+                              fontWeight: FontWeight.w500),
                         ),
-                        const SizedBox(height: 14),
-                        Text('Choose your plan',
-                            style: WerlogTextStyles.pageTitle),
-                        const SizedBox(height: 6),
-                        Text('Start free, upgrade anytime. No hidden fees.',
-                            style: WerlogTextStyles.bodySmall),
+                        const TextSpan(
+                            text:
+                                ' · cancel anytime · no card required for Free'),
                       ],
                     ),
                   ),
-                  // ── Cycle toggle ────────────────────────────
-                  _CycleToggle(
-                    selected: _cycle,
-                    onChanged: (v) => setState(() => _cycle = v),
+                  const SizedBox(height: 14),
+                  PrimaryButton(
+                    text: _selected < _plans.length
+                        ? 'Continue with ${_plans[_selected].name} →'
+                        : 'Continue →',
+                    onTap: () =>
+                        widget.onContinue?.call(_plans[_selected]),
                   ),
-                  // ── Plan cards ──────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: List.generate(_plans.length, (i) {
-                        final p = _plans[i];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _PlanCard(
-                            plan:       p,
-                            price:      _price(p),
-                            original:   _original(p),
-                            isSelected: i == _selected,
-                            onTap: () => setState(() => _selected = i),
-                          ),
-                        );
-                      }),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: widget.onFree,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Start with Free plan',
+                        style: WerlogTextStyles.bodySmall.copyWith(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13
+                        ),
+                      ),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),
-          ),
-          // ── CTA footer ──────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(22, 10, 22, 20),
-            decoration: const BoxDecoration(
-              color: WerlogColors.background,
-              border: Border(
-                  top: BorderSide(color: WerlogColors.border, width: 0.5)),
-            ),
-            child: Column(
-              children: [
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: WerlogTextStyles.caption,
-                    children: [
-                      TextSpan(
-                        text: '7 days free',
-                        style: WerlogTextStyles.caption.copyWith(
-                            color: WerlogColors.textPrimary,
-                            fontWeight: FontWeight.w500),
-                      ),
-                      const TextSpan(
-                          text:
-                              ' · cancel anytime · no card required for Free'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                PrimaryButton(
-                  text: _selected < _plans.length
-                      ? 'Continue with ${_plans[_selected].name} →'
-                      : 'Continue →',
-                  onTap: () =>
-                      widget.onContinue?.call(_plans[_selected]),
-                ),
-                const SizedBox(height: 4),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: widget.onFree,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      foregroundColor: WerlogColors.textSecondary,
-                    ),
-                    child: Text('Start with Free plan',
-                        style: WerlogTextStyles.bodySmall
-                            .copyWith(fontWeight: FontWeight.w500)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -254,11 +268,11 @@ class _CycleOption extends StatelessWidget {
               ),
               child: Text(
                 label,
-                style: WerlogTextStyles.bodySmall.copyWith(
+                style: WerlogTextStyles.body.copyWith(
                   color: active
-                      ? WerlogColors.textPrimary
+                      ? WerlogColors.tabActive
                       : WerlogColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
@@ -322,7 +336,7 @@ class _PlanCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: featured
-                  ? const Color(0xFFE1F5EE).withOpacity(0.6)
+                  ? const Color(0xFFF5FAF8).withOpacity(0.6)
                   : WerlogColors.surface,
               border: Border.all(
                 color: featured
@@ -505,153 +519,158 @@ class CheckoutScreen extends StatelessWidget {
     final d = data ?? CheckoutData();
 
     return Scaffold(
-      backgroundColor: WerlogColors.background,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const FakeStatusBar(),
-            // ── Back + title ─────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: onBack,
-                    child: const Text('‹',
-                        style: TextStyle(
-                            fontSize: 28,
-                            color: WerlogColors.textPrimary)),
-                  ),
-                  const SizedBox(height: 12),
-                  Text('Payment details',
-                      style: WerlogTextStyles.pageTitle),
-                  const SizedBox(height: 4),
-                  Text('Secure checkout powered by Stripe',
-                      style: WerlogTextStyles.bodySmall),
-                ],
-              ),
-            ),
-            // ── Plan summary card ────────────────────────────
-            _PlanSummaryCard(data: d),
-            const SizedBox(height: 18),
-            // ── Payment method ───────────────────────────────
-            _SectionLabel(label: 'PAYMENT METHOD'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: GestureDetector(
-                onTap: onChangeCard,
-                child: _RowField(
-                  leading: Container(
-                    width: 32, height: 22,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1F71),
-                      borderRadius: BorderRadius.circular(4),
+      backgroundColor: WerlogColors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: WerlogGradients.pageHeader(),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const FakeStatusBar(),
+              // ── Back + title ─────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: onBack,
+                      child: const Text('‹',
+                          style: TextStyle(
+                              fontSize: 28,
+                              color: WerlogColors.textPrimary)),
                     ),
-                    alignment: Alignment.center,
-                    child: Text(d.cardBrand,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w500)),
-                  ),
-                  label: '•••• •••• •••• ${d.cardLast4}',
-                  mono: true,
+                    const SizedBox(height: 12),
+                    Text('Payment details',
+                        style: WerlogTextStyles.pageTitle),
+                    const SizedBox(height: 4),
+                    Text('Secure checkout ',
+                        style: WerlogTextStyles.bodySmall),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 14),
-            _SectionLabel(label: 'BILLING ADDRESS'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: onChangeAddress,
-                    child: _SimpleRow(
-                        label: d.billingAddress,
-                        trailing: '›'),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: onAddPromo,
-                    child: _SimpleRow(
-                      label: 'Promo code',
-                      labelColor: WerlogColors.textSecondary,
-                      trailing: 'Add',
-                      trailingColor: WerlogColors.teal,
-                      trailingBold: true,
+              // ── Plan summary card ────────────────────────────
+              _PlanSummaryCard(data: d),
+              const SizedBox(height: 18),
+              // ── Payment method ───────────────────────────────
+              _SectionLabel(label: 'PAYMENT METHOD'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: GestureDetector(
+                  onTap: onChangeCard,
+                  child: _RowField(
+                    leading: Container(
+                      width: 32, height: 22,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1F71),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(d.cardBrand,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w500)),
                     ),
+                    label: '•••• •••• •••• ${d.cardLast4}',
+                    mono: true,
                   ),
-                ],
+                ),
               ),
-            ),
-            // ── Order summary ────────────────────────────────
-            Container(
-              margin: const EdgeInsets.all(22),
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: BoxDecoration(
-                color: WerlogColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Column(
-                children: [
-                  SummaryRow(
-                      label: _planLabel(d),
-                      value: d.lineTotal),
-                  SummaryRow(label: 'Tax', value: d.tax),
-                  if (d.discountLabel != null)
-                    SummaryRow(
-                      label: d.discountLabel!,
-                      value: d.discountAmount ?? '',
-                      valueColor: WerlogColors.amber,
+              const SizedBox(height: 14),
+              _SectionLabel(label: 'BILLING ADDRESS'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: onChangeAddress,
+                      child: _SimpleRow(
+                          label: d.billingAddress,
+                          trailing: '›'),
                     ),
-                  const Divider(
-                      height: 16,
-                      color: WerlogColors.border,
-                      thickness: 1),
-                  SummaryRow(
-                    label: 'Due after trial',
-                    value: d.dueAfterTrial,
-                    bold: true,
-                  ),
-                ],
-              ),
-            ),
-            // ── Pay button ───────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: onPay,
-                      icon: const Text('🔒',
-                          style: TextStyle(fontSize: 13)),
-                      label: Text('Start 7-day free trial',
-                          style: WerlogTextStyles.button),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: WerlogColors.teal,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: onAddPromo,
+                      child: _SimpleRow(
+                        label: 'Promo code',
+                        labelColor: WerlogColors.textSecondary,
+                        trailing: 'Add',
+                        trailingColor: WerlogColors.teal,
+                        trailingBold: true,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Charged only after trial ends · cancel anytime in Settings',
-                    textAlign: TextAlign.center,
-                    style: WerlogTextStyles.caption
-                        .copyWith(fontSize: 9, height: 1.5),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              // ── Order summary ────────────────────────────────
+              Container(
+                margin: const EdgeInsets.all(22),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                decoration: BoxDecoration(
+                  color: WerlogColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Column(
+                  children: [
+                    SummaryRow(
+                        label: _planLabel(d),
+                        value: d.lineTotal),
+                    SummaryRow(label: 'Tax', value: d.tax),
+                    if (d.discountLabel != null)
+                      SummaryRow(
+                        label: d.discountLabel!,
+                        value: d.discountAmount ?? '',
+                        valueColor: WerlogColors.amber,
+                      ),
+                    const Divider(
+                        height: 16,
+                        color: WerlogColors.border,
+                        thickness: 1),
+                    SummaryRow(
+                      label: 'Due after trial',
+                      value: d.dueAfterTrial,
+                      bold: true,
+                    ),
+                  ],
+                ),
+              ),
+              // ── Pay button ───────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onPay,
+                        icon: const Text('🔒',
+                            style: TextStyle(fontSize: 13)),
+                        label: Text('Start 7-day free trial',
+                            style: WerlogTextStyles.button),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: WerlogColors.teal,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Charged only after trial ends · cancel anytime in Settings',
+                      textAlign: TextAlign.center,
+                      style: WerlogTextStyles.caption
+                          .copyWith(fontSize: 9, height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -40,99 +40,102 @@ class _ScanTypeSheetState extends State<ScanTypeSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Dimmed background
-          Container(
-            decoration: BoxDecoration(
-              gradient: WerlogGradients.sheetDimmedBg(),
-            ),
-            child: const Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: 60, left: 22),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Text(
-                    '(dimmed home screen behind)',
-                    style: TextStyle(
-                        color: Color(0x4DFAFAF7), fontSize: 11),
+    return SafeArea(
+      top: false,
+      child: /*Scaffold(
+        body: Stack(
+          children: [*/
+            // Dimmed background
+            /*Container(
+              decoration: BoxDecoration(
+                gradient: WerlogGradients.sheetDimmedBg(),
+              ),
+              child: const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 60, left: 22),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      '(dimmed home screen behind)',
+                      style: TextStyle(
+                          color: Color(0x4DFAFAF7), fontSize: 11),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          // Sheet
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: WerlogColors.background,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(22)),
-              ),
-              padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Drag handle
-                  Center(
-                    child: Container(
-                      width: 40, height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD3D1C7),
-                        borderRadius: BorderRadius.circular(2),
+            ),*/
+            // Sheet
+            /*Align(
+              alignment: Alignment.bottomCenter,
+              child: */Container(
+                decoration: const BoxDecoration(
+                  color: WerlogColors.background,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(22)),
+                ),
+                padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        width: 40, height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD3D1C7),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  Text('What are you scanning?',
-                      style: WerlogTextStyles.pageTitle
-                          .copyWith(fontSize: 18)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'We\'ll capture different fields for each type',
-                    style: WerlogTextStyles.bodySmall,
-                  ),
-                  const SizedBox(height: 18),
-                  _ScanTypeOption(
-                    type: ScanType.expense,
-                    selected: _selected == ScanType.expense,
-                    onTap: () => _pick(ScanType.expense),
-                  ),
-                  const SizedBox(height: 10),
-                  _ScanTypeOption(
-                    type: ScanType.warranty,
-                    selected: _selected == ScanType.warranty,
-                    onTap: () => _pick(ScanType.warranty),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: widget.onContinue,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _selected == ScanType.expense
-                          ? WerlogColors.teal
-                          : WerlogColors.amber,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
+                    Text('What are you scanning?',
+                        style: WerlogTextStyles.pageTitle
+                            .copyWith(fontSize: 18)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'We\'ll capture different fields for each type',
+                      style: WerlogTextStyles.bodySmall,
                     ),
-                    child: Text(
-                      _selected == ScanType.expense
-                          ? 'Continue with Expense →'
-                          : 'Continue with Warranty →',
-                      style: WerlogTextStyles.button,
+                    const SizedBox(height: 18),
+                    _ScanTypeOption(
+                      type: ScanType.expense,
+                      selected: _selected == ScanType.expense,
+                      onTap: () => _pick(ScanType.expense),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    _ScanTypeOption(
+                      type: ScanType.warranty,
+                      selected: _selected == ScanType.warranty,
+                      onTap: () => _pick(ScanType.warranty),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: widget.onContinue,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _selected == ScanType.expense
+                            ? WerlogColors.teal
+                            : WerlogColors.amber,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        _selected == ScanType.expense
+                            ? 'Continue with Expense →'
+                            : 'Continue with Warranty →',
+                        style: WerlogTextStyles.button,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
+            // ),
+          // ],
+        // ),
+      // ),
     );
   }
 }

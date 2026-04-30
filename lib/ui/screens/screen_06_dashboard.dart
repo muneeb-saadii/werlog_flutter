@@ -72,36 +72,41 @@ class _CustomerDashboardScreenState
     return Scaffold(
       backgroundColor: WerlogColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const FakeStatusBar(),
-                    _TopBar(user: user),
-                    _BalanceCard(user: user, stats: stats),
-                    _QuickCards(stats: stats),
-                    if (alert.isVisible) _AlertBanner(alert: alert, onAction: widget.onAlertAction),
-                    SectionHeader(
-                      title: 'Recent invoices',
-                      action: 'See all ›',
-                      onAction: widget.onViewAllTransactions,
-                    ),
-                    _TransactionList(transactions: txns),
-                    const SizedBox(height: 16),
-                  ],
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: WerlogGradients.pageHeader(),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const FakeStatusBar(),
+                      _TopBar(user: user),
+                      _BalanceCard(user: user, stats: stats),
+                      _QuickCards(stats: stats),
+                      if (alert.isVisible) _AlertBanner(alert: alert, onAction: widget.onAlertAction),
+                      SectionHeader(
+                        title: 'Recent invoices',
+                        action: 'See all ›',
+                        onAction: widget.onViewAllTransactions,
+                      ),
+                      _TransactionList(transactions: txns),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            /*_BottomNavBar(
-              tabs:      _tabs,
-              selected:  _tab,
-              onTap:     _onTabTap,
-              onScan:    widget.onScan,
-            ),*/
-          ],
+              /*_BottomNavBar(
+                tabs:      _tabs,
+                selected:  _tab,
+                onTap:     _onTabTap,
+                onScan:    widget.onScan,
+              ),*/
+            ],
+          ),
         ),
       ),
     );

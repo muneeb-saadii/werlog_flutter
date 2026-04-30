@@ -7,6 +7,7 @@ import 'package:wellness/ui/tset/screens/settings_screen.dart';
 import '../../core/models/app_models.dart';
 import '../../core/models/app_models_extended.dart';
 import '../../core/routing/AppRoutes.dart';
+import '../screens/screen_04_ocr_flow.dart';
 import '../screens/screen_06_dashboard.dart';
 import '../screens/screen_06_list_reports_profile.dart';
 import 'custom_bottom_bar.dart';
@@ -74,11 +75,11 @@ class _DashboardState extends State<Dashboard> {
 
 
   final tabs = const [
-    TabItem("🏠", "Home"),
-    TabItem("🔍", "Search"),
+    TabItem("assets/images/tabs/home.png", "Home"),
+    TabItem("assets/images/tabs/invoices.png", "Invoices"),
     TabItem("", ""), // FAB
-    TabItem("👤", "Profile"),
-    TabItem("⚙️", "Settings"),
+    TabItem("assets/images/tabs/reports.png", "Reports"),
+    TabItem("assets/images/tabs/profile.png", "Profile"),
   ];
 
   void onTabTap(int index) {
@@ -94,7 +95,99 @@ class _DashboardState extends State<Dashboard> {
   }
 
   void _openBottomSheet() {
+    /*var scanType = ScanType.warranty;
+    AppRoutes.openScanType(
+      context,
+      onTypeSelected: (type) {
+        print("Selected type: $type");
+        scanType = type;
+      },
+      onContinue: () {
+        print("Go to next screen");
+        // Navigator.push(...)
+        AppRoutes.openCameraScreen(
+          context,
+          onClose: () {
+            print("Camera closed");
+            Navigator.pop(context);
+          },
+          onCapture: () {
+            AppRoutes.openOcrProcessingScreen(
+              context,
+              data: OcrProcessingData(
+                scanType: scanType,
+                // add your captured image/file here if needed
+              ),
+              onBack: () {
+                Navigator.pop(context);
+                print("Back from OCR screen");
+              },
+            );
+          },
+          onToggleFlash: () {
+            print("Flash toggled");
+          },
+          onSwitchCamera: () {
+            print("Camera switched");
+          },
+          onGallery: () {
+            print("Gallery opened");
+          },
+        );
+      },
+    );*/
+    var scanType = ScanType.warranty;
     showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,     // ✅ must be true
+      enableDrag: true,
+      builder: (_) {
+        return ScanTypeSheet(
+          // data: data,
+          onTypeSelected: (type) {
+            print("Selected type: $type");
+            scanType = type;
+          },
+          onContinue: () {
+            Navigator.pop(context); // close sheet
+            // onContinue?.call();     // trigger external logic
+
+            AppRoutes.openCameraScreen(
+              context,
+              onClose: () {
+                print("Camera closed");
+                Navigator.pop(context);
+              },
+              onCapture: () {
+                AppRoutes.openOcrProcessingScreen(
+                  context,
+                  data: OcrProcessingData(
+                    scanType: scanType,
+                    // add your captured image/file here if needed
+                  ),
+                  onBack: () {
+                    Navigator.pop(context);
+                    print("Back from OCR screen");
+                  },
+                );
+              },
+              onToggleFlash: () {
+                print("Flash toggled");
+              },
+              onSwitchCamera: () {
+                print("Camera switched");
+              },
+              onGallery: () {
+                print("Gallery opened");
+              },
+            );
+          },
+        );
+      },
+    );
+    /*showModalBottomSheet(
       context: context,
       builder: (_) {
         return const SizedBox(
@@ -104,7 +197,7 @@ class _DashboardState extends State<Dashboard> {
           ),
         );
       },
-    );
+    );*/
   }
 
   @override

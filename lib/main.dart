@@ -54,16 +54,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return /*MaterialApp(
       home: Dashboard(), // ✅ nothing wrapping this
-    );/*MaterialApp(
+    );*/MaterialApp(
       title: 'Wellness',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
       home: AppNavigator(),
-      *//*initialRoute: '/splash',
-      routes: {
-        '/splash': (context) => const SplashView(),
+      initialRoute: '/splash',
+      // routes: {
+      //   '/splash': (context) => const SplashView(),
         // '/login': (context) => const LoginView(),
         // '/name': (context) => NameScreen(),
         // '/profile': (context) => ProfileScreen(),
@@ -90,7 +90,7 @@ class MyApp extends StatelessWidget {
         // '/trainer-track-progress-screen': (context) => TrainerProgressTrackScreen(),
         // '/nutrition-screen': (context) => NutritionScreen(),
         // '/client-dashboard-screen': (context) => ClientDashboardScreen(),
-      },*//*
-    );*/
+      // },
+    );
   }
 }

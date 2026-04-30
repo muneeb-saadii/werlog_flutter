@@ -40,86 +40,92 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: WerlogColors.background,
-      body: Column(
-        children: [
-          Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Gradient header area
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: WerlogGradients.pageHeader()),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const FakeStatusBar(),
-                            _ListPageHeader(d: _d),
-                            _SearchBar(),
-                            _FilterChips(
-                              filter: _filter,
-                              d: _d,
-                              onChanged: (f) =>
-                                  setState(() => _filter = f),
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+              gradient: WerlogGradients.pageHeader()),
+          child: Column(
+            children: [
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Gradient header area
+                          Container(
+                            /*decoration: BoxDecoration(
+                              gradient: WerlogGradients.pageHeader()),*/
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const FakeStatusBar(),
+                                _ListPageHeader(d: _d),
+                                _SearchBar(),
+                                _FilterChips(
+                                  filter: _filter,
+                                  d: _d,
+                                  onChanged: (f) =>
+                                      setState(() => _filter = f),
+                                ),
+                                _StatsRow(d: _d),
+                              ],
                             ),
-                            _StatsRow(d: _d),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (ctx, gi) {
+                            final group = _d.groups[gi];
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (gi > 0) const SizedBox(height: 10),
+                                Text(group.dateLabel,
+                                    style: WerlogTextStyles.caption.copyWith(
+                                      fontSize: 9,
+                                      color: WerlogColors.textTertiary,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 0.8,
+                                    )),
+                                const SizedBox(height: 6),
+                                ...group.items.asMap().entries.map((e) {
+                                  final last =
+                                      e.key == group.items.length - 1;
+                                  return Column(
+                                    children: [
+                                      _InvoiceListRow(
+                                        item: e.value,
+                                        onTap: () => widget.onItemTap?.call(e.value),
+                                      ),
+                                      if (!last)
+                                        const Divider(
+                                          height: 0, thickness: 0.5,
+                                          color: WerlogColors.borderLight),
+                                    ],
+                                  );
+                                }),
+                              ],
+                            );
+                          },
+                          childCount: _d.groups.length,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (ctx, gi) {
-                        final group = _d.groups[gi];
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (gi > 0) const SizedBox(height: 10),
-                            Text(group.dateLabel,
-                                style: WerlogTextStyles.caption.copyWith(
-                                  fontSize: 9,
-                                  color: WerlogColors.textTertiary,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.8,
-                                )),
-                            const SizedBox(height: 6),
-                            ...group.items.asMap().entries.map((e) {
-                              final last =
-                                  e.key == group.items.length - 1;
-                              return Column(
-                                children: [
-                                  _InvoiceListRow(
-                                    item: e.value,
-                                    onTap: () => widget.onItemTap?.call(e.value),
-                                  ),
-                                  if (!last)
-                                    const Divider(
-                                      height: 0, thickness: 0.5,
-                                      color: WerlogColors.borderLight),
-                                ],
-                              );
-                            }),
-                          ],
-                        );
-                      },
-                      childCount: _d.groups.length,
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              /*_SharedBottomNav(
+                  selected: widget.currentTab,
+                  onTap: widget.onTabChanged),*/
+            ],
           ),
-          /*_SharedBottomNav(
-              selected: widget.currentTab,
-              onTap: widget.onTabChanged),*/
-        ],
+        ),
       ),
     );
   }
@@ -464,37 +470,41 @@ class ReportsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: WerlogColors.background,
-      body: Container(
-        margin: const EdgeInsets.only(top: 14),
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                          gradient: WerlogGradients.pageHeader()),
-                      child: Column(
-                        children: [
-                          // const FakeStatusBar(),
-                          _ReportsHeader(d: d),
-                        ],
+      body: SafeArea(
+        child: Container(
+          // margin: const EdgeInsets.only(top: 14),
+          decoration: BoxDecoration(
+              gradient: WerlogGradients.pageHeader()),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        /*decoration: BoxDecoration(
+                            gradient: WerlogGradients.pageHeader()),*/
+                        child: Column(
+                          children: [
+                            // const FakeStatusBar(),
+                            _ReportsHeader(d: d),
+                          ],
+                        ),
                       ),
-                    ),
-                    _TotalCard(d: d),
-                    _MonthlyTrendSection(d: d),
-                    _CategorySection(d: d),
-                    _ExportBanner(onTap: onExport),
-                    const SizedBox(height: 14),
-                  ],
+                      _TotalCard(d: d),
+                      // _MonthlyTrendSection(d: d),
+                      _CategorySection(d: d),
+                      _ExportBanner(onTap: onExport),
+                      const SizedBox(height: 14),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            /*_SharedBottomNav(
-                selected: currentTab, onTap: onTabChanged),*/
-          ],
+              /*_SharedBottomNav(
+                  selected: currentTab, onTap: onTabChanged),*/
+            ],
+          ),
         ),
       ),
     );
@@ -1013,94 +1023,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: WerlogColors.background,
-      body: Column(
-        children: [
-          Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Container(
-                    decoration: BoxDecoration(
-                        gradient: WerlogGradients.pageHeader()),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const FakeStatusBar(),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
-                          child: Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Profile',
-                                  style: WerlogTextStyles.pageTitle),
-                              Container(
-                                width: 34, height: 34,
-                                decoration: BoxDecoration(
-                                  color: WerlogColors.surface,
-                                  border: Border.all(
-                                      color: WerlogColors.border),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text('◉',
-                                    style: TextStyle(
-                                        color: WerlogColors.textPrimary)),
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+              gradient: WerlogGradients.pageHeader()),
+          child: Column(
+            children: [
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Container(
+                        /*decoration: BoxDecoration(
+                            gradient: WerlogGradients.pageHeader()),*/
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const FakeStatusBar(),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Profile',
+                                      style: WerlogTextStyles.pageTitle),
+                                  Container(
+                                    width: 34, height: 34,
+                                    decoration: BoxDecoration(
+                                      color: WerlogColors.surface,
+                                      border: Border.all(
+                                          color: WerlogColors.border),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text('◉',
+                                        style: TextStyle(
+                                            color: WerlogColors.textPrimary)),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                    child: _ProfileCard(data: _data),
-                  ),
-                ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (ctx, i) {
-                      final sec = _data.sections[i];
-                      return Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                        child: _SettingSection(
-                          section: sec,
-                          onRowTap: (r) {
-                            if (r.trailing ==
-                                SettingTrailingType.toggle) {
-                              _toggleRow(r);
-                            } else {
-                              widget.onSettingTap?.call(r);
-                            }
-                          },
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                        child: _ProfileCard(data: _data),
+                      ),
+                    ),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (ctx, i) {
+                          final sec = _data.sections[i];
+                          return Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                            child: _SettingSection(
+                              section: sec,
+                              onRowTap: (r) {
+                                if (r.trailing ==
+                                    SettingTrailingType.toggle) {
+                                  _toggleRow(r);
+                                } else {
+                                  widget.onSettingTap?.call(r);
+                                }
+                              },
+                            ),
+                          );
+                        },
+                        childCount: _data.sections.length,
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Text(
+                          _data.appVersion,
+                          textAlign: TextAlign.center,
+                          style: WerlogTextStyles.caption
+                              .copyWith(fontSize: 9),
                         ),
-                      );
-                    },
-                    childCount: _data.sections.length,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Text(
-                      _data.appVersion,
-                      textAlign: TextAlign.center,
-                      style: WerlogTextStyles.caption
-                          .copyWith(fontSize: 9),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              /*_SharedBottomNav(
+                  selected: widget.currentTab,
+                  onTap: widget.onTabChanged),*/
+            ],
           ),
-          /*_SharedBottomNav(
-              selected: widget.currentTab,
-              onTap: widget.onTabChanged),*/
-        ],
+        ),
       ),
     );
   }
@@ -1198,6 +1214,7 @@ class _SettingSection extends StatelessWidget {
         decoration: BoxDecoration(
           color: WerlogColors.surface,
           border: Border.all(color: WerlogColors.border),
+          borderRadius: BorderRadius.circular(14),
         ),
         /*Container(
         decoration: BoxDecoration(

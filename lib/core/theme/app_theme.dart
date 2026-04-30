@@ -12,6 +12,7 @@ class WerlogColors {
   static const Color teal          = Color(0xFF1D9E75); // primary CTA green
   static const Color tealLight     = Color(0xFF5DCAA5); // accent/highlight
   static const Color tealSurface   = Color(0xFFE1F5EE); // green tinted bg
+  static const Color tealLightSurface   = Color(0xFFF5FAF8); // light green tinted bg
 
   // Accent — amber / warning
   static const Color amber         = Color(0xFFBA7517);
@@ -25,7 +26,8 @@ class WerlogColors {
   static const Color coralDark     = Color(0xFF993C1D);
 
   // Neutrals
-  static const Color background    = Color(0xFFFAFAF7); // app-wide bg
+  static const Color transparent   = Color(0x00000000); // app-wide bg
+  static const Color background    = Color(0xFFFAFAF7);
   static const Color surface       = Color(0xFFFFFFFF);
   static const Color surfaceAlt    = Color(0xFFF1EFE8);
   static const Color border        = Color(0xFFE5E3DB);
@@ -36,6 +38,7 @@ class WerlogColors {
   static const Color textSecondary = Color(0xFF5F5E5A);
   static const Color textTertiary  = Color(0xFF888780);
   static const Color textDisabled  = Color(0xFFB4B2A9);
+  static const Color textWhite     = Color(0xFFFFFFFF);
 
   // Semantic
   static const Color success       = teal;
@@ -147,13 +150,13 @@ class WerlogTextStyles {
   // Body
   static TextStyle body = TextStyle(
     fontFamily: 'DMSans',
-    fontSize: 12,
+    fontSize: 14,
     color: WerlogColors.textPrimary,
   );
 
   static TextStyle bodySmall = TextStyle(
     fontFamily: 'DMSans',
-    fontSize: 11,
+    fontSize: 12,
     color: WerlogColors.textSecondary,
   );
 
@@ -230,7 +233,7 @@ class WerlogTextStyles {
 
   static TextStyle link = TextStyle(
     fontFamily: 'DMSans',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: FontWeight.w500,
     color: WerlogColors.teal,
   );
@@ -309,7 +312,7 @@ class WerlogTextStyles {
   // Tab bar
   static TextStyle tabLabel = TextStyle(
     fontFamily: 'DMSans',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: FontWeight.w500,
   );
 

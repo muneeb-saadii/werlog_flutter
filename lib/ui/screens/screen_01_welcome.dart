@@ -125,22 +125,39 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WerlogColors.background,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _HeroSection(data: data),
-            _FeatureList(features: data.features),
-            _CTASection(
-              primaryLabel:   data.primaryCTA,
-              secondaryLabel: data.secondaryCTA,
-              onPrimary:   onGetStarted,
-              onSecondary: onSignIn,
+      backgroundColor: WerlogColors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: WerlogGradients.pageHeader(),
+        ),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  _HeroSection(data: data),
+                  _FeatureList(features: data.features),
+                ],
+              ),
+            ),
+
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Column(
+                children: [
+                  const Spacer(),
+                  _CTASection(
+                    primaryLabel:   data.primaryCTA,
+                    secondaryLabel: data.secondaryCTA,
+                    onPrimary:   onGetStarted,
+                    onSecondary: onSignIn,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-      ),
+      )
     );
   }
 }
@@ -266,7 +283,7 @@ class _FeatureList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: WerlogColors.background,
+      color: WerlogColors.transparent,
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
       child: Column(
         children: List.generate(features.length, (i) {
@@ -341,12 +358,12 @@ class _CTASection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: WerlogColors.background,
-      padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
+      color: WerlogColors.transparent,
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
       child: Column(
         children: [
           PrimaryButton(text: primaryLabel, onTap: onPrimary),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           SizedBox(
             width: double.infinity,
             child: TextButton(

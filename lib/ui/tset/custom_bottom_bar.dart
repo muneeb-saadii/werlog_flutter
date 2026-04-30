@@ -92,14 +92,13 @@ class CustomBottomBar extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      t.icon,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: active
-                            ? WerlogColors.teal
-                            : WerlogColors.tabInactive,
-                      ),
+                    Image.asset(
+                      t.icon, // now this should be asset path instead of text
+                      width: 20,
+                      height: 20,
+                      color: active
+                          ? WerlogColors.teal
+                          : WerlogColors.tabInactive,
                     ),
                     const SizedBox(height: 3),
                     Text(

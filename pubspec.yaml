@@ -94,6 +94,7 @@ flutter:
     - assets/4.png
     - assets/5.png
     - assets/images/
+    - assets/images/tabs/
 #    - assets/profile.png
   #   - images/a_dot_ham.jpeg
 

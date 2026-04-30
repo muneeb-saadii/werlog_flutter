@@ -58,28 +58,43 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WerlogColors.background,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const FakeStatusBar(),
-            _Header(
-              tab:       _tab,
-              onTabChange: (t) => setState(() => _tab = t),
-              onBack:    widget.onBack,
+      backgroundColor: Colors.transparent,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Container(
+            height: constraints.maxHeight, // ✅ force full height
+            decoration: BoxDecoration(
+              gradient: WerlogGradients.pageHeader(),
             ),
-            _Form(
-              data:              _data,
-              isSignIn:          _tab == 0,
-              onForgotPassword:  widget.onForgotPassword,
-              onSubmit:          widget.onSubmit,
-              onGoogleLogin:     widget.onGoogleLogin,
-              onAppleLogin:      widget.onAppleLogin,
-              onToggleMode:      widget.onToggleMode,
+            child: SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight, // ✅ fill screen
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const FakeStatusBar(),
+                    _Header(
+                      tab: _tab,
+                      onTabChange: (t) => setState(() => _tab = t),
+                      onBack: widget.onBack,
+                    ),
+                    _Form(
+                      data: _data,
+                      isSignIn: _tab == 0,
+                      onForgotPassword: widget.onForgotPassword,
+                      onSubmit: widget.onSubmit,
+                      onGoogleLogin: widget.onGoogleLogin,
+                      onAppleLogin: widget.onAppleLogin,
+                      onToggleMode: widget.onToggleMode,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -116,7 +131,7 @@ class _Header extends StatelessWidget {
                 : 'Create your Werlog account to get started',
             style: WerlogTextStyles.bodySmall,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 30),
           // Segmented tab
           Container(
             padding: const EdgeInsets.all(3),
@@ -152,9 +167,10 @@ class _Header extends StatelessWidget {
                       ),
                       child: Text(
                         e.value,
-                        style: WerlogTextStyles.bodySmall.copyWith(
+                        style: WerlogTextStyles.body/*bodySmall*/.copyWith(
                           color: active
-                              ? WerlogColors.textPrimary
+                              // ? WerlogColors.textPrimary
+                              ? WerlogColors.tabActive
                               : WerlogColors.textSecondary,
                           fontWeight: FontWeight.w500,
                         ),
@@ -198,12 +214,13 @@ class _Form extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const SizedBox(height: 25),
           _LabeledField(
             label: 'EMAIL ADDRESS',
             initialValue: data.emailValue,
             keyboardType: TextInputType.emailAddress,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _LabeledField(
             label: 'PASSWORD',
             initialValue: data.passwordValue,
@@ -212,7 +229,7 @@ class _Form extends StatelessWidget {
           ),
           // Forgot password
           if (isSignIn) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
@@ -221,11 +238,12 @@ class _Form extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: 25),
           PrimaryButton(
             text: isSignIn ? 'Sign in →' : 'Create account →',
             onTap: onSubmit,
           ),
+          const SizedBox(height: 40),
           const OrDivider(),
           Row(
             children: [
@@ -394,141 +412,148 @@ class EmailVerifyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WerlogColors.background,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(22, 32, 22, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const FakeStatusBar(),
-            const SizedBox(height: 24),
-            // Checkmark illustration
-            Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      color: WerlogColors.tealSurface,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: WerlogColors.tealLight.withOpacity(0.6),
-                        width: 1,
-                        style: BorderStyle.solid,
+      // backgroundColor: WerlogColors.background,
+      backgroundColor: Colors.transparent,
+      body: Container(
+          constraints: const BoxConstraints.expand(),
+        decoration: BoxDecoration(
+          gradient: WerlogGradients.pageHeader(), // ✅ correct usage
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 32, 22, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const FakeStatusBar(),
+              const SizedBox(height: 24),
+              // Checkmark illustration
+              Center(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        color: WerlogColors.tealSurface,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: WerlogColors.tealLight.withOpacity(0.6),
+                          width: 1,
+                          style: BorderStyle.solid,
+                        ),
                       ),
                     ),
-                  ),
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: WerlogColors.teal,
-                      shape: BoxShape.circle,
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: WerlogColors.teal,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text('✓',
+                          style: TextStyle(
+                              fontSize: 28,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
                     ),
-                    alignment: Alignment.center,
-                    child: const Text('✓',
-                        style: TextStyle(
-                            fontSize: 28,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 22),
-            Text('Check your inbox',
-                textAlign: TextAlign.center,
-                style: WerlogTextStyles.pageTitle),
-            const SizedBox(height: 6),
-            Text(
-              'We sent a 6-digit verification code to confirm your email.',
-              textAlign: TextAlign.center,
-              style: WerlogTextStyles.bodySmall,
-            ),
-            const SizedBox(height: 24),
-            // Email display box
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: WerlogColors.surface,
-                border: Border.all(color: WerlogColors.border),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Text('SENT TO',
-                      style: WerlogTextStyles.labelUppercase.copyWith(
-                          fontSize: 10,
-                          color: WerlogColors.textTertiary)),
-                  const SizedBox(height: 2),
-                  Text(data.email,
-                      style: WerlogTextStyles.body.copyWith(
-                          fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            // OTP boxes
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(6, (i) {
-                final isFocused =
-                    data.digits[i].isEmpty && i > 0 && data.digits[i - 1].isNotEmpty;
-                return Container(
-                  width: 38,
-                  height: 44,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  child: TextFormField(
-                    initialValue: data.digits[i],
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    style: WerlogTextStyles.body
-                        .copyWith(fontWeight: FontWeight.w500, fontSize: 16),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 12),
-                      filled: true,
-                      fillColor: WerlogColors.surface,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(11),
-                          borderSide:
-                              const BorderSide(color: WerlogColors.border)),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(11),
-                          borderSide:
-                              const BorderSide(color: WerlogColors.border)),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(11),
-                          borderSide: BorderSide(
-                            color: isFocused
-                                ? WerlogColors.teal
-                                : WerlogColors.border,
-                            width: 1.5,
-                          )),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 20),
-            PrimaryButton(text: 'Verify & continue', onTap: onVerify),
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: onResend,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Text(
-                  data.resendLabel,
-                  textAlign: TextAlign.center,
-                  style: WerlogTextStyles.link,
+                  ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 22),
+              Text('Check your inbox',
+                  textAlign: TextAlign.center,
+                  style: WerlogTextStyles.pageTitle),
+              const SizedBox(height: 6),
+              Text(
+                'We sent a 6-digit verification code to confirm your email.',
+                textAlign: TextAlign.center,
+                style: WerlogTextStyles.bodySmall,
+              ),
+              const SizedBox(height: 24),
+              // Email display box
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: WerlogColors.surface,
+                  border: Border.all(color: WerlogColors.border),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text('SENT TO',
+                        style: WerlogTextStyles.labelUppercase.copyWith(
+                            fontSize: 10,
+                            color: WerlogColors.textTertiary)),
+                    const SizedBox(height: 2),
+                    Text(data.email,
+                        style: WerlogTextStyles.body.copyWith(
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              // OTP boxes
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(6, (i) {
+                  final isFocused =
+                      data.digits[i].isEmpty && i > 0 && data.digits[i - 1].isNotEmpty;
+                  return Container(
+                    width: 38,
+                    height: 50,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    child: TextFormField(
+                      initialValue: data.digits[i],
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      maxLength: 1,
+                      style: WerlogTextStyles.body
+                          .copyWith(fontWeight: FontWeight.w500, fontSize: 16),
+                      decoration: InputDecoration(
+                        counterText: '',
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                        filled: true,
+                        fillColor: WerlogColors.tealSurface/*surface*/,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(11),
+                            borderSide:
+                                const BorderSide(color: WerlogColors.border)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(11),
+                            borderSide:
+                                const BorderSide(color: WerlogColors.border)),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(11),
+                            borderSide: BorderSide(
+                              color: isFocused
+                                  ? WerlogColors.darkTeal
+                                  : WerlogColors.border,
+                              width: 1.5,
+                            )),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 50),
+              PrimaryButton(text: 'Verify & continue', onTap: onVerify),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: onResend,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    data.resendLabel,
+                    textAlign: TextAlign.center,
+                    style: WerlogTextStyles.link,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

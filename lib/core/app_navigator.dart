@@ -10,6 +10,7 @@ import '../ui/screens/screen_01_welcome.dart';
 import '../ui/screens/screen_02_auth.dart';
 import '../ui/screens/screen_03_subscription.dart';
 import '../ui/screens/screen_06_dashboard.dart';
+import '../ui/tset/dashboard.dart';
 import 'models/app_models.dart';
 import 'models/app_models_extended.dart';
 
@@ -83,6 +84,8 @@ class _AppNavigatorState extends State<AppNavigator> {
 
 
       case 5:
+        return Dashboard();
+      case 15:
         return CustomerDashboardScreen(
           user:  UserData(name: 'Alice', plan: 'PRO'),
           stats: DashboardStats(
