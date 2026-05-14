@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:wellness/ui/tset/dashboard.dart';
+import 'package:wellness/ui/tset/screens/main_dashboard_screen.dart';
 import 'package:wellness/ui/views/splash/splash_view.dart';
 // import 'package:wellness/ui/views/add_schdule_request/add_schedule_request.dart';
 // import 'package:wellness/ui/views/admin_side/dashboard/admin_dashboard.dart';
@@ -34,10 +35,13 @@ import 'package:wellness/ui/views/splash/splash_view.dart';
 
 import 'core/app_navigator.dart';
 import 'core/firebase-service/firebase-service.dart';
+import 'core/utils/shared_pref_helper.dart';
+import 'core/widgets/restart_widget.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SharedPrefHelper.init();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // await NotificationService.initialize();
   // await NotificationService.getToken();
@@ -46,7 +50,13 @@ void main() async {
     await NotificationService.initialize();
     await NotificationService.getToken();
   }
-  runApp(const MyApp());
+  // runApp(const MyApp());
+  runApp(
+    RestartWidget(
+      key: RestartWidget.my_key,
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -60,7 +70,7 @@ class MyApp extends StatelessWidget {
       title: 'Wellness',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
-      home: AppNavigator(),
+      home: /*MainDashboardScreen()*/AppNavigator(),
       initialRoute: '/splash',
       // routes: {
       //   '/splash': (context) => const SplashView(),

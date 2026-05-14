@@ -90,7 +90,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             Navigator.pop(context);
           },
           onCapture: () {
-            AppRoutes.openOcrProcessingScreen(
+            /*AppRoutes.openOcrProcessingScreen(
               context,
               data: OcrProcessingData(
                 scanType: scanType,
@@ -100,7 +100,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 Navigator.pop(context);
                 print("Back from OCR screen");
               },
-            );
+            );*/
           },
           onToggleFlash: () {
             print("Flash toggled");

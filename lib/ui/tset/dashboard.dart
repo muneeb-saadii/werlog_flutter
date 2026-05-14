@@ -1,8 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:wellness/ui/tset/screens/home_screen.dart';
-import 'package:wellness/ui/tset/screens/search_screen.dart';
-import 'package:wellness/ui/tset/screens/settings_screen.dart';
 
 import '../../core/models/app_models.dart';
 import '../../core/models/app_models_extended.dart';
@@ -161,7 +158,7 @@ class _DashboardState extends State<Dashboard> {
                 Navigator.pop(context);
               },
               onCapture: () {
-                AppRoutes.openOcrProcessingScreen(
+                /*AppRoutes.openOcrProcessingScreen(
                   context,
                   data: OcrProcessingData(
                     scanType: scanType,
@@ -171,7 +168,7 @@ class _DashboardState extends State<Dashboard> {
                     Navigator.pop(context);
                     print("Back from OCR screen");
                   },
-                );
+                );*/
               },
               onToggleFlash: () {
                 print("Flash toggled");

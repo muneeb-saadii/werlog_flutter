@@ -10,6 +10,8 @@
 //  OCR / SCAN FLOW  (screens 07, 08, 09)
 // ══════════════════════════════════════════════════════════════
 
+import 'dart:io';
+
 enum ScanType { expense, warranty }
 
 /// Screen 07 — bottom sheet type selector
@@ -53,15 +55,20 @@ enum ProcessingStepStatus { done, active, pending }
 class OcrProcessingData {
   ScanType scanType;
   String headlineText;
+  Map<String, dynamic> processData;
   String subText;
   List<ProcessingStep> steps;
+  List<File> images;
 
   OcrProcessingData({
     required this.scanType,
+    Map<String, dynamic>? processData,
     this.headlineText = 'Extracting warranty data',
     this.subText      = 'Reading vendor, model & serial number...',
     List<ProcessingStep>? steps,
-  }) : steps = steps ?? [
+    List<File>? images,
+  }) : images = images ?? [], processData = processData ?? {},
+       steps = steps ?? [
     ProcessingStep(label: 'Uploaded securely',      status: ProcessingStepStatus.done,   duration: '0.4s'),
     ProcessingStep(label: 'Image enhanced',          status: ProcessingStepStatus.done,   duration: '0.9s'),
     ProcessingStep(label: 'GPT-4 extracting fields', status: ProcessingStepStatus.active, duration: '3s'),

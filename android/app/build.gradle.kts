@@ -28,7 +28,7 @@ android {
         applicationId = "com.app.gym.wellness"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23/*flutter.minSdkVersion*/
+        minSdk = 24/*flutter.minSdkVersion*/
         targetSdk = 36/*flutter.targetSdkVersion*/
         versionCode = flutter.versionCode
         versionName = flutter.versionName

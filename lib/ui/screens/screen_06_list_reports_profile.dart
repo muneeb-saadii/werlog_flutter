@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:wellness/core/utils/shared_pref_helper.dart';
 import '../../core/models/app_models_extended.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/general_functions.dart';
 import '../../core/widgets/shared_widgets.dart';
 
 
@@ -1089,6 +1091,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   _toggleRow(r);
                                 } else {
                                   widget.onSettingTap?.call(r);
+                                  handleSettingTap(r);
                                 }
                               },
                             ),
@@ -1119,6 +1122,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<bool> showSignOutDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Sign Out'),
+          content: const Text('Are you sure you want to sign out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Sign Out'),
+            ),
+          ],
+        );
+      },
+    ) ??
+        false;
+  }
+
+  Future<void> handleSettingTap(SettingRow r) async {
+    if(r.title.toLowerCase() == 'sign out'){
+      final confirm = await showSignOutDialog(context);
+      if (!confirm) return;
+
+      SharedPrefHelper.clearAll();
+      GeneralFunctions.restartApp();
+    }
   }
 }
 

@@ -1,12 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:wellness/ui/screens/ocr_processing_screen.dart' hide ScanType;
 
+import '../../ui/screens/camera_screen.dart';
 import '../../ui/screens/screen_04_ocr_flow.dart';
 import '../../ui/screens/screen_05_invoice_detail.dart';
 import '../../ui/screens/screen_06_dashboard.dart';
 import '../../ui/screens/screen_06_list_reports_profile.dart';
 import '../models/app_models.dart';
-import '../models/app_models_extended.dart';
+import '../models/app_models_extended.dart' hide CameraViewData;
 
 class AppRoutes {
   static Future<void> openScanType(
@@ -64,6 +68,25 @@ class AppRoutes {
     );
   }
 
+  static Future<void> openNewCameraScreen(
+      BuildContext context, {
+        CameraViewData? data,
+        VoidCallback? onClose,
+        void Function(List<File> images)? onProceed,
+      }) async {
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NewCameraScreen(
+          data: data,
+          onClose: onClose,
+          onProceed: onProceed,
+        ),
+      ),
+    );
+  }
+
   static Future<void> openInvoiceList(
       BuildContext context, {
         InvoiceListData? data,
@@ -96,6 +119,29 @@ class AppRoutes {
           data: data,
           onBack: onBack,
         ),
+      ),
+    );
+  }
+
+  static Future<void> openNewOcrProcessingScreen(
+      BuildContext context, {
+        OcrProcessingDataNew? data,
+        VoidCallback? onBack,
+        VoidCallback? onProceed,
+      }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OcrProcessingScreenNew(
+          data: data/*OcrProcessingDataNew(
+            scanType: ScanType.warranty,
+            estTimeSeconds: '25',
+            remainingQuota: 3,
+            totalQuota: 10,
+          )*/,
+          onBack: () => Navigator.pop(context),
+          onProceed: onProceed,
+        )
       ),
     );
   }

@@ -4,13 +4,15 @@
 // ──────────────────────────────────────────────────────────────
 import 'package:flutter/cupertino.dart';
 import 'package:wellness/core/routing/AppRoutes.dart';
-import 'package:wellness/ui/screens/main_dashboard_screen_old.dart';
+import 'package:wellness/core/utils/shared_pref_helper.dart';
+// import 'package:wellness/ui/screens/main_dashboard_screen_old.dart';
 
 import '../ui/screens/screen_01_welcome.dart';
 import '../ui/screens/screen_02_auth.dart';
 import '../ui/screens/screen_03_subscription.dart';
 import '../ui/screens/screen_06_dashboard.dart';
 import '../ui/tset/dashboard.dart';
+import '../ui/tset/screens/main_dashboard_screen.dart';
 import 'models/app_models.dart';
 import 'models/app_models_extended.dart';
 
@@ -31,6 +33,13 @@ class _AppNavigatorState extends State<AppNavigator> {
 
   @override
   Widget build(BuildContext context) {
+
+    if(_screen == 1){
+      final user = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
+      if(user != null){
+        _screen = 5;
+      }
+    }
     switch (_screen) {
     // ── 01 Welcome ──────────────────────────────────────────
       case 0:
@@ -44,8 +53,9 @@ class _AppNavigatorState extends State<AppNavigator> {
       case 1:
         return SignInScreen(
           initialData: SignInScreenData(
-            emailValue:    'muneeb@gmail.com',
-            passwordValue: '••••••••',
+            emailValue:    '',
+            passwordValue: '',
+            nameValue: '',
             isSignIn:      true,
           ),
           onBack:   _prev,
@@ -84,6 +94,8 @@ class _AppNavigatorState extends State<AppNavigator> {
 
 
       case 5:
+        return MainDashboardScreen();
+      case 25:
         return Dashboard();
       case 15:
         return CustomerDashboardScreen(

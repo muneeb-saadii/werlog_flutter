@@ -14,6 +14,15 @@ class WerlogColors {
   static const Color tealSurface   = Color(0xFFE1F5EE); // green tinted bg
   static const Color tealLightSurface   = Color(0xFFF5FAF8); // light green tinted bg
 
+
+  // ── NEW: blue accent (deduction legend dot in screen 1) ──────
+  static const Color blue          = Color(0xFF2563EB);
+  static const Color blueSurface   = Color(0xFFEFF6FF);
+
+  // ── NEW: non-deductible orange (legend in donut chart) ───────
+  static const Color orange        = Color(0xFFF59E0B);
+  static const Color orangeSurface = Color(0xFFFFFBEB);
+
   // Accent — amber / warning
   static const Color amber         = Color(0xFFBA7517);
   static const Color amberSurface  = Color(0xFFFAEEDA);
@@ -48,6 +57,10 @@ class WerlogColors {
   static const Color danger        = coral;
   static const Color dangerSurface = coralSurface;
 
+  // ── Purple ───────────────────────────────────────────────────
+  static const Color purple        = Color(0xFF7B5EA7);
+  static const Color purpleSurface = Color(0xFFF3EEF8);
+
   // Tab bar
   static const Color tabActive     = teal;
   static const Color tabInactive   = Color(0xFF888780);
@@ -81,7 +94,7 @@ class WerlogTextStyles {
   );
 
   // Page / section titles
-  static TextStyle pageTitle = TextStyle(
+  static const TextStyle pageTitle = TextStyle(
     fontFamily: 'DMSans',
     fontSize: 22,
     fontWeight: FontWeight.w500,
@@ -89,10 +102,15 @@ class WerlogTextStyles {
     letterSpacing: -0.3,
   );
 
-  static TextStyle sectionTitle = TextStyle(
+  static const TextStyle sectionTitle = TextStyle(
     fontFamily: 'DMSans',
     fontSize: 13,
     fontWeight: FontWeight.w500,
+    color: WerlogColors.textPrimary,
+  );
+
+  static const TextStyle cardTitle = TextStyle(
+    fontFamily: 'DMSans', fontSize: 13, fontWeight: FontWeight.w600,
     color: WerlogColors.textPrimary,
   );
 
@@ -108,6 +126,25 @@ class WerlogTextStyles {
     fontWeight: FontWeight.w500,
     color: WerlogColors.textPrimary,
     letterSpacing: -0.2,
+  );
+
+
+  // Hero card KPI label (white, small, caps feel)
+  static const TextStyle kpiLabel = TextStyle(
+    fontFamily: 'DMSans', fontSize: 10, fontWeight: FontWeight.w500,
+    color: Color(0xCCFFFFFF), letterSpacing: 0.1,
+  );
+
+  // Hero card KPI value (white, large bold)
+  static const TextStyle kpiValue = TextStyle(
+    fontFamily: 'DMSans', fontSize: 20, fontWeight: FontWeight.w700,
+    color: Colors.white, letterSpacing: -0.5,
+  );
+
+  // Green highlight KPI (tax refund forecast)
+  static const TextStyle kpiValueGreen = TextStyle(
+    fontFamily: 'DMSans', fontSize: 20, fontWeight: FontWeight.w700,
+    color: Color(0xFF5DCAA5), letterSpacing: -0.5,
   );
 
   // Balance / big numbers
@@ -154,7 +191,7 @@ class WerlogTextStyles {
     color: WerlogColors.textPrimary,
   );
 
-  static TextStyle bodySmall = TextStyle(
+  static const TextStyle bodySmall = TextStyle(
     fontFamily: 'DMSans',
     fontSize: 12,
     color: WerlogColors.textSecondary,
@@ -171,6 +208,10 @@ class WerlogTextStyles {
     fontSize: 10,
     fontWeight: FontWeight.w500,
     color: WerlogColors.textSecondary,
+  );
+
+  static const TextStyle captionSmall = TextStyle(
+    fontFamily: 'DMSans', fontSize: 10, color: WerlogColors.textTertiary,
   );
 
   static TextStyle label = TextStyle(
@@ -217,21 +258,21 @@ class WerlogTextStyles {
   );
 
   // Buttons
-  static TextStyle button = TextStyle(
+  static const TextStyle button = TextStyle(
     fontFamily: 'DMSans',
     fontSize: 13,
     fontWeight: FontWeight.w500,
     color: WerlogColors.surface,
   );
 
-  static TextStyle buttonGhost = TextStyle(
+  static const TextStyle buttonGhost = TextStyle(
     fontFamily: 'DMSans',
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: WerlogColors.textPrimary,
   );
 
-  static TextStyle link = TextStyle(
+  static const TextStyle link = TextStyle(
     fontFamily: 'DMSans',
     fontSize: 13,
     fontWeight: FontWeight.w500,
@@ -353,6 +394,28 @@ class WerlogTextStyles {
     fontWeight: FontWeight.w500,
     color: WerlogColors.textPrimary,
   );
+
+  // ── NEW: amount large (category detail KPI) ──────────────────
+  static const TextStyle amountLarge = TextStyle(
+    fontFamily: 'DMSans', fontSize: 22, fontWeight: FontWeight.w700,
+    color: WerlogColors.textPrimary, letterSpacing: -0.5,
+  );
+
+  // ── NEW: month header in monthly view ────────────────────────
+  static const TextStyle monthLabel = TextStyle(
+    fontFamily: 'DMSans', fontSize: 12, fontWeight: FontWeight.w500,
+    color: WerlogColors.textSecondary,
+  );
+
+  // ── NEW: tax ready summary row label ─────────────────────────
+  static const TextStyle summaryRowLabel = TextStyle(
+    fontFamily: 'DMSans', fontSize: 13, color: WerlogColors.textPrimary,
+  );
+
+  static const TextStyle summaryRowValue = TextStyle(
+    fontFamily: 'DMSans', fontSize: 13, fontWeight: FontWeight.w600,
+    color: WerlogColors.textPrimary,
+  );
 }
 
 
@@ -402,6 +465,11 @@ class WerlogGradients {
     colors: [_mintMid, const Color(0xFFF5FBF8)],
   );
 
+  static const LinearGradient heroTeal = LinearGradient(
+    begin: Alignment.topLeft, end: Alignment.bottomRight,
+    colors: [Color(0xFF0D8F68), Color(0xFF1D9E75)],
+  );
+
   /// Dark hero card (balance, checkout plan) — unchanged dark teal
   static LinearGradient darkHero() => const LinearGradient(
     begin: Alignment.topLeft,
@@ -425,6 +493,13 @@ class WerlogGradients {
     begin: Alignment.topCenter,
     end:   Alignment.bottomCenter,
     colors: [Color(0xFFF5FBF8), WerlogColors.background],
+  );
+
+  static LinearGradient successBg() => const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0D1117), Color(0xFF091A18), Color(0xFF0D1117)],
+    stops: [0.0, 0.5, 1.0],
   );
 
   // ── Reports header card ───────────────────────────────────
@@ -466,6 +541,11 @@ class WerlogGradients {
     begin: Alignment.topLeft,
     end:   Alignment.bottomRight,
     colors: [WerlogColors.teal, Color(0xFF0F6E56)],
+  );
+
+  static const LinearGradient taxReady = LinearGradient(
+    begin: Alignment.topLeft, end: Alignment.bottomRight,
+    colors: [Color(0xFF0D8F68), Color(0xFF16A97E)],
   );
 }
 

@@ -1,6 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:wellness/ui/screens/screen_03_subscription.dart';
+import '../../core/api/api_service.dart';
+import '../../core/api/endpoints.dart';
+import '../../core/models/app_models.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/general_functions.dart';
+import '../../core/utils/shared_pref_helper.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../tset/screens/main_dashboard_screen.dart';
 
 // ──────────────────────────────────────────────────────────────
 //  SignInScreen  (screen 02 · Sign in / Sign up)
@@ -9,13 +18,15 @@ import '../../core/widgets/shared_widgets.dart';
 
 // ── Configurable data ──────────────────────────────────────────
 class SignInScreenData {
+  String nameValue;
   String emailValue;
   String? passwordValue;
   bool isSignIn; // toggles between Sign in / Sign up tab
 
   SignInScreenData({
-    this.emailValue    = 'muneeb@gmail.com',
-    this.passwordValue = '••••••••',
+    this.nameValue    = '',
+    this.emailValue    = '',
+    this.passwordValue = '',
     this.isSignIn      = true,
   });
 }
@@ -51,8 +62,83 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   void initState() {
     super.initState();
-    _data = widget.initialData ?? SignInScreenData();
+    final data = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
+    // print(user?['name']);
+
+    if(data != null){
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => MainDashboardScreen()
+        ),
+      );
+      return;
+    }
+
+    final userData = SharedPrefHelper.getObject(SharedPrefHelper.loginRememberData);
+    final user = userData?['meResponse'];
+    final email = user?['email'] ?? '';
+    final pass = user?['password'] ?? '';
+    print("saved_login:: email:"+email+", pass:"+pass);
+    print("saved_login_data:: $userData");
+
+    _data = (email!=null && pass!= null) ? SignInScreenData(emailValue: email, passwordValue: pass) : widget.initialData ?? SignInScreenData();
     _tab = _data.isSignIn ? 0 : 1;
+  }
+
+  Future<void> registerUser() async {
+    try {
+      final response = await ApiService.post(
+        context,
+        Endpoints.REGISTER_USER,
+        body: {
+          "email": _data.emailValue,
+          "password": _data.passwordValue,
+          "fullName": _data.nameValue
+        }
+      );
+
+      print('\nSUCCESS => $response');
+
+      // =====================================================
+      // 🔥 SAFE RESPONSE PARSING
+      // =====================================================
+
+      handleAuthResponse(response);
+
+    } catch (e) {
+      print('ERROR => $e');
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!"
+        ,
+      );
+    }
+  }
+
+  Future<void> loginUser() async {
+    try {
+      final response = await ApiService.post(
+        context,
+        Endpoints.LOGIN_USER,
+        body: {
+          "email": _data.emailValue,
+          "password": _data.passwordValue,
+        },
+      );
+
+      print('\nSUCCESS => $response');
+
+      handleAuthResponse(response);
+
+    } catch (e) {
+      print('ERROR => $e');
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!"
+        ,
+      );
+    }
   }
 
   @override
@@ -84,7 +170,10 @@ class _SignInScreenState extends State<SignInScreen> {
                       data: _data,
                       isSignIn: _tab == 0,
                       onForgotPassword: widget.onForgotPassword,
-                      onSubmit: widget.onSubmit,
+                      onSubmit: () async {
+                        await _tab == 0 ? loginUser() : registerUser();
+                      },
+                      // onSubmit: widget.onSubmit,
                       onGoogleLogin: widget.onGoogleLogin,
                       onAppleLogin: widget.onAppleLogin,
                       onToggleMode: widget.onToggleMode,
@@ -97,6 +186,100 @@ class _SignInScreenState extends State<SignInScreen> {
         },
       ),
     );
+  }
+
+  Future<void> handleAuthResponse(response) async {
+    final result = response['result']=="1" ? true : false;
+
+    if(result){
+
+      GeneralFunctions.showSuccess(
+        context,
+        'Login successful',
+      );
+
+      final data = response['data'];
+      final meResponse = data['meResponse'];
+      final expiresTime = data['expiresIn'].toString();
+
+      final bool emailVerified =
+          meResponse['emailVerified'] == true;
+
+      final String email =
+          meResponse['email']?.toString() ?? '';
+
+      // =====================================================
+      // 🔥 EMAIL NOT VERIFIED
+      // =====================================================
+
+      await SharedPrefHelper.saveObject(
+        SharedPrefHelper.loginData,
+        data,
+      );
+      await SharedPrefHelper.saveString(
+        SharedPrefHelper.accessToken,
+        data['accessToken'],
+      );
+
+      meResponse['password'] = _data.passwordValue;
+      data['meResponse'] = meResponse;
+      await SharedPrefHelper.saveObject(
+        SharedPrefHelper.loginRememberData,
+        data,
+      );
+
+      if (!emailVerified) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EmailVerifyScreen(
+              data: EmailVerifyScreenData(
+                  email: email,
+                  digits: ['', '', '', '', '', ''],
+                  resendLabel: expiresTime
+              ),
+
+              onBack: () {
+                Navigator.pop(context);
+              },
+
+              onVerify: () {
+                Navigator.pop(context);
+
+                // 🔥 continue next flow here
+                // Example:
+                // Navigator.pushReplacement(...)
+              },
+            ),
+          ),
+        );
+
+        return;
+      }else{
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => MainDashboardScreen()
+          ),
+        );
+      }
+    }else{
+      GeneralFunctions.showError(
+        context,
+        response['message']
+        ,
+      );
+    }
+
+    // =====================================================
+    // 🔥 LOGIN SUCCESS FLOW
+    // =====================================================
+
+    print('User already verified');
+
+    // Navigate to dashboard/home
+    // Example:
+    // Navigator.pushReplacement(...);
   }
 }
 
@@ -215,10 +398,24 @@ class _Form extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 25),
+          if (!isSignIn) ...[
+            _LabeledField(
+              label: 'FULL NAME',
+              initialValue: data.nameValue,
+              keyboardType: TextInputType.text,
+              onChanged: (value) {
+                data.nameValue = value;
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
           _LabeledField(
             label: 'EMAIL ADDRESS',
             initialValue: data.emailValue,
             keyboardType: TextInputType.emailAddress,
+            onChanged: (value) {
+              data.emailValue = value;
+            },
           ),
           const SizedBox(height: 16),
           _LabeledField(
@@ -226,6 +423,9 @@ class _Form extends StatelessWidget {
             initialValue: data.passwordValue,
             obscureText: true,
             isFocused: true,
+            onChanged: (value) {
+              data.passwordValue = value;
+            },
           ),
           // Forgot password
           if (isSignIn) ...[
@@ -270,55 +470,101 @@ class _Form extends StatelessWidget {
 }
 
 // ── Labeled text field ─────────────────────────────────────────
-class _LabeledField extends StatelessWidget {
+class _LabeledField extends StatefulWidget {
   final String label;
   final String? initialValue;
   final bool obscureText;
   final bool isFocused;
   final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
 
   const _LabeledField({
     required this.label,
     this.initialValue,
     this.obscureText = false,
-    this.isFocused   = false,
+    this.isFocused = false,
     this.keyboardType,
+    this.onChanged,
   });
+
+  @override
+  State<_LabeledField> createState() => _LabeledFieldState();
+}
+
+class _LabeledFieldState extends State<_LabeledField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔥 set initial value once
+    _controller = TextEditingController(
+      text: widget.initialValue ?? '',
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _LabeledField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 🔥 update field if parent updates value
+    if (oldWidget.initialValue != widget.initialValue &&
+        widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: WerlogTextStyles.labelUppercase.copyWith(fontSize: 10)),
+        Text(
+          widget.label,
+          style: WerlogTextStyles.labelUppercase.copyWith(fontSize: 10),
+        ),
         const SizedBox(height: 6),
         TextFormField(
-          initialValue: initialValue,
-          obscureText:  obscureText,
-          keyboardType: keyboardType,
+          controller: _controller,
+          obscureText: widget.obscureText,
+          keyboardType: widget.keyboardType,
           style: WerlogTextStyles.body,
+          onChanged: (value) {
+            widget.onChanged?.call(value);
+          },
           decoration: InputDecoration(
             filled: true,
             fillColor: WerlogColors.surface,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 13,
+            ),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
-                borderSide:
-                    const BorderSide(color: WerlogColors.border)),
+              borderRadius: BorderRadius.circular(11),
+              borderSide: const BorderSide(
+                color: WerlogColors.border,
+              ),
+            ),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
-                borderSide:
-                    const BorderSide(color: WerlogColors.border)),
+              borderRadius: BorderRadius.circular(11),
+              borderSide: const BorderSide(
+                color: WerlogColors.border,
+              ),
+            ),
             focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(11),
-                borderSide: BorderSide(
-                  color: isFocused
-                      ? WerlogColors.teal
-                      : WerlogColors.border,
-                  width: 1.5,
-                )),
+              borderRadius: BorderRadius.circular(11),
+              borderSide: BorderSide(
+                color: widget.isFocused
+                    ? WerlogColors.teal
+                    : WerlogColors.border,
+                width: 1.5,
+              ),
+            ),
           ),
         ),
       ],
@@ -381,36 +627,100 @@ class EmailVerifyScreenData {
   String resendLabel;
 
   EmailVerifyScreenData({
-    this.email      = 'muneeb@gmail.com',
+    this.email      = '',
     List<String>? digits,
-    this.resendLabel = "Didn't get it? Resend in 30s",
+    this.resendLabel = "30",
   }) : digits = digits ?? ['0', '0', '0', '0', '0', '0'];
 }
 
-class EmailVerifyScreen extends StatelessWidget {
+
+class EmailVerifyScreen extends StatefulWidget {
   final EmailVerifyScreenData data;
+
   final VoidCallback? onBack;
   final VoidCallback? onVerify;
   final VoidCallback? onResend;
 
-  /*const*/ EmailVerifyScreen({
-    // super.key,
+  EmailVerifyScreen({
     Key? key,
     EmailVerifyScreenData? data,
     this.onBack,
     this.onVerify,
     this.onResend,
-  }) : data = data ?? EmailVerifyScreenData(),
+  })  : data = data ?? EmailVerifyScreenData(),
         super(key: key);
 
-
-  // ignore: use_key_in_widget_constructors
-  /*const*/ EmailVerifyScreen.defaults({Key? key, this.onBack, this.onVerify, this.onResend})
-      : data = EmailVerifyScreenData(),
+  EmailVerifyScreen.defaults({
+    Key? key,
+    this.onBack,
+    this.onVerify,
+    this.onResend,
+  })  : data = EmailVerifyScreenData(),
         super(key: key);
 
   @override
+  State<EmailVerifyScreen> createState() =>
+      _EmailVerifyScreenState();
+}
+class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
+
+  late int _secondsRemaining;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _secondsRemaining =
+        int.tryParse(widget.data.resendLabel) ?? 0;
+
+    _startTimer();
+  }
+
+  void _startTimer() {
+    if (_secondsRemaining <= 0) return;
+
+    _timer?.cancel();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+          (timer) {
+        if (_secondsRemaining <= 1) {
+          timer.cancel();
+
+          setState(() {
+            _secondsRemaining = 0;
+          });
+        } else {
+          setState(() {
+            _secondsRemaining--;
+          });
+        }
+      },
+    );
+  }
+
+  String get formattedTime {
+    final minutes =
+    (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
+
+    final seconds =
+    (_secondsRemaining % 60).toString().padLeft(2, '0');
+
+    return '$minutes:$seconds';
+  }
+
+  bool get canResend => _secondsRemaining == 0;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    var data = widget.data;
     return Scaffold(
       // backgroundColor: WerlogColors.background,
       backgroundColor: Colors.transparent,
@@ -511,6 +821,19 @@ class EmailVerifyScreen extends StatelessWidget {
                       maxLength: 1,
                       style: WerlogTextStyles.body
                           .copyWith(fontWeight: FontWeight.w500, fontSize: 16),
+                      onChanged: (value) {
+                        // save value
+                        data.digits[i] = value;
+                        // auto next focus
+                        if (value.isNotEmpty && i < 5) {
+                          FocusScope.of(context).nextFocus();
+                        }
+                        // auto previous on delete
+                        if (value.isEmpty && i > 0) {
+                          FocusScope.of(context).previousFocus();
+                        }
+                        setState(() {});
+                      },
                       decoration: InputDecoration(
                         counterText: '',
                         contentPadding:
@@ -539,14 +862,20 @@ class EmailVerifyScreen extends StatelessWidget {
                 }),
               ),
               const SizedBox(height: 50),
-              PrimaryButton(text: 'Verify & continue', onTap: onVerify),
+              PrimaryButton(text: 'Verify & continue', onTap: /*widget.onVerify*/(){verifyEmail(data.email, data.digits);}),
               const SizedBox(height: 10),
               GestureDetector(
-                onTap: onResend,
+                onTap: /*canResend
+                    ? */() {
+                  resendOtpCall(data.email);
+                }
+                    /*: null*/,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   child: Text(
-                    data.resendLabel,
+                    canResend
+                        ? "Didn't get it? Resend"
+                        : "Didn't get it? Resend in $formattedTime",
                     textAlign: TextAlign.center,
                     style: WerlogTextStyles.link,
                   ),
@@ -558,4 +887,137 @@ class EmailVerifyScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> resendOtpCall(String email) async {
+    try {
+      final response = await ApiService.post(
+          context,
+          Endpoints.RESEND_OTP,
+          body: {
+            "email": email
+          }
+      );
+      print('\nSUCCESS => $response');
+
+      final result = response['result']=="1" ? true : false;
+      if(result){
+
+        GeneralFunctions.showSuccess(
+          context,
+          'OTP re-sent!',
+        );
+        // final data = response['data'];
+        // final expiresTime = data['otpExpiresAt'].toString();
+        setState(() {
+          _secondsRemaining = 900;
+        });
+        _startTimer();
+
+      }else{
+        GeneralFunctions.showError(
+          context,
+          response['message']
+        );
+      }
+
+    } catch (e) {
+      print('ERROR => $e');
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!",
+      );
+    }
+  }
+
+  Future<void> verifyEmail(String email, List<String> digits) async {
+
+    final cleanedDigits = digits
+        .map((e) => e.trim())
+        .toList();
+
+    final isValidOtp =
+        cleanedDigits.length == 6 &&
+            cleanedDigits.every((e) => e.isNotEmpty);
+
+    if (!isValidOtp) {
+      GeneralFunctions.showError(
+        context,
+        'Please enter complete OTP',
+      );
+      return;
+    }
+
+    final otp = cleanedDigits.join();
+    try {
+      final response = await ApiService.post(
+          context,
+          Endpoints.VERIFY_OTP,
+          body: {
+            "email": email,
+            "otp": otp
+          }
+      );
+      print('\nSUCCESS => $response');
+
+      final result = response['result']=="1" ? true : false;
+      if(result){
+        GeneralFunctions.showSuccess(
+          context,
+          'Email verified!',
+        );
+
+        final user = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
+        final update = user?['meResponse'];
+        update['emailVerified'] = true;
+        await SharedPrefHelper.saveObject(SharedPrefHelper.loginData, user!);
+        // print(user?['name']);
+        final data = user?['meResponse'];
+
+        if(data['planCode']==null || data['planCode']=='') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    SubscriptionScreen(
+                      plans: defaultPlans,
+                      initialSelectedIndex: 1,
+                      initialCycle: 1,
+                      onSkip: () => handlePlansClick(0),
+                      onContinue: (_) => handlePlansClick(2),
+                      onFree: () => handlePlansClick(1),
+                    )
+            ),
+          );
+        }else{
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => MainDashboardScreen()
+            ),
+          );
+        }
+
+      }else{
+        GeneralFunctions.showError(
+            context,
+            response['message']
+        );
+      }
+
+    } catch (e) {
+      print('ERROR => $e');
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!",
+      );
+    }
+  }
+
+  Future<void> handlePlansClick(int i) async {
+    if(i==0){
+
+    }
+  }
+
+
 }
