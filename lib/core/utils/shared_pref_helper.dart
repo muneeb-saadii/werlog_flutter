@@ -23,6 +23,7 @@ class SharedPrefHelper {
   // 🔥 KEYS
   // =========================================================
 
+  static const String APP_RESTART_STATE = 'app_restart_state_watcher';
   static const String loginData = 'login_user_data';
   static const String loginRememberData = 'login_user_data_for_remember_me';
   static const String accessToken = 'access_token';

@@ -5,8 +5,8 @@ import '../../../../core/api/api_service.dart';
 import '../../../../core/api/endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/general_functions.dart';
-import 'expense_data.dart';
-import 'expense_category_detail_screen.dart';
+import 'fresh/expense_data.dart';
+import 'fresh/expense_category_detail_screen.dart';
 import 'tax_years_screen.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -22,11 +22,17 @@ class ExpenseDashboardScreen extends StatefulWidget {
 
 class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
 
+  String selectedYear = DateTime.now().year.toString();
+  List<String> years = List.generate(
+    6, (index) => (DateTime.now().year - index).toString(),
+  );
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       getExpenseDashboardData();
+      ExpenseData.currentYear = selectedYear;
     });
   }
 
@@ -36,7 +42,19 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
       backgroundColor: WerlogColors.background,
       body: SafeArea(
         child: Column(children: [
-          _TopBar(),
+          _TopBar(
+            selectedYear: selectedYear,
+            years: years,
+            onYearChanged: (year) {
+              setState(() {
+                selectedYear = year;
+                ExpenseData.currentYear = year;
+              });
+              print("Selected Year => $selectedYear");
+              // call api here if needed
+              getExpenseDashboardData();
+            },
+          ),
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -49,10 +67,10 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
                   const SizedBox(height: 18),
                   _buildYearSummarySection(),
                   const SizedBox(height: 18),
-                  _CategoriesSection(),
+                  _CategoriesSection(selectedYear: selectedYear),
                   const SizedBox(height: 18),
-                  _AiInsightsSection(),
-                  const SizedBox(height: 24),
+                  /*_AiInsightsSection(),
+                  const SizedBox(height: 24),*/
                 ],
               ),
             ),
@@ -80,12 +98,12 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('${yr.year} Summary', style: WerlogTextStyles.sectionTitle),
-            GestureDetector(
-              onTap: () => /*Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen()))*/{},
-              child: const Text('Year Report', style: WerlogTextStyles.sectionTitle/*link*/),
-            ),
+            Text('${ExpenseData.currentYear} Summary', style: WerlogTextStyles.sectionTitle),
+            /*GestureDetector(
+              onTap: () => *//*Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen()))*//*{},
+              child: const Text('Year Report', style: WerlogTextStyles.sectionTitle*//*link*//*),
+            ),*/
           ]),
           const SizedBox(height: 14),
           // Row 1
@@ -132,7 +150,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
 
       final response = await ApiService.get(
         context,
-        Endpoints.EXPENSE_DASHBOARD_DETAILS,
+        "${Endpoints.EXPENSE_DASHBOARD_DETAILS}$selectedYear",
       );
 
       print('\nSUCCESS => $response');
@@ -230,7 +248,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
 
             ExpenseData.categories.add(
               ExpenseCategory(
-                id: item['expenseName']
+                id: item['id']
                     .toString()
                     .toLowerCase()
                     .replaceAll(' ', '_'),
@@ -415,22 +433,85 @@ class _SummaryDivider extends StatelessWidget {
 
 // ── Top bar ───────────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
+
+  final String selectedYear;
+  final List<String> years;
+  final Function(String year) onYearChanged;
+
+  const _TopBar({
+    required this.selectedYear,
+    required this.years,
+    required this.onYearChanged,
+  });
+
+
   @override
   Widget build(BuildContext context) {
     return Container(
       color: WerlogColors.surface,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Row(children: [
-        GestureDetector(onTap: (){Navigator.of(context).pop();}, child: Icon(Icons.arrow_back/*sort_rounded*/, size: 22, color: WerlogColors.textPrimary)),
-        const Expanded(
-          child: Text('Expenses & Tax',
+      child: Row(
+        children: [
+
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).pop();
+            },
+            child: Icon(
+              Icons.arrow_back,
+              size: 22,
+              color: WerlogColors.textPrimary,
+            ),
+          ),
+
+          const Expanded(
+            child: Text(
+              'Expenses & Tax',
               textAlign: TextAlign.center,
-              style: WerlogTextStyles.pageTitle),
-        ),
-        /*_NotifIcon(),
-        const SizedBox(width: 4),
-        Icon(Icons.tune_rounded, size: 20, color: WerlogColors.textPrimary),*/
-      ]),
+              style: WerlogTextStyles.pageTitle,
+            ),
+          ),
+
+          Container(
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: WerlogColors.tealSurface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: WerlogColors.border,
+              ),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedYear,
+                icon: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: WerlogColors.textPrimary,
+                  size: 18,
+                ),
+                dropdownColor: WerlogColors.surface,
+                style: WerlogTextStyles.body.copyWith(
+                  color: WerlogColors.textPrimary,
+                  fontSize: 13,
+                ),
+                items: years.map((year) {
+                  return DropdownMenuItem<String>(
+                    value: year,
+                    child: Text(year),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    onYearChanged(value);
+                  }
+                },
+              ),
+            ),
+          ),
+
+        ],
+      ),
     );
   }
 }
@@ -492,12 +573,12 @@ class _HeroKpiCard extends StatelessWidget {
               _KpiItem(label: 'Est. Deduction', value: _fmt(ExpenseData.estDeduction)),
               _KpiDivider(),
               _KpiItem(label: 'GST/HST Claimable', value: _fmt(ExpenseData.gstHstClaimable)),
-              _KpiDivider(),
+              /*_KpiDivider(),
               _KpiItem(
                 label: 'Tax Refund Forecast',
                 value: _fmt(ExpenseData.taxRefundForecast),
                 isHighlight: true,
-              ),
+              ),*/
             ]),
           ),
         ),
@@ -635,6 +716,11 @@ class _LegendRow extends StatelessWidget {
 
 // ── Categories section ────────────────────────────────────────────────
 class _CategoriesSection extends StatelessWidget {
+  final String selectedYear;
+  const _CategoriesSection({
+    required this.selectedYear,
+  });
+
   @override
   Widget build(BuildContext context) {
     final cats = ExpenseData.categories;
@@ -645,7 +731,7 @@ class _CategoriesSection extends StatelessWidget {
           const Text('Expense Categories', style: WerlogTextStyles.sectionTitle),
           GestureDetector(
             onTap: () {},
-            child: const Text('Manage Categories', style: WerlogTextStyles.link),
+            child: const Text('View All', style: WerlogTextStyles.link),
           ),
         ]),
         const SizedBox(height: 12),
@@ -659,7 +745,7 @@ class _CategoriesSection extends StatelessWidget {
             childAspectRatio: 1.05,
           ),
           itemCount: cats.length,
-          itemBuilder: (_, i) => _CategoryTile(cat: cats[i]),
+          itemBuilder: (_, i) => _CategoryTile(cat: cats[i], selectedYear: selectedYear),
         ),
       ]),
     );
@@ -668,7 +754,9 @@ class _CategoriesSection extends StatelessWidget {
 
 class _CategoryTile extends StatelessWidget {
   final ExpenseCategory cat;
-  const _CategoryTile({required this.cat});
+  final String selectedYear;
+
+  const _CategoryTile({required this.cat, required this.selectedYear});
 
   String _fmt(double v) =>
       '\$${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
@@ -679,7 +767,11 @@ class _CategoryTile extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ExpenseCategoryDetailScreen(category: cat),
+          builder: (_) => ExpenseCategoryDetailScreen(
+            category: cat,
+            catId: cat.id,
+            selectedYear: selectedYear,
+          ),
         ),
       ),
       child: Container(

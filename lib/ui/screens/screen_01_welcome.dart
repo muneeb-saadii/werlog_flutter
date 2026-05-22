@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/shared_pref_helper.dart';
 import '../../core/widgets/shared_widgets.dart';
 
 // ──────────────────────────────────────────────────────────────
@@ -362,7 +363,12 @@ class _CTASection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
       child: Column(
         children: [
-          PrimaryButton(text: primaryLabel, onTap: onPrimary),
+          PrimaryButton(text: primaryLabel,
+              onTap: () async {
+                await SharedPrefHelper.saveBool(SharedPrefHelper.APP_RESTART_STATE, false);
+                onPrimary?.call();
+              }
+          ),
           const SizedBox(height: 6),
           SizedBox(
             width: double.infinity,

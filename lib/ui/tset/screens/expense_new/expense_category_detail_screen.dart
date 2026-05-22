@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../../core/api/api_service.dart';
+import '../../../../core/api/endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/general_functions.dart';
 import 'expense_data.dart';
 import 'tax_years_screen.dart';
 
@@ -26,6 +29,10 @@ class _ExpenseCategoryDetailScreenState
   void initState() {
     super.initState();
     _businessUsePct = widget.category.deductiblePct;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadExpenseCategoryData();
+    });
   }
 
   ExpenseCategory get cat => widget.category;
@@ -57,13 +64,13 @@ class _ExpenseCategoryDetailScreenState
                 _buildMonthlyChart(),
                 const SizedBox(height: 16),
                 _buildRecentExpenses(context),
-                const SizedBox(height: 16),
-                _buildAiAdviceCard(),
+                /*const SizedBox(height: 16),
+                _buildAiAdviceCard(),*/
                 const SizedBox(height: 100),
               ]),
             ),
           ),
-          _buildBottomBar(),
+          // _buildBottomBar(),
         ]),
       ),
     );
@@ -83,11 +90,11 @@ class _ExpenseCategoryDetailScreenState
         Expanded(child: Text(cat.name,
             textAlign: TextAlign.center,
             style: WerlogTextStyles.pageTitle)),
-        IconButton(
+        /*IconButton(
           icon: const Icon(Icons.more_vert_rounded, size: 20,
               color: WerlogColors.textPrimary),
           onPressed: () {},
-        ),
+        ),*/
       ]),
     );
   }
@@ -392,6 +399,43 @@ class _ExpenseCategoryDetailScreenState
         ),
       ]),
     );
+  }
+
+  Future<void> loadExpenseCategoryData() async {
+
+    try {
+
+      final response = await ApiService.get(
+        context,
+        "${Endpoints.EXPENSE_CATEGORY_DETAILS}",
+      );
+
+      print('\nSUCCESS => $response');
+
+      final result = response['result'] == "1";
+
+      if (result) {
+
+        final data = response['data'] ?? {};
+
+        setState(() {
+
+
+        });
+
+      } else {
+        GeneralFunctions.showError(
+          context,
+          response['message'].toString(),
+        );
+      }
+    } catch (e) {
+      print('ERROR => $e');
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!",
+      );
+    }
   }
 }
 

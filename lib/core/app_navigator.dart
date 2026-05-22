@@ -34,12 +34,20 @@ class _AppNavigatorState extends State<AppNavigator> {
   @override
   Widget build(BuildContext context) {
 
+    if(_screen == 0){
+      final isDirectDash = SharedPrefHelper.getBool(SharedPrefHelper.APP_RESTART_STATE);
+      if(isDirectDash){
+        _screen = 1;
+      }
+    }
+
     if(_screen == 1){
       final user = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
       if(user != null){
         _screen = 5;
       }
     }
+
     switch (_screen) {
     // ── 01 Welcome ──────────────────────────────────────────
       case 0:

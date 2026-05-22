@@ -443,7 +443,8 @@ class ProfileData {
 final List<SettingSection> _defaultSections = [
   SettingSection(header: 'ACCOUNT', rows: [
     SettingRow(title: 'Personal info', subtitle: 'Name, phone, timezone',     iconColorKey: 'g', iconEmoji: '◯'),
-    SettingRow(title: 'Security',      subtitle: 'Password, 2FA, devices',    iconColorKey: 'g', iconEmoji: '⚿'),
+    SettingRow(title: 'Security',      subtitle: 'Reset/update password',    iconColorKey: 'g', iconEmoji: '⚿'),
+    SettingRow(title: 'Notifications',      subtitle: 'Your activity updates',    iconColorKey: 'a', iconEmoji: '↗'),
   ]),
   SettingSection(header: 'SUBSCRIPTION', rows: [
     SettingRow(title: 'Current plan',       subtitle: 'Pro · renews Apr 1, 2027',  iconColorKey: 't', iconEmoji: '◆'),
@@ -452,13 +453,17 @@ final List<SettingSection> _defaultSections = [
   ]),
   SettingSection(header: 'PREFERENCES', rows: [
     SettingRow(title: 'Categories',           iconColorKey: 'a', iconEmoji: '◈'),
-    SettingRow(title: 'Warranty reminders',   iconColorKey: 'a', iconEmoji: '◆', trailing: SettingTrailingType.toggle, toggleValue: true),
-    SettingRow(title: 'Email notifications',  iconColorKey: 'a', iconEmoji: '✉', trailing: SettingTrailingType.toggle, toggleValue: true),
-    SettingRow(title: 'Weekly digest',        iconColorKey: 'a', iconEmoji: '◔', trailing: SettingTrailingType.toggle, toggleValue: false),
+    SettingRow(title: 'Model Engines',           iconColorKey: 'a', iconEmoji: '◆'),
+    // SettingRow(title: 'Warranty reminders',   iconColorKey: 'a', iconEmoji: '◈', trailing: SettingTrailingType.toggle, toggleValue: true),
+    // SettingRow(title: 'Email notifications',  iconColorKey: 'a', iconEmoji: '✉', trailing: SettingTrailingType.toggle, toggleValue: true),
+    // SettingRow(title: 'Weekly digest',        iconColorKey: 'a', iconEmoji: '◔', trailing: SettingTrailingType.toggle, toggleValue: false),
   ]),
   SettingSection(header: 'SUPPORT', rows: [
-    SettingRow(title: 'Help center',       iconColorKey: 'c', iconEmoji: 'ⓘ'),
+    // SettingRow(title: 'Help center',       iconColorKey: 'c', iconEmoji: 'ⓘ'),
+    SettingRow(title: 'FAQs',   iconColorKey: 't', iconEmoji: '✉'),
     SettingRow(title: 'Contact support',   iconColorKey: 'c', iconEmoji: '✉'),
+    SettingRow(title: 'Privacy Policy',   iconColorKey: 'c', iconEmoji: '◆'),
+    SettingRow(title: 'Terms and Conditions',   iconColorKey: 'c', iconEmoji: 'ⓘ'),
     SettingRow(title: 'Sign out',          iconColorKey: 'r', iconEmoji: '⏻', trailing: SettingTrailingType.none),
   ]),
 ];

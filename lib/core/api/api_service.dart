@@ -16,6 +16,7 @@ class ApiService {
   // =========================================================
 
   static const String baseUrl = 'https://werlog.com/api/';
+  static const String baseImgUrl = 'https://werlog.com';
 
   // =========================================================
   // 🔥 COMMON HEADERS
@@ -233,6 +234,155 @@ class ApiService {
       throw e.toString();
     }
   }
+
+
+
+
+  // =========================================================
+// 🔥 UPLOAD SINGLE IMAGE
+// =========================================================
+
+  static Future<dynamic> uploadImage(
+      BuildContext context,
+      String endpoint,
+      File imageFile,
+      String fileParamName, {
+        Map<String, String>? extraFields,
+        bool showLoader = true,
+      }) async {
+    try {
+      if (showLoader) LoadingHelper.show(context);
+
+      final token = await SharedPrefHelper.getString(SharedPrefHelper.accessToken);
+
+      final uri = Uri.parse('$baseUrl$endpoint');
+
+      final request = http.MultipartRequest('POST', uri)
+        ..headers.addAll({
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+          // ⚠️ Do NOT set Content-Type manually here —
+          // MultipartRequest sets it automatically with the correct boundary.
+        });
+
+      // Attach extra fields (e.g. user_id, type, etc.)
+      if (extraFields != null) {
+        request.fields.addAll(extraFields);
+      }
+
+      // Attach the image file
+      final mimeType = _getMimeType(imageFile.path);
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          fileParamName,
+          imageFile.path,
+          contentType: http.MediaType(mimeType[0], mimeType[1]),
+        ),
+      );
+
+      debugPrint('UPLOAD URL      => $uri');
+      debugPrint('FILE PARAM NAME => $fileParamName');
+      debugPrint('EXTRA FIELDS    => $extraFields');
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _handleResponse(response);
+
+    } on SocketException {
+      throw 'No internet connection';
+    } catch (e) {
+      throw e.toString();
+    } finally {
+      if (showLoader) LoadingHelper.hide(context);
+    }
+  }
+
+// =========================================================
+// 🔥 UPLOAD MULTIPLE IMAGES
+// =========================================================
+
+  static Future<dynamic> uploadImages(
+      BuildContext context,
+      String endpoint,
+      List<File> imageFiles,
+      String fileParamName, {
+        Map<String, String>? extraFields,
+        bool showLoader = true,
+      }) async {
+    try {
+      if (showLoader) LoadingHelper.show(context);
+
+      final token = await SharedPrefHelper.getString(SharedPrefHelper.accessToken);
+
+      final uri = Uri.parse('$baseUrl$endpoint');
+
+      final request = http.MultipartRequest('POST', uri)
+        ..headers.addAll({
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        });
+
+      if (extraFields != null) {
+        request.fields.addAll(extraFields);
+      }
+
+      // Attach all images under the same param name
+      // Most backends expect: fileParamName[] for arrays
+      for (final file in imageFiles) {
+        final mimeType = _getMimeType(file.path);
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            '$fileParamName[]',   // e.g. 'images[]' — remove [] if your API differs
+            file.path,
+            contentType: http.MediaType(mimeType[0], mimeType[1]),
+          ),
+        );
+      }
+
+      debugPrint('UPLOAD URL      => $uri');
+      debugPrint('FILE PARAM NAME => $fileParamName[]');
+      debugPrint('FILE COUNT      => ${imageFiles.length}');
+      debugPrint('EXTRA FIELDS    => $extraFields');
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _handleResponse(response);
+
+    } on SocketException {
+      throw 'No internet connection';
+    } catch (e) {
+      throw e.toString();
+    } finally {
+      if (showLoader) LoadingHelper.hide(context);
+    }
+  }
+
+// =========================================================
+// 🔥 MIME TYPE HELPER
+// =========================================================
+
+  /// Returns [type, subtype] e.g. ['image', 'jpeg']
+  static List<String> _getMimeType(String filePath) {
+    final ext = filePath.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return ['image', 'jpeg'];
+      case 'png':
+        return ['image', 'png'];
+      case 'gif':
+        return ['image', 'gif'];
+      case 'webp':
+        return ['image', 'webp'];
+      case 'heic':
+        return ['image', 'heic'];
+      default:
+        return ['application', 'octet-stream'];
+    }
+  }
+
 
   // =========================================================
   // 🔥 RESPONSE HANDLER

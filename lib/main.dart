@@ -31,7 +31,7 @@ import 'package:wellness/ui/views/splash/splash_view.dart';
 // import 'package:wellness/ui/views/trainer_welcome/trainer_dashboard.dart';
 // import 'package:wellness/ui/views/user/nutrition/screens/nutrition_screen.dart';
 // import 'package:wellness/ui/views/user/progress_tracker/log/screens/progress_track_screen.dart';
-// import 'package:wellness/ui/views/user_releated_data/profile_screen.dart';
+// import 'package:wellness/ui/views/user_releated_data/edit_profile_screen.dart';
 
 import 'core/app_navigator.dart';
 import 'core/firebase-service/firebase-service.dart';
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
     return /*MaterialApp(
       home: Dashboard(), // ✅ nothing wrapping this
     );*/MaterialApp(
-      title: 'Wellness',
+      title: 'Werlog',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
       home: /*MainDashboardScreen()*/AppNavigator(),

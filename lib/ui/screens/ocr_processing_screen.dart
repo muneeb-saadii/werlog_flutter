@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:wellness/core/utils/general_functions.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/api/endpoints.dart';
@@ -500,7 +501,8 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
         result: result,
         onDone: () {
           // Pop the sheet + all screens back to dashboard
-          Navigator.of(context).pop();
+          // Navigator.of(context).pop();
+          GeneralFunctions.resetAppState();
         },
       ),
     );

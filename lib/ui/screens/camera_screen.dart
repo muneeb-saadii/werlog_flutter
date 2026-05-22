@@ -1127,43 +1127,151 @@ class CameraUploadService {
   Future<UploadResult> uploadImages({
     required List<File> images,
     String endpoint = 'v1/ocr/jobs',
-    String fieldName = 'file',
+    String fieldName = 'files',
     Map<String, String> extraFields = const {},
   }) async {
+
+    print('\n================ UPLOAD STARTED ================');
+
     try {
+
+      // =========================================================
+      // URL
+      // =========================================================
+
       final uri = Uri.parse('$baseUrl$endpoint');
+
+      print('BASE URL => $baseUrl');
+      print('ENDPOINT => $endpoint');
+      print('FINAL URL => $uri');
+
+      // =========================================================
+      // REQUEST
+      // =========================================================
+
       final request = http.MultipartRequest('POST', uri);
 
-      // Auth header
+      print('REQUEST CREATED');
+
+      // =========================================================
+      // AUTH
+      // =========================================================
+
       if (authToken != null) {
+
         request.headers['Authorization'] = 'Bearer $authToken';
+
+        print('AUTH TOKEN ATTACHED');
+        print('TOKEN => $authToken');
+
+      } else {
+
+        print('NO AUTH TOKEN FOUND');
+
       }
 
-      // Extra string fields
+      // =========================================================
+      // HEADERS
+      // =========================================================
+
+      print('HEADERS => ${request.headers}');
+
+      // =========================================================
+      // EXTRA FIELDS
+      // =========================================================
+
       request.fields.addAll(extraFields);
 
-      // Attach each image
-      for (final file in images) {
+      print('FIELDS ADDED => ${request.fields}');
+
+      // =========================================================
+      // FILES
+      // =========================================================
+
+      print('TOTAL IMAGES => ${images.length}');
+
+      for (int i = 0; i < images.length; i++) {
+
+        final file = images[i];
+
+        print('\n------------- IMAGE ${i + 1} -------------');
+
+        print('FILE PATH => ${file.path}');
+        print('FILE EXISTS => ${await file.exists()}');
+
+        final fileLength = await file.length();
+
+        print('FILE SIZE => $fileLength bytes');
+
         final mime = lookupMimeType(file.path) ?? 'image/jpeg';
+
+        print('MIME TYPE => $mime');
+
         final parts = mime.split('/');
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            fieldName,
-            file.path,
-            contentType: MediaType(parts[0], parts[1]),
-          ),
+
+        final multipartFile = await http.MultipartFile.fromPath(
+          fieldName,
+          file.path,
+          contentType: MediaType(parts[0], parts[1]),
         );
+
+        request.files.add(multipartFile);
+
+        print('FILE ADDED TO REQUEST');
+        print('FIELD NAME => $fieldName');
+        print('CONTENT TYPE => ${parts[0]}/${parts[1]}');
       }
 
+      print('\nTOTAL FILES IN REQUEST => ${request.files.length}');
+
+      // =========================================================
+      // SENDING REQUEST
+      // =========================================================
+
+      print('\nSENDING REQUEST...');
+
       final streamed = await request.send();
+
+      print('REQUEST SENT');
+      print('STATUS CODE => ${streamed.statusCode}');
+
+      // =========================================================
+      // RESPONSE
+      // =========================================================
+
       final response = await http.Response.fromStream(streamed);
 
+      print('\n================ RESPONSE RECEIVED ================');
+
+      print('STATUS CODE => ${response.statusCode}');
+      print('RESPONSE HEADERS => ${response.headers}');
+      print('RESPONSE BODY => ${response.body}');
+
+      final success =
+          response.statusCode >= 200 &&
+              response.statusCode < 300;
+
+      print('UPLOAD SUCCESS => $success');
+
+      print('================ UPLOAD FINISHED ================\n');
+
       return UploadResult(
-        success: response.statusCode >= 200 && response.statusCode < 300,
+        success: success,
         statusCode: response.statusCode,
         body: response.body,
       );
-    } catch (e) {
+
+    } catch (e, stackTrace) {
+
+      print('\n================ UPLOAD ERROR ================');
+
+      print('ERROR => $e');
+
+      print('\nSTACKTRACE =>');
+      print(stackTrace);
+
+      print('================ ERROR END ================\n');
+
       return UploadResult(
         success: false,
         statusCode: 0,

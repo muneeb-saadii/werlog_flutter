@@ -5,6 +5,7 @@ import '../../../core/api/endpoints.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
 import 'category_overview_screen.dart';
+import 'main_dashboard_screen.dart';
 
 // ─────────────────────────────────────────
 //  DATA MODELS — replace with API response
@@ -117,19 +118,30 @@ class WarrantyDashboardData {
 }
 
 class WarrantyDashboardScreen extends StatefulWidget {
-  const WarrantyDashboardScreen({super.key});
+
+  // final Map<String, dynamic>? data;
+
+  const WarrantyDashboardScreen({
+    super.key,
+    // this.data,
+  });
 
   @override
-  State<WarrantyDashboardScreen> createState() => _WarrantyDashboardScreenState();
+  State<WarrantyDashboardScreen> createState() =>
+      _WarrantyDashboardScreenState();
 }
 
-class _WarrantyDashboardScreenState extends State<WarrantyDashboardScreen> {
+class _WarrantyDashboardScreenState
+    extends State<WarrantyDashboardScreen> {
+
+  // late Map<String, dynamic> dashboardData;
   bool showAllCategories = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // dashboardData = widget.data ?? {};
       getWarrantyDetails();
     });
   }
@@ -223,10 +235,10 @@ class _WarrantyDashboardScreenState extends State<WarrantyDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Good Morning, Alex 👋',
+          Text('${MainDashboardData.salutation}, ${MainDashboardData.userName} 👋',
               style: WerlogTextStyles.heroTitle.copyWith(fontSize: 18)),
           const SizedBox(height: 2),
-          Text("Here's what's happening with your warranties",
+          Text("${MainDashboardData.subtitle}",
               style: WerlogTextStyles.heroSubtitle),
           const SizedBox(height: 16),
           SingleChildScrollView(

@@ -11,6 +11,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
 import '../../../core/utils/shared_pref_helper.dart';
 import '../../screens/camera_screen.dart';
+import '../../screens/profile_segment/notifications_screen.dart';
 import '../../screens/ocr_processing_screen.dart' hide WerlogTextStyles, WerlogColors, WerlogGradients;
 import '../../screens/screen_04_ocr_flow.dart';
 import '../../screens/screen_06_list_reports_profile.dart';
@@ -188,34 +189,44 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ],
           ),
           const Spacer(),
-          Stack(
-            children: [
-              Icon(Icons.notifications_outlined,
-                  color: WerlogColors.textPrimary, size: 24),
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: const BoxDecoration(
-                    color: WerlogColors.coral,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${MainDashboardData.notificationCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'DMSans',
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationsScreen(),
+                ),
+              );
+            },
+            child: Stack(
+              children: [
+                Icon(Icons.notifications_outlined,
+                    color: WerlogColors.textPrimary, size: 24),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: const BoxDecoration(
+                      color: WerlogColors.coral,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${MainDashboardData.notificationCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'DMSans',
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -346,10 +357,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _buildWarrantyCard(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => const WarrantyDashboardScreen())),
+      onTap: () => callWarrantyDashboardScreen(),
       child: Container(
         decoration: BoxDecoration(
           color: WerlogColors.surface,
@@ -680,7 +688,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 ),
               ),
 
-              GestureDetector(
+              /*GestureDetector(
                 onTap: () {},
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -691,7 +699,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         color: WerlogColors.teal, size: 14),
                   ],
                 ),
-              ),
+              ),*/
             ],
           ),
           const SizedBox(height: 12),
@@ -889,11 +897,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   ],
                 ),
               ),
-              GestureDetector(
+              /*GestureDetector(
                 onTap: () {},
                 child: Text('View Report',
                     style: WerlogTextStyles.link.copyWith(fontSize: 11)),
-              ),
+              ),*/
             ],
           ),
           const SizedBox(height: 14),
@@ -948,7 +956,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         .toList(),
                   ],
                 ),
-                const SizedBox(width: 24),
+                /*const SizedBox(width: 24),
                 // Business vs Personal
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1010,7 +1018,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       ],
                     ),
                   ],
-                ),
+                ),*/
               ],
             ),
           ),
@@ -1074,8 +1082,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             children: [
               _navItem(Icons.home_rounded, 'Home', true, () {}),
               _navItem(Icons.verified_user_outlined, 'Warranty', false,
-                  () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const WarrantyDashboardScreen()))),
+                  () => callWarrantyDashboardScreen()),
               _navScanButton(context),
               _navItem(Icons.attach_money, 'Expenses', false,
                   () => Navigator.push(context, MaterialPageRoute(
@@ -1197,12 +1204,29 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 );
 
                 // 📦 BUILD PARAMS MAP
-                final params = {
+                /*final params = {
                   "type": (scanType==ScanType.expense) ? "EXPENSE" : "WARRANTY",
                   "engine": "GPT4",
                   "subcategoryId": "",
                   "isBusiness": false,
-                };
+                };*/
+                var params;
+                if(images.length > 1) {
+                  params = {
+                    "documentType": (scanType == ScanType.expense)
+                        ? "EXPENSE"
+                        : "WARRANTY",
+                    "engine": "GPT4",
+                    "mode":"MULTI_SEGMENT"
+                  };
+                }else  {
+                  params = {
+                    "documentType": (scanType == ScanType.expense)
+                        ? "EXPENSE"
+                        : "WARRANTY",
+                    "engine": "GPT4"
+                  };
+                }
 
                 // 🔥 IMPORTANT: SEND AS STRING JSON
                 // request.fields['params'] = jsonEncode(params);
@@ -1230,7 +1254,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 if (uploadedData == null) return;*/
                 if (!context.mounted) return;
                 print("#######\n"+result.body);
-                final Map<String, dynamic> data = jsonDecode(result.body)['data'];
+                final Map<String, dynamic> data =
+                  (jsonDecode(result.body)['data']['jobs'] as List).first as Map<String, dynamic>;
 
                 // 🔥 Open OCR processing screen
                 AppRoutes.openNewOcrProcessingScreen(
@@ -1516,6 +1541,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         "Process interrupted. Please try again!",
       );
     }
+  }
+
+  void callWarrantyDashboardScreen() {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const  WarrantyDashboardScreen()));
   }
 }
 

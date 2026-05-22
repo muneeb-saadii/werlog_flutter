@@ -624,7 +624,7 @@ class WarrantyDetailScreen extends StatelessWidget {
         child: Row(
           children: [
             _actionButton(
-                Icons.notifications_outlined, 'Set Reminder', false, () {}),
+                Icons.notifications_outlined, 'Update Details', false, () {}),
             const SizedBox(width: 10),
             _actionButton(Icons.verified_user_outlined, 'Claim Warranty',
                 false, () {}),

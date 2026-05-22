@@ -10,7 +10,7 @@ import '../../core/theme/app_theme.dart';
 // import 'screens/customer_dashboard_screen.dart';
 // import 'screens/invoice_list_screen.dart';
 // import 'screens/reports_screen.dart';
-// import 'screens/profile_screen.dart';
+// import 'screens/edit_profile_screen.dart';
 // import 'widgets/scan_type_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────

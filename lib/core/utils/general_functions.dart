@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wellness/core/utils/shared_pref_helper.dart';
 
 import '../widgets/restart_widget.dart';
 
@@ -6,6 +7,10 @@ class GeneralFunctions {
 
 
   static void restartApp() {
+    RestartWidget.restartApp();
+  }
+  static Future<void> resetAppState() async {
+    await SharedPrefHelper.saveBool(SharedPrefHelper.APP_RESTART_STATE, true);
     RestartWidget.restartApp();
   }
 

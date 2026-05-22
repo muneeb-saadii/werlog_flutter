@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
-import 'expense_data.dart';
+import 'fresh/expense_data.dart';
 import 'tax_ready_summary_screen.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -61,8 +61,8 @@ class _TaxYearsScreenState extends State<TaxYearsScreen> {
                   const SizedBox(height: 18),
                   _buildMonthlyViewSection(),
                   const SizedBox(height: 18),
-                  _buildAiInsightCard(),
-                  const SizedBox(height: 30),
+                  /*_buildAiInsightCard(),
+                  const SizedBox(height: 30),*/
                 ],
               ),
             ),
@@ -87,7 +87,7 @@ class _TaxYearsScreenState extends State<TaxYearsScreen> {
           child: Text('Tax Years', textAlign: TextAlign.center,
               style: WerlogTextStyles.pageTitle),
         ),
-        Icon(Icons.calendar_today_outlined, size: 20, color: WerlogColors.textPrimary),
+        // Icon(Icons.calendar_today_outlined, size: 20, color: WerlogColors.textPrimary),
       ]),
     );
   }
@@ -168,8 +168,8 @@ class _TaxYearsScreenState extends State<TaxYearsScreen> {
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('${yr.year} Summary', style: WerlogTextStyles.sectionTitle),
             GestureDetector(
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen())),
+              /*onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen())),*/
               child: const Text('Download Year Report', style: WerlogTextStyles.link),
             ),
           ]),

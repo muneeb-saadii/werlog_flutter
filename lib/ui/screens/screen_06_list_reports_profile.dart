@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wellness/core/routing/profile_navigation.dart';
 import 'package:wellness/core/utils/shared_pref_helper.dart';
 import '../../core/models/app_models_extended.dart';
 import '../../core/theme/app_theme.dart';
@@ -1045,26 +1046,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Profile',
-                                      style: WerlogTextStyles.pageTitle),
+                                  GestureDetector(
+                                    onTap: () => Navigator.of(context).pop(),
+                                    child: Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: BoxDecoration(
+                                        color: WerlogColors.surface,
+                                        border: Border.all(color: WerlogColors.border),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const Icon(
+                                        Icons.arrow_back,
+                                        size: 18,
+                                        color: WerlogColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 10),
+
+                                  Text(
+                                    'Profile',
+                                    style: WerlogTextStyles.pageTitle,
+                                  ),
+
+                                  const Spacer(),
+
                                   Container(
-                                    width: 34, height: 34,
+                                    width: 34,
+                                    height: 34,
                                     decoration: BoxDecoration(
                                       color: WerlogColors.surface,
-                                      border: Border.all(
-                                          color: WerlogColors.border),
+                                      border: Border.all(color: WerlogColors.border),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     alignment: Alignment.center,
-                                    child: const Text('◉',
-                                        style: TextStyle(
-                                            color: WerlogColors.textPrimary)),
+                                    child: const Text(
+                                      '◉',
+                                      style: TextStyle(color: WerlogColors.textPrimary),
+                                    ),
                                   ),
                                 ],
-                              ),
+                              )
                             ),
                           ],
                         ),
@@ -1085,13 +1111,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const EdgeInsets.fromLTRB(20, 12, 20, 0),
                             child: _SettingSection(
                               section: sec,
-                              onRowTap: (r) {
+                              onRowTap: (r, rIndex) {
                                 if (r.trailing ==
                                     SettingTrailingType.toggle) {
                                   _toggleRow(r);
                                 } else {
                                   widget.onSettingTap?.call(r);
-                                  handleSettingTap(r);
+                                  handleSettingTap(r, rIndex, i);
                                 }
                               },
                             ),
@@ -1148,13 +1174,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
         false;
   }
 
-  Future<void> handleSettingTap(SettingRow r) async {
+  Future<void> handleSettingTap(SettingRow r, int rIndex, int secIndex) async {
+    print("::handleSettingTap : sec:$secIndex, row:$rIndex, title:${r.title}");
     if(r.title.toLowerCase() == 'sign out'){
       final confirm = await showSignOutDialog(context);
       if (!confirm) return;
 
       SharedPrefHelper.clearAll();
       GeneralFunctions.restartApp();
+    }else if(secIndex == 0 && rIndex == 0){
+      ProfileNavigation.openProfile(context);
+    }else if(secIndex == 0 && rIndex == 1){
+      ProfileNavigation.openResetPassword(context);
+    }else if(secIndex == 0 && rIndex == 2){
+      ProfileNavigation.openNotifications(context);
+    }else if(secIndex == 2 && rIndex == 1){
+      ProfileNavigation.openOcrEngines(context);
+    }else if(secIndex == 3 && rIndex == 0){
+      ProfileNavigation.openFaq(context);
+    }else if(secIndex == 3 && rIndex == 1){
+      ProfileNavigation.openContactSupport(context);
+    }else if(secIndex == 3 && rIndex == 2){
+      ProfileNavigation.openPrivacyPolicy(context);
+    }else if(secIndex == 3 && rIndex == 3){
+      ProfileNavigation.openTerms(context);
     }
   }
 }
@@ -1223,7 +1266,7 @@ class _ProfileCard extends StatelessWidget {
 
 class _SettingSection extends StatelessWidget {
   final SettingSection section;
-  final void Function(SettingRow) onRowTap;
+  final void Function(SettingRow, int i) onRowTap;
   const _SettingSection(
       {required this.section, required this.onRowTap});
 
@@ -1279,7 +1322,7 @@ class _SettingSection extends StatelessWidget {
                       height: 0, thickness: 0.5,
                       color: WerlogColors.borderLight),
                   GestureDetector(
-                    onTap: () => onRowTap(row),
+                    onTap: () => onRowTap(row, e.key),
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(

@@ -3,11 +3,33 @@ import '../../../core/api/api_service.dart';
 import '../../../core/api/endpoints.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
-import 'warranty_detail_screen.dart';
+import 'expense_new/fresh/warranty_detail_screen.dart';
 
 // ─────────────────────────────────────────
 //  DATA MODELS — replace with API response
 // ─────────────────────────────────────────
+class InvoiceLineItemData {
+  final String description;
+  final int    quantity;
+  final double unitPrice;
+  final double amount;
+
+  const InvoiceLineItemData({
+    required this.description,
+    required this.quantity,
+    required this.unitPrice,
+    required this.amount,
+  });
+
+  factory InvoiceLineItemData.fromJson(Map<String, dynamic> json) =>
+      InvoiceLineItemData(
+        description: json['description']?.toString() ?? '',
+        quantity:    (json['quantity']  as num?)?.toInt()    ?? 1,
+        unitPrice:   (json['unitPrice'] as num?)?.toDouble() ?? 0.0,
+        amount:      (json['amount']    as num?)?.toDouble() ?? 0.0,
+      );
+}
+
 class WarrantyItem {
   final String id;
   final String name;
@@ -23,7 +45,9 @@ class WarrantyItem {
   final String provider;
   final String duration;
   final String claimSupport;
-  final String website;
+  final String website;// NEW
+  final List<String> imageUrls;
+  final List<InvoiceLineItemData> items;
 
   const WarrantyItem({
     required this.id,
@@ -41,6 +65,9 @@ class WarrantyItem {
     required this.duration,
     required this.claimSupport,
     required this.website,
+    // NEW
+    this.imageUrls = const [],
+    this.items = const [],
   });
 }
 
@@ -435,10 +462,21 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
   // ── Warranty list item ────────────────────
   Widget _warrantyListItem(BuildContext context, WarrantyItem item) {
     return GestureDetector(
-      onTap: () => Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (_) => WarrantyDetailScreen(item: item))),
+            builder: (_) => WarrantyDetailScreen(
+              item: item,
+              imageUrls: item.imageUrls,
+            ),
+          ),
+        );
+
+        if (result == true) {
+          getCategoryDetails(); // refresh your API / list
+        }
+      },
       child: Container(
         decoration: BoxDecoration(
           color: WerlogColors.surface,
@@ -660,8 +698,24 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
 
             CategoryData.electronics.add(
               WarrantyItem(
-                id: item['serialno']?.toString() ??
+                id: item['id']?.toString() ??
                     DateTime.now().millisecondsSinceEpoch.toString(),
+
+                imageUrls: List<String>.from(
+                  item['imageUrls'] ?? [],
+                ),
+
+                // items: items['items'],
+                items: (item['items'] as List<dynamic>? ?? [])
+                    .map(
+                      (e) => InvoiceLineItemData(
+                    description: e['description']?.toString() ?? '',
+                    quantity: e['quantity'] ?? 0,
+                    unitPrice: (e['unitPrice'] ?? 0).toDouble(),
+                    amount: (e['amount'] ?? 0).toDouble(),
+                  ),
+                )
+                    .toList(),
 
                 name: firstItem['description']?.toString() ??
                     item['name']?.toString() ??
