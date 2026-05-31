@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../../../core/api/api_service.dart';
 import '../../../../../core/api/endpoints.dart';
@@ -18,12 +23,13 @@ import '../../category_overview_screen.dart';
 class WarrantyDetailScreen extends StatefulWidget {
   final WarrantyItem item;
   final List<String> imageUrls;
-
+  /// Extra images from API (e.g. data -> extraImages) — shown above Update button
+  /// in the edit sheet and editable (add from gallery/camera).
 
   const WarrantyDetailScreen({
     super.key,
     required this.item,
-    this.imageUrls = const [],
+    this.imageUrls   = const []
   });
 
   @override
@@ -31,6 +37,8 @@ class WarrantyDetailScreen extends StatefulWidget {
 }
 
 class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
+
+  List<String> extraImages = const [];
 
   static String isoToDisplay(String iso) {
     try {
@@ -76,6 +84,11 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    extraImages =
+      widget.item.evidenceUrl != null &&
+        widget.item.evidenceUrl!.trim().isNotEmpty
+        ? [widget.item.evidenceUrl!]
+        : [];
     return Scaffold(
       backgroundColor: WerlogColors.background,
       body: SafeArea(
@@ -290,7 +303,7 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
   Widget _buildWarrantyInfoCard(BuildContext context) {
     final rows = [
       {'label': 'Warranty Type', 'value': widget.item.warrantyType},
-      {'label': 'Provider',      'value': widget.item.provider},
+      {'label': 'Title',      'value': widget.item.name/*provider*/},
       {'label': 'Duration',      'value': widget.item.duration},
       {'label': 'Start Date',    'value': widget.item.purchaseDate},
       {'label': 'End Date',      'value': widget.item.expiresOn},
@@ -704,6 +717,7 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
         item: widget.item,
         // invoiceData: widget.item,
         initialItems: seedItems,
+        initialExtraImages: extraImages,
         onUpdated: () {
           Navigator.pop(context); // close sheet
           Navigator.pop(context, true); // close detail screen
@@ -890,7 +904,7 @@ class _LineItem {
   Map<String, dynamic> toJson() => {
     'description': descCtrl.text.trim(),
     'quantity':    int.tryParse(qtyCtrl.text.trim()) ?? 1,
-    'unitPrice':   double.tryParse(unitPriceCtrl.text.trim()) ?? 0.0,
+    'unit_price':   double.tryParse(unitPriceCtrl.text.trim()) ?? 0.0,
     'amount':      double.tryParse(amountCtrl.text.trim()) ?? 0.0,
   };
 
@@ -906,13 +920,16 @@ class _LineItem {
 //  Update Warranty bottom sheet
 // ════════════════════════════════════════════════════════════════════
 class _UpdateWarrantySheet extends StatefulWidget {
-  final WarrantyItem  item;
+  final WarrantyItem    item;
   final List<_LineItem> initialItems;
-  final VoidCallback  onUpdated;
+  /// Network URL strings from the API — shown in the horizontal list.
+  final List<String>    initialExtraImages;
+  final VoidCallback    onUpdated;
 
   const _UpdateWarrantySheet({
     required this.item,
     required this.initialItems,
+    this.initialExtraImages = const [],
     required this.onUpdated,
   });
 
@@ -934,11 +951,16 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
   // Dynamic line items
   late final List<_LineItem> _items;
 
+  // Extra images — new files the user picks in this session
+  List<String> networkUrls = [];
+  final List<File> _newImageFiles = [];
+  final _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
     final i = widget.item;
-    _nameCtrl        = TextEditingController(text: i.provider);
+    _nameCtrl        = TextEditingController(text: i.name/*provider*/);
     _serialCtrl      = TextEditingController(text: i.serial);
     _invoiceNoCtrl   = TextEditingController(text: i.invoiceNo);
 
@@ -979,10 +1001,79 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
     super.dispose();
   }
 
+  // ── Image picker ───────────────────────────────────────────────────
+  Future<void> _pickImages(ImageSource source) async {
+    if (source == ImageSource.gallery) {
+      final picked = await _picker.pickMultiImage(imageQuality: 85);
+      if (picked.isEmpty) return;
+      setState(() {
+        // for (final x in picked) _newImageFiles.add(File(x.path));
+        _newImageFiles.clear();
+        _newImageFiles.add(File(picked.first.path));
+        networkUrls.clear();
+      });
+    } else {
+      final picked = await _picker.pickImage(
+          source: ImageSource.camera, imageQuality: 85);
+      if (picked == null) return;
+      setState(() {
+        // _newImageFiles.add(File(picked.path));
+        _newImageFiles.clear();
+        _newImageFiles.add(File(picked.path));
+        networkUrls.clear();
+      });
+    }
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+            20, 12, 20, MediaQuery.of(context).padding.bottom + 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 36, height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: WerlogColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Add Image',
+                style: TextStyle(
+                  fontFamily: 'DMSans', fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: WerlogColors.textPrimary,
+                )),
+          ),
+          const SizedBox(height: 14),
+          _SourceTile(
+            icon: Icons.photo_library_outlined,
+            label: 'Choose from Gallery',
+            onTap: () { Navigator.pop(context); _pickImages(ImageSource.gallery); },
+          ),
+          const SizedBox(height: 10),
+          _SourceTile(
+            icon: Icons.camera_alt_outlined,
+            label: 'Take a Photo',
+            onTap: () { Navigator.pop(context); _pickImages(ImageSource.camera); },
+          ),
+        ]),
+      ),
+    );
+  }
+
   // ── Date helpers ───────────────────────────────────────────────────
 
   /// Converts "DD/MM/YYYY" display value → "YYYY-MM-DDT00:00:00Z" ISO string.
-  /// Falls back to an empty string if the input can't be parsed.
   String _toIso(String displayDate) {
     try {
       final parts = displayDate.trim().split('/');
@@ -991,31 +1082,54 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
       final month = parts[1].padLeft(2, '0');
       final year  = parts[2];
       return '${year}-${month}-${day}T00:00:00Z';
-    } catch (_) {
-      return '';
-    }
+    } catch (_) { return ''; }
   }
 
-  // ── API submit ─────────────────────────────────────────────────────
+  // ── API submit — postFormData ───────────────────────────────────────
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
 
     try {
-      final body = {
-        'id':          /*widget.invoiceData?.id ??*/ widget.item.id,
+      // ── Params map (sent as JSON string in the "params" field) ────────
+      final paramsMap = {
+        'id':          widget.item.id,
         'name':        _nameCtrl.text.trim(),
         'serialno':    _serialCtrl.text.trim(),
         'invoiceno':   _invoiceNoCtrl.text.trim(),
         'invoiceDate': _toIso(_invoiceDateCtrl.text),
         'expiryDate':  _toIso(_expiryDateCtrl.text),
-        'items':       _items.map((e) => e.toJson()).toList(),
+        // 'items':       _items.map((e) => e.toJson()).toList(),
+        'items': _items.map((e) {
+          final json = e.toJson();
+          json['description'] = _nameCtrl.text.toString();
+          return json;
+        }).toList(),
       };
 
-      final response = await ApiService.post(
+      // ── Fields map for form-data ──────────────────────────────────────
+      final fields = <String, String>{
+        'params': jsonEncode(paramsMap),
+      };
+
+      // ── Build MultipartFile list from newly picked images ─────────────
+      final files = <http.MultipartFile>[];
+      /*for (final file in _newImageFiles)*/if(_newImageFiles.isNotEmpty) {
+      final file = _newImageFiles.first;
+        final ext      = file.path.split('.').last.toLowerCase();
+        final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+        files.add(await http.MultipartFile.fromPath(
+          'file',          // param name the API expects
+          file.path,
+          contentType: http.MediaType.parse(mimeType),
+        ));
+      }
+
+      final response = await ApiService.postFormData(
         context,
         Endpoints.UPDATE_INVOICE_DETAILS,
-        body: body,
+        fields: fields,
+        files: files.isEmpty ? null : files,
         showLoader: false,
       );
 
@@ -1047,6 +1161,7 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
     final statusBar  = mq.padding.top;
     // Leave at least the status-bar height + 16 dp gap visible above the sheet
     final maxHeight  = mq.size.height - statusBar - 16;
+    networkUrls = widget.initialExtraImages;
 
     return ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
@@ -1134,7 +1249,7 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(children: [
+                      /*Row(children: [
                         const Icon(Icons.list_alt_rounded,
                             size: 15, color: WerlogColors.textTertiary),
                         const SizedBox(width: 6),
@@ -1176,7 +1291,7 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                                     fontWeight: FontWeight.w600)),
                           ]),
                         ),
-                      ),
+                      ),*/
                     ],
                   ),
 
@@ -1195,6 +1310,11 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
             ),
           ),
         ),
+
+        const SizedBox(height: 12),
+
+        // ── Extra images list + Add button ────────────────────────────
+        _buildExtraImagesRow(),
 
         const SizedBox(height: 12),
 
@@ -1227,6 +1347,261 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
           ]),
         ),   // end Container
     );   // end ConstrainedBox
+  }
+
+  // ── Extra images horizontal list ──────────────────────────────────
+  Widget _buildExtraImagesRow() {
+    // Combine: existing network URLs + newly picked local files
+    final totalCount  = networkUrls.length + _newImageFiles.length;
+    print("Evidence images:: "+networkUrls.toString()+", cnt:"+totalCount.toString()+", icnt:"+_newImageFiles.toString());
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Section header
+      Row(children: [
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(
+            color: WerlogColors.tealSurface,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.photo_library_outlined,
+              size: 14, color: WerlogColors.teal),
+        ),
+        const SizedBox(width: 8),
+        Text('Images',
+            style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 13)),
+        const SizedBox(width: 6),
+        if (totalCount > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: WerlogColors.tealSurface,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Text('$totalCount',
+                style: WerlogTextStyles.captionSmall.copyWith(
+                    color: WerlogColors.teal,
+                    fontWeight: FontWeight.w600)),
+          ),
+      ]),
+
+      const SizedBox(height: 10),
+
+      // Horizontal scrolling image list
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(children: [
+
+          // ── Add image button — hidden when 1 image already exists ────
+          // Rule: user can only have one image at a time.
+          // Hide when: networkUrls has 1+ entry OR 1 local file is already picked.
+          if (networkUrls.isEmpty && _newImageFiles.isEmpty)
+          GestureDetector(
+            onTap: _showImageSourceSheet,
+            child: Container(
+              width: 76, height: 76,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: WerlogColors.tealSurface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: WerlogColors.teal.withOpacity(0.3),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.add_photo_alternate_outlined,
+                      color: WerlogColors.teal, size: 22),
+                  const SizedBox(height: 4),
+                  Text('Add',
+                      style: WerlogTextStyles.captionSmall.copyWith(
+                          color: WerlogColors.teal,
+                          fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Existing network images ─────────────────────────────────────
+          ...networkUrls.map((url) {
+            print("EvidenceUrl: " + ApiService.baseImgUrl + url);
+            return GestureDetector(
+              onTap: _showImageSourceSheet,   // tap to replace
+              child: Stack(children: [
+                Container(
+                  width: 76, height: 76,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    color: WerlogColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: WerlogColors.border, width: 0.8),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.network(
+                    ApiService.baseImgUrl + url,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (_, child, progress) => progress == null
+                        ? child
+                        : const Center(
+                      child: SizedBox(
+                        width: 18, height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: WerlogColors.teal),
+                      ),
+                    ),
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image_outlined,
+                          color: WerlogColors.textTertiary, size: 22),
+                    ),
+                  ),
+                ),
+                // Replace hint overlay
+                Positioned(
+                  bottom: 0, left: 0, right: 10,
+                  child: Container(
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.45),
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(12)),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.edit_rounded,
+                        color: Colors.white, size: 12),
+                  ),
+                ),
+              ]),
+            );
+          }),
+          /*// ── Existing network images ─────────────────────────────────
+          ...networkUrls.map((url) {
+
+            print("EvidenceUrl: "+ApiService.baseImgUrl + url);
+
+            return Container(
+            width: 76, height: 76,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: WerlogColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: WerlogColors.border, width: 0.8),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.network(
+              ApiService.baseImgUrl + url,
+              fit: BoxFit.cover,
+              loadingBuilder: (_, child, progress) => progress == null
+                  ? child
+                  : const Center(
+                      child: SizedBox(
+                        width: 18, height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: WerlogColors.teal),
+                      ),
+                    ),
+              errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_outlined,
+                    color: WerlogColors.textTertiary, size: 22),
+              ),
+            ),
+          );}),*/
+
+
+          // ── Newly picked local images ───────────────────────────────────
+          ..._newImageFiles.asMap().entries.map((e) {
+            final idx  = e.key;
+            final file = e.value;
+            return Stack(children: [
+              GestureDetector(
+                onTap: _showImageSourceSheet,   // tap to replace
+                child: Stack(children: [
+                  Container(
+                    width: 76, height: 76,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: WerlogColors.teal.withOpacity(0.35), width: 1),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.file(file, fit: BoxFit.cover),
+                  ),
+                  // Replace hint overlay
+                  Positioned(
+                    bottom: 0, left: 0, right: 10,
+                    child: Container(
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.45),
+                        borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(12)),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.edit_rounded,
+                          color: Colors.white, size: 12),
+                    ),
+                  ),
+                ]),
+              ),
+              // Remove button
+              Positioned(
+                top: 3, right: 13,
+                child: GestureDetector(
+                  onTap: () => setState(() => _newImageFiles.removeAt(idx)),
+                  child: Container(
+                    width: 18, height: 18,
+                    decoration: const BoxDecoration(
+                      color: WerlogColors.coral,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 11),
+                  ),
+                ),
+              ),
+            ]);
+          }),
+          /*// ── Newly picked local images ───────────────────────────────
+          ..._newImageFiles.asMap().entries.map((e) {
+            final idx  = e.key;
+            final file = e.value;
+            return Stack(children: [
+              Container(
+                width: 76, height: 76,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: WerlogColors.teal.withOpacity(0.35), width: 1),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.file(file, fit: BoxFit.cover),
+              ),
+              // Remove button
+              Positioned(
+                top: 3, right: 13,
+                child: GestureDetector(
+                  onTap: () => setState(() => _newImageFiles.removeAt(idx)),
+                  child: Container(
+                    width: 18, height: 18,
+                    decoration: const BoxDecoration(
+                      color: WerlogColors.coral,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 11),
+                  ),
+                ),
+              ),
+            ]);
+          }),*/
+
+        ]),
+      ),
+    ]);
   }
 
   // ── Item card widget ───────────────────────────────────────────────
@@ -1275,8 +1650,8 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
         const SizedBox(height: 8),
 
         // Description — full width
-        _field(item.descCtrl, 'Description', Icons.short_text_rounded,
-            required: true),
+        /*_field(item.descCtrl, 'Description', Icons.short_text_rounded,
+            required: true),*/
 
         // Qty | Unit Price | Amount — 3 columns
         Row(children: [
@@ -1290,6 +1665,7 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
             flex: 3,
             child: _field(item.unitPriceCtrl, 'Unit Price',
                 Icons.attach_money_rounded,
+                isPriceDisplay: true,
                 keyboardType: TextInputType.number),
           ),
           const SizedBox(width: 8),
@@ -1311,6 +1687,7 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
     IconData icon, {
     String? hint,
     bool required = false,
+    bool isPriceDisplay = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
@@ -1322,7 +1699,33 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          prefixIcon: Icon(icon, size: 16, color: WerlogColors.textTertiary),
+          prefixIcon: isPriceDisplay
+              ? Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                GeneralFunctions.currencySymbol,
+                style: WerlogTextStyles.txTitle.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          )
+              : Icon(
+            icon,
+            size: 16,
+            color: WerlogColors.textTertiary,
+          ),
+
+          prefixIconConstraints: isPriceDisplay
+              ? const BoxConstraints(
+            minWidth: 45,
+            minHeight: 45,
+          )
+              : null,
+
           labelStyle: WerlogTextStyles.caption
               .copyWith(color: WerlogColors.textSecondary),
           hintStyle: WerlogTextStyles.captionSmall,
@@ -1355,6 +1758,52 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                 ? '$label is required'
                 : null
             : null,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Source tile used in the "Add Image" bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+class _SourceTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SourceTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: WerlogColors.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: WerlogColors.border, width: 0.8),
+        ),
+        child: Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: WerlogColors.tealSurface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: WerlogColors.teal, size: 17),
+          ),
+          const SizedBox(width: 12),
+          Text(label,
+              style: WerlogTextStyles.txTitle.copyWith(fontSize: 13)),
+          const Spacer(),
+          const Icon(Icons.chevron_right_rounded,
+              color: WerlogColors.textTertiary, size: 18),
+        ]),
       ),
     );
   }

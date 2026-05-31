@@ -10,6 +10,7 @@ import '../../core/utils/general_functions.dart';
 import '../../core/utils/shared_pref_helper.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../tset/screens/main_dashboard_screen.dart';
+import 'forgot_password_screen.dart';
 
 // ──────────────────────────────────────────────────────────────
 //  SignInScreen  (screen 02 · Sign in / Sign up)
@@ -219,6 +220,10 @@ class _SignInScreenState extends State<SignInScreen> {
       await SharedPrefHelper.saveString(
         SharedPrefHelper.accessToken,
         data['accessToken'],
+      );
+      await SharedPrefHelper.saveString(
+        SharedPrefHelper.refreshToken,
+        data['refreshToken'],
       );
 
       meResponse['password'] = _data.passwordValue;
@@ -433,7 +438,12 @@ class _Form extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
-                onTap: onForgotPassword,
+                onTap: /*onForgotPassword*/(){
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                  );
+                },
                 child: Text('Forgot password?', style: WerlogTextStyles.link),
               ),
             ),
@@ -929,7 +939,7 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
     }
   }
 
-  Future<void> verifyEmail(String email, List<String> digits) async {
+  Future<void> verifyEmail_(String email, List<String> digits) async {
 
     final cleanedDigits = digits
         .map((e) => e.trim())
@@ -1002,6 +1012,119 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
             context,
             response['message']
         );
+      }
+
+    } catch (e) {
+      print('ERROR => $e');
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!",
+      );
+    }
+  }
+
+  Future<void> verifyEmail(String email, List<String> digits) async {
+
+    final cleanedDigits = digits
+        .map((e) => e.trim())
+        .toList();
+
+    final isValidOtp =
+        cleanedDigits.length == 6 &&
+            cleanedDigits.every((e) => e.isNotEmpty);
+
+    if (!isValidOtp) {
+      GeneralFunctions.showError(
+        context,
+        'Please enter complete OTP',
+      );
+      return;
+    }
+
+    final otp = cleanedDigits.join();
+    try {
+      final response = await ApiService.post(
+          context,
+          Endpoints.VERIFY_OTP,
+          body: {
+            "email": email,
+            "otp": otp
+          }
+      );
+      print('\nSUCCESS => $response');
+
+      final result = response['result']=="1" ? true : false;
+      final resData = response['data'] ?? {};
+
+      if(result) {
+        GeneralFunctions.showSuccess(
+          context,
+          'Email verified!',
+        );
+
+        final user =
+        await SharedPrefHelper.getObject(
+          SharedPrefHelper.loginData,
+        );
+
+        if (user != null &&
+            user['meResponse'] != null) {
+          final Map<String, dynamic> update =
+          Map<String, dynamic>.from(
+            user['meResponse'],
+          );
+
+          update['emailVerified'] = true;
+
+          user['meResponse'] = update;
+
+          await SharedPrefHelper.saveObject(
+            SharedPrefHelper.loginData,
+            user,
+          );
+
+
+          final data = user?['meResponse'];
+
+          if (data['planCode'] == null ||
+              data['planCode']
+                  .toString()
+                  .isEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    SubscriptionScreen(
+                      plans: defaultPlans,
+                      initialSelectedIndex: 1,
+                      initialCycle: 1,
+                      onSkip: () => handlePlansClick(0),
+                      onContinue: (_) => handlePlansClick(2),
+                      onFree: () => handlePlansClick(1),
+                    ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MainDashboardScreen(),
+              ),
+            );
+          }
+        }else{
+          await SharedPrefHelper.saveObject(
+            SharedPrefHelper.loginData,
+            resData,
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MainDashboardScreen(),
+            ),
+          );
+        }
       }
 
     } catch (e) {

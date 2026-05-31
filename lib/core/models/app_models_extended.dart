@@ -444,16 +444,17 @@ final List<SettingSection> _defaultSections = [
   SettingSection(header: 'ACCOUNT', rows: [
     SettingRow(title: 'Personal info', subtitle: 'Name, phone, timezone',     iconColorKey: 'g', iconEmoji: '◯'),
     SettingRow(title: 'Security',      subtitle: 'Reset/update password',    iconColorKey: 'g', iconEmoji: '⚿'),
-    SettingRow(title: 'Notifications',      subtitle: 'Your activity updates',    iconColorKey: 'a', iconEmoji: '↗'),
+    SettingRow(title: 'Currency',      subtitle: 'Select your currency',    iconColorKey: 'g', iconEmoji: '⚿'),
   ]),
   SettingSection(header: 'SUBSCRIPTION', rows: [
-    SettingRow(title: 'Current plan',       subtitle: 'Pro · renews Apr 1, 2027',  iconColorKey: 't', iconEmoji: '◆'),
-    SettingRow(title: 'Billing & invoices', subtitle: 'Payment methods, receipts', iconColorKey: 't', iconEmoji: '◉'),
-    SettingRow(title: 'Usage',              subtitle: '42/1000 scans · 4.2%',       iconColorKey: 't', iconEmoji: '↗'),
+    SettingRow(title: 'Subscription plans',       subtitle: 'Explore and upgrade plan',  iconColorKey: 't', iconEmoji: '◆'),
+    // SettingRow(title: 'Billing & invoices', subtitle: 'Payment methods, receipts', iconColorKey: 't', iconEmoji: '◉'),
+    SettingRow(title: 'Current Usage',              subtitle: 'Currently subscribed plan stats',       iconColorKey: 't', iconEmoji: '↗'),
   ]),
   SettingSection(header: 'PREFERENCES', rows: [
-    SettingRow(title: 'Categories',           iconColorKey: 'a', iconEmoji: '◈'),
+    // SettingRow(title: 'Categories',           iconColorKey: 'a', iconEmoji: '◈'),
     SettingRow(title: 'Model Engines',           iconColorKey: 'a', iconEmoji: '◆'),
+    SettingRow(title: 'Notifications',      subtitle: 'Your activity updates',    iconColorKey: 'a', iconEmoji: '↗'),
     // SettingRow(title: 'Warranty reminders',   iconColorKey: 'a', iconEmoji: '◈', trailing: SettingTrailingType.toggle, toggleValue: true),
     // SettingRow(title: 'Email notifications',  iconColorKey: 'a', iconEmoji: '✉', trailing: SettingTrailingType.toggle, toggleValue: true),
     // SettingRow(title: 'Weekly digest',        iconColorKey: 'a', iconEmoji: '◔', trailing: SettingTrailingType.toggle, toggleValue: false),

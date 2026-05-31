@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:wellness/core/routing/profile_navigation.dart';
 import 'package:wellness/core/utils/shared_pref_helper.dart';
-import '../../core/models/app_models_extended.dart';
+import 'package:wellness/ui/screens/screen_03_subscription.dart';
+import '../../core/models/app_models.dart';
+import '../../core/models/app_models_extended.dart' hide defaultPlans;
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/general_functions.dart';
 import '../../core/widgets/shared_widgets.dart';
@@ -1015,6 +1017,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _data = widget.data ?? ProfileData();
+    print("profile screen data: $_data");
   }
 
   void _toggleRow(SettingRow row) {
@@ -1187,8 +1190,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }else if(secIndex == 0 && rIndex == 1){
       ProfileNavigation.openResetPassword(context);
     }else if(secIndex == 0 && rIndex == 2){
-      ProfileNavigation.openNotifications(context);
+      ProfileNavigation.openCurrencySelection(context);
+    }
+    else if(secIndex == 1 && rIndex == 1){
+      ProfileNavigation.openPlanUsage(context);
     }else if(secIndex == 2 && rIndex == 1){
+      ProfileNavigation.openNotifications(context);
+    }else if(secIndex == 2 && rIndex == 0){
       ProfileNavigation.openOcrEngines(context);
     }else if(secIndex == 3 && rIndex == 0){
       ProfileNavigation.openFaq(context);
@@ -1199,6 +1207,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }else if(secIndex == 3 && rIndex == 3){
       ProfileNavigation.openTerms(context);
     }
+
+    else if(secIndex == 1 && rIndex == 0){
+      /*Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SubscriptionScreen(onContinue: (plan){
+
+          },),
+        ),
+      );*/
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SubscriptionScreen(
+            onContinue: (plan) {
+              final checkoutData = CheckoutData(
+                planDisplayName: '${plan.name} · ${plan.pricePeriod == "/month" ? "Monthly" : "Yearly"}',
+                priceLabel: plan.pricePeriod == "/month"
+                    ? plan.monthlyPrice
+                    : plan.yearlyPrice,
+                pricePeriod: plan.pricePeriod,
+
+                billingNote:
+                '${plan.monthlyPrice}/month · billed annually · 7-day free trial',
+
+                lineTotal: plan.pricePeriod == "/month"
+                    ? plan.monthlyPrice
+                    : plan.yearlyPrice,
+
+                dueAfterTrial: plan.pricePeriod == "/month"
+                    ? plan.monthlyPrice
+                    : plan.yearlyPrice,
+
+                // optional defaults (you can replace later from API)
+                cardBrand: 'VISA',
+                cardLast4: '4242',
+                billingAddress: '123 Market St, SF, CA 94103',
+                tax: '\$0.00',
+                discountLabel: plan.originalYearlyPrice != null ? 'Annual discount' : null,
+                discountAmount: plan.originalYearlyPrice != null
+                    ? _calculateDiscount(plan)
+                    : null,
+              );
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CheckoutScreen(data: checkoutData, onBack: Navigator.of(context).pop),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    } /*else if(secIndex == 1 && rIndex == 1){
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CheckoutScreen(
+            data:   CheckoutData(),
+          ),
+        ),
+      );
+    }*/
+  }
+}
+
+String _calculateDiscount(SubscriptionPlan plan) {
+  try {
+    final original = double.parse(plan.originalYearlyPrice?.replaceAll("\$", "") ?? "0");
+    final current = double.parse(plan.yearlyPrice.replaceAll("\$", ""));
+    final diff = original - current;
+
+    return diff > 0 ? "−\$${diff.toStringAsFixed(0)}" : "−\$0";
+  } catch (_) {
+    return "−\$0";
   }
 }
 

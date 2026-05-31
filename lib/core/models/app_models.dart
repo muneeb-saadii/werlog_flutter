@@ -136,6 +136,7 @@ List<TransactionItem> defaultTransactions = [
 class SubscriptionPlan {
   String id;
   String name;
+  String code;
   String tagline;
   String monthlyPrice;
   String yearlyPrice;
@@ -149,6 +150,7 @@ class SubscriptionPlan {
   SubscriptionPlan({
     required this.id,
     required this.name,
+    required this.code,
     required this.tagline,
     required this.monthlyPrice,
     required this.yearlyPrice,
@@ -165,6 +167,7 @@ List<SubscriptionPlan> defaultPlans = [
   SubscriptionPlan(
     id: 'free',
     name: 'Free',
+    code: 'Free',
     tagline: 'Try before you commit',
     monthlyPrice: '\$0',
     yearlyPrice: '\$0',
@@ -174,6 +177,7 @@ List<SubscriptionPlan> defaultPlans = [
   SubscriptionPlan(
     id: 'pro',
     name: 'Pro',
+    code: 'Pro',
     tagline: 'Power users ',
     monthlyPrice: '\$29',
     yearlyPrice: '\$23',
@@ -190,6 +194,7 @@ List<SubscriptionPlan> defaultPlans = [
   SubscriptionPlan(
     id: 'basic',
     name: 'Basic',
+    code: 'Basic',
     tagline: 'For personal use',
     monthlyPrice: '\$9',
     yearlyPrice: '\$7',

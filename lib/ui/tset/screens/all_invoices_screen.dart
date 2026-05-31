@@ -3,160 +3,16 @@ import '../../../core/api/api_service.dart';
 import '../../../core/api/endpoints.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
+import 'category_overview_screen.dart';
 import 'expense_new/fresh/warranty_detail_screen.dart';
 
 // ─────────────────────────────────────────
 //  DATA MODELS — replace with API response
 // ─────────────────────────────────────────
-class InvoiceLineItemData {
-  final String description;
-  final int    quantity;
-  final double unitPrice;
-  final double amount;
-
-  const InvoiceLineItemData({
-    required this.description,
-    required this.quantity,
-    required this.unitPrice,
-    required this.amount,
-  });
-
-  factory InvoiceLineItemData.fromJson(Map<String, dynamic> json) =>
-      InvoiceLineItemData(
-        description: json['description']?.toString() ?? '',
-        quantity:    (json['quantity']  as num?)?.toInt()    ?? 1,
-        unitPrice:   (json['unitPrice'] as num?)?.toDouble() ?? 0.0,
-        amount:      (json['amount']    as num?)?.toDouble() ?? 0.0,
-      );
-}
-
-class WarrantyItem {
-  final String id;
-  final String name;
-  final String serial;
-  final String purchaseDate;
-  final String status; // 'active' | 'expiring_soon' | 'expired' | 'claimed'
-  final String expiresOn;
-  final String timeLeft;
-  final String? imageAsset; // local asset path — null uses icon placeholder
-  final String price;
-  final String invoiceNo;
-  final String warrantyType;
-  final String provider;
-  final String duration;
-  final String claimSupport;
-  final String website;// NEW
-  String? evidenceUrl;// NEW
-  final List<String> imageUrls;
-  final List<InvoiceLineItemData> items;
-
-  WarrantyItem({
-    required this.id,
-    required this.name,
-    required this.serial,
-    required this.purchaseDate,
-    required this.status,
-    required this.expiresOn,
-    required this.timeLeft,
-    this.imageAsset,
-    required this.price,
-    required this.invoiceNo,
-    required this.warrantyType,
-    required this.provider,
-    required this.duration,
-    required this.claimSupport,
-    required this.website,
-    this.evidenceUrl,
-    // NEW
-    this.imageUrls = const [],
-    this.items = const [],
-  });
-}
 
 // Demo data per category
 class CategoryData {
-  static List<WarrantyItem> electronics = [
-    WarrantyItem(
-      id: 'w001',
-      name: 'MacBook Air M2',
-      serial: 'C02X1234Y6L5',
-      purchaseDate: '15 Mar 2024',
-      status: 'active',
-      expiresOn: '15 Mar 2026',
-      timeLeft: '1y 7m left',
-      price: '₹1,09,900',
-      invoiceNo: 'INV-2024-1548',
-      warrantyType: 'Manufacturer Warranty',
-      provider: 'Apple India',
-      duration: '2 Years',
-      claimSupport: '1800-123-4567',
-      website: 'www.apple.com/support',
-    ),
-    WarrantyItem(
-      id: 'w002',
-      name: 'Sony 55" 4K TV',
-      serial: '8K1X88M2P3',
-      purchaseDate: '10 Jan 2024',
-      status: 'expiring_soon',
-      expiresOn: '10 Jul 2024',
-      timeLeft: '2m left',
-      price: '₹89,990',
-      invoiceNo: 'INV-2024-0042',
-      warrantyType: 'Manufacturer Warranty',
-      provider: 'Sony India',
-      duration: '1 Year',
-      claimSupport: '1800-103-7799',
-      website: 'www.sony.co.in/support',
-    ),
-    WarrantyItem(
-      id: 'w003',
-      name: 'Bose QuietComfort 45',
-      serial: '074682991',
-      purchaseDate: '05 May 2023',
-      status: 'active',
-      expiresOn: '05 May 2025',
-      timeLeft: '7m left',
-      price: '₹32,000',
-      invoiceNo: 'INV-2023-3210',
-      warrantyType: 'Manufacturer Warranty',
-      provider: 'Bose India',
-      duration: '2 Years',
-      claimSupport: '1800-123-2672',
-      website: 'www.bose.com/support',
-    ),
-    WarrantyItem(
-      id: 'w004',
-      name: 'Canon EOS R50',
-      serial: 'R50A123477',
-      purchaseDate: '12 Feb 2023',
-      status: 'expired',
-      expiresOn: '12 Feb 2024',
-      timeLeft: 'Expired',
-      price: '₹67,495',
-      invoiceNo: 'INV-2023-0879',
-      warrantyType: 'Manufacturer Warranty',
-      provider: 'Canon India',
-      duration: '1 Year',
-      claimSupport: '1800-180-3366',
-      website: 'www.canon.co.in',
-    ),
-    WarrantyItem(
-      id: 'w005',
-      name: 'WD My Passport 2TB',
-      serial: 'WX72A1K9D3',
-      purchaseDate: '01 Dec 2023',
-      status: 'active',
-      expiresOn: '01 Dec 2025',
-      timeLeft: '10m left',
-      price: '₹6,299',
-      invoiceNo: 'INV-2023-7821',
-      warrantyType: 'Manufacturer Warranty',
-      provider: 'Western Digital',
-      duration: '2 Years',
-      claimSupport: '1800-419-5034',
-      website: 'www.westerndigital.com/support',
-    ),
-  ];
+  static List<WarrantyItem> electronics = [];
 
   static List<WarrantyItem> forCategory(String categoryName) {
     // In production, filter from API by category
@@ -172,32 +28,57 @@ class CategoryData {
       'expired': items.where((i) => i.status == 'expired').length,
     };
   }
+
+  static List<IconData> categoryIcons = [
+    Icons.monitor,
+    Icons.kitchen,
+    Icons.smartphone,
+    Icons.chair,
+    Icons.directions_car,
+    Icons.pedal_bike,
+    Icons.soup_kitchen,
+    Icons.handyman,
+  ];
+  static const List<int> catColors = [
+    0xFF1D9E75, // Electronics
+    0xFF0F2A2E, // Home Appliances
+    0xFF7B5EA7, // Mobile & Tablets
+    0xFFBA7517, // Furniture
+    0xFF1D9E75, // Vehicles
+    0xFF0F2A2E, // Bikes
+    0xFFD85A30, // Kitchen Appliances
+    0xFF5DCAA5, // Tools & Equipment
+  ];
 }
 
-class CategoryOverviewScreen extends StatefulWidget {
-  final String categoryName;
-  final IconData categoryIcon;
-  final Color iconColor;
-  final String catId;
 
-  const CategoryOverviewScreen({
+class AllInvoicesScreen extends StatefulWidget {
+
+  const AllInvoicesScreen({
     super.key,
-    required this.categoryName,
-    required this.categoryIcon,
-    required this.iconColor,
-    required this.catId,
   });
 
   @override
-  State<CategoryOverviewScreen> createState() => _CategoryOverviewScreenState();
+  State<AllInvoicesScreen> createState() => _AllInvoicesScreenState();
 }
 
-class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
+class _AllInvoicesScreenState extends State<AllInvoicesScreen> {
   String _sortBy = 'Purchase Date';
   String _searchQuery = '';
+  Map<String, int> stats = CategoryData.stats("");
+
+  List<WarrantyItem> allItems = [];
+  String selectedStatus = "";
+  final List<String> statusOptions = [
+    "",
+    "ACTIVE",
+    "EXPIRED",
+    "COMING_SOON",
+  ];
 
   List<WarrantyItem> get _filteredItems {
-    var items = CategoryData.forCategory(widget.categoryName);
+    // var items = CategoryData.forCategory(widget.categoryName);
+    var items = allItems;
     if (_searchQuery.isNotEmpty) {
       items = items
           .where((i) =>
@@ -211,13 +92,14 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      getCategoryDetails();
+      getWarrantyInvoices();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final stats = CategoryData.stats(widget.categoryName);
+    if(selectedStatus.isEmpty)
+      stats = CategoryData.stats("");
 
     return Scaffold(
       backgroundColor: WerlogColors.background,
@@ -239,8 +121,8 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
                         children: [
                           const SizedBox(height: 12),
                           _buildSearchBar(),
-                          const SizedBox(height: 10),
-                          _buildSortRow(),
+                          // const SizedBox(height: 10),
+                          // _buildSortRow(),
                           const SizedBox(height: 12),
                           ..._filteredItems.map((item) => Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
@@ -278,11 +160,11 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
                 size: 18, color: WerlogColors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
-          Icon(widget.categoryIcon, color: widget.iconColor, size: 22),
-          const SizedBox(width: 8),
+          // Icon(widget.categoryIcon, color: widget.iconColor, size: 22),
+          // const SizedBox(width: 8),
           Expanded(
             child: Text(
-              widget.categoryName,
+              "Warranty Invoices"/*widget.categoryName*/,
               style: WerlogTextStyles.pageTitle.copyWith(fontSize: 18),
             ),
           ),
@@ -293,6 +175,106 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
           ),*/
         ],
       ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
+      builder: (_) {
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                const Text(
+                  "Filter By Status",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                ...statusOptions.map((status) {
+
+                  final selected =
+                      selectedStatus == status;
+
+                  return GestureDetector(
+
+                    onTap: () async {
+
+                      Navigator.pop(context);
+
+                      setState(() {
+                        selectedStatus = status;
+                      });
+
+                      await getWarrantyInvoices();
+                    },
+
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? WerlogColors.teal.withOpacity(0.1)
+                            : Colors.white,
+
+                        borderRadius:
+                        BorderRadius.circular(14),
+
+                        border: Border.all(
+                          color: selected
+                              ? WerlogColors.teal
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+
+                          Expanded(
+                            child: Text(
+                              _mapStatus(status),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: selected
+                                    ? WerlogColors.teal
+                                    : Colors.black,
+                              ),
+                            ),
+                          ),
+
+                          if (selected)
+                            const Icon(
+                              Icons.check_circle,
+                              color: WerlogColors.teal,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -403,7 +385,7 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
                       hintText:
-                          'Search in ${widget.categoryName}...',
+                          'Search in invoices...'/*${widget.categoryName}*/,
                       hintStyle: WerlogTextStyles.caption,
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
@@ -416,18 +398,23 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
             ),
           ),
         ),
-        /*const SizedBox(width: 10),
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: WerlogColors.surface,
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: WerlogColors.border, width: 0.8),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: (){
+            _showFilterSheet();
+          },
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: WerlogColors.surface,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: WerlogColors.border, width: 0.8),
+            ),
+            child: const Icon(Icons.filter_list,
+                color: WerlogColors.teal, size: 20),
           ),
-          child: const Icon(Icons.filter_list,
-              color: WerlogColors.teal, size: 20),
-        ),*/
+        ),
       ],
     );
   }
@@ -497,7 +484,7 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
         );
 
         if (result == true) {
-          getCategoryDetails(); // refresh your API / list
+          getWarrantyInvoices(); // refresh your API / list
         }
       },
       child: Container(
@@ -525,8 +512,8 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
                 color: WerlogColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(widget.categoryIcon,
-                  color: widget.iconColor, size: 26),
+              child: Icon(CategoryData.categoryIcons.first,
+                  color: Color(CategoryData.catColors.first), size: 26),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -624,11 +611,14 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
     }
   }
 
-  Future<void> getCategoryDetails() async {
+  Future<void> getWarrantyInvoices() async {
     try {
-      final response = await ApiService.get(
+      final response = await ApiService.postFormData(
         context,
-        '${Endpoints.WARRANTY_CATEGORY_LIST}${widget.catId}',
+        '${Endpoints.WARRANTY_INVOICES_LIST}',
+          fields: {
+            "status": selectedStatus
+          }
       );
 
       print('\nSUCCESS => $response');
@@ -636,8 +626,9 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
       final result = response['result']=="1" ? true : false;
       if (result) {
 
-        final data = response['data'] ?? {};
-        final invoicesList = data['invoiceLists'] ?? [];
+        final List<dynamic> invoicesList = response['data'] ?? [];
+        /*final data = response['data'] ?? {};
+        final invoicesList = data['invoiceLists'] ?? [];*/
 
         setState(() {
 
@@ -648,6 +639,7 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
           CategoryData.electronics.clear();
 
           for (final item in invoicesList) {
+            // print(item);
 
             final items = item['items'] ?? [];
 
@@ -790,6 +782,9 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
             );
           }
         });
+        print("All Invoices :: data synced to UI");
+        allItems = CategoryData.electronics;
+
       }else{
         GeneralFunctions.showError(
             context,
@@ -803,6 +798,25 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
           context,
           "Process interrupted. Please try again!"
       );
+    }
+  }
+
+  String _mapStatus(String status) {
+    switch (status.toUpperCase()) {
+      case "":
+        return "All";
+
+      case "ACTIVE":
+        return "Active";
+
+      case "EXPIRED":
+        return "Expired";
+
+      case "COMING_SOON":
+        return "Expiring soon";
+
+      default:
+        return "Active";
     }
   }
 }

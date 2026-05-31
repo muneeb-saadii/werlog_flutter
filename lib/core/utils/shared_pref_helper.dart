@@ -27,9 +27,16 @@ class SharedPrefHelper {
   static const String loginData = 'login_user_data';
   static const String loginRememberData = 'login_user_data_for_remember_me';
   static const String accessToken = 'access_token';
+  static const String refreshToken = 'refresh_token';
+
+  //currency selection fields:
+  static const String selectedCurrencyId     = 'selected_currency_id';
+  static const String selectedCurrencySymbol = 'selected_currency_symbol';
+  static const String selectedCurrencyCode   = 'selected_currency_code';
+  static const String selectedCurrencyName   = 'selected_currency_name';
+
   // above used only
 
-  static const String refreshToken = 'refresh_token';
 
   static const String userData = 'user_data';
 
@@ -187,15 +194,49 @@ class SharedPrefHelper {
   }
 
   // =========================================================
+  // 🔥 CURRENCY UTILS
+  // =========================================================
+
+  /// Returns the saved currency symbol, or '\$' as a safe default.
+  static Future<String> getSelectedCurrencySymbol() async {
+    final symbol = await getString(selectedCurrencySymbol);
+    return (symbol != null && symbol.isNotEmpty) ? symbol : '\$';
+  }
+
+  /// Returns the saved currency code, or 'USD' as a safe default.
+  static Future<String> getSelectedCurrencyCode() async {
+    final code = await getString(selectedCurrencyCode);
+    return (code != null && code.isNotEmpty) ? code : 'USD';
+  }
+
+
+  // =========================================================
   // 🔥 CLEAR ALL
   // =========================================================
 
   static Future<bool> clearAll() async {
-    final userData = SharedPrefHelper.getObject(SharedPrefHelper.loginRememberData);
+    // Preserve these across logout/clear
+    final userData    = SharedPrefHelper.getObject(SharedPrefHelper.loginRememberData);
+    final refToken    = await SharedPrefHelper.getString(SharedPrefHelper.refreshToken);
+    final currId      = await SharedPrefHelper.getString(SharedPrefHelper.selectedCurrencyId);
+    final currSymbol  = await SharedPrefHelper.getString(SharedPrefHelper.selectedCurrencySymbol);
+    final currCode    = await SharedPrefHelper.getString(SharedPrefHelper.selectedCurrencyCode);
+    final currName    = await SharedPrefHelper.getString(SharedPrefHelper.selectedCurrencyName);
+
     final flag = await _prefs!.clear();
-    await SharedPrefHelper.saveObject(SharedPrefHelper.loginRememberData, userData??{});
+
+    // Restore preserved values
+    await SharedPrefHelper.saveObject(SharedPrefHelper.loginRememberData, userData ?? {});
+    await SharedPrefHelper.saveString(SharedPrefHelper.refreshToken, refToken ?? '');
+
+    if (currId     != null) await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyId,     currId);
+    if (currSymbol != null) await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, currSymbol);
+    if (currCode   != null) await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyCode,   currCode);
+    if (currName   != null) await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyName,   currName);
+
     return flag;
   }
+
 
   // =========================================================
   // 🔥 CONTAINS

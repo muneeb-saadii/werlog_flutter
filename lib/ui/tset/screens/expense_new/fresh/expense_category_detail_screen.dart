@@ -57,8 +57,8 @@ class _ExpenseCategoryDetailScreenState
   double get _totalSpent      => _detail?.totalSpent      ?? cat.totalSpent;
   double get _deductibleAmt   => _detail?.deductibleAmount ?? cat.deductibleAmount;
   double get _gstPaid         => _detail?.gstHstPaid       ?? cat.gstPaid;
-  String get _currency        => _detail?.currency.isNotEmpty == true
-      ? _detail!.currency : '';
+  String get _currency        => GeneralFunctions.currencySymbol ?? /*_detail?.currency.isNotEmpty == true
+      ? _detail!.currency :*/ '\$';
   List<MonthlyExpense> get _monthly =>
       _detail?.monthly ?? ExpenseData.vehicleMonthly;
   List<InvoiceItem> get _invoices => _detail?.recentInvoices ?? [];

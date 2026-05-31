@@ -135,15 +135,18 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
     _headerAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _headerFade = CurvedAnimation(parent: _headerAnim, curve: Curves.easeOut);
+    _headerFade = CurvedAnimation(
+      parent: _headerAnim,
+      curve: Curves.easeOut,
+    );
     _headerAnim.forward();
-
     _scrollCtrl.addListener(_onScroll);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchNotifications(page: 0, refresh: true);
     });
   }

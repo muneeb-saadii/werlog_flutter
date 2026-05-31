@@ -14,6 +14,26 @@ class GeneralFunctions {
     RestartWidget.restartApp();
   }
 
+
+  // =========================================================
+  // 🔥 CURRENCY SYMBOL
+  // =========================================================
+
+  static String currencySymbol = "\$";
+  static Future<String> getCurrencySymbol() async {
+    final symbol = await SharedPrefHelper.getString(
+        SharedPrefHelper.selectedCurrencySymbol);
+    currencySymbol = (symbol != null && symbol.isNotEmpty) ? "$symbol " : '\$';
+    return (symbol != null && symbol.isNotEmpty) ? symbol : '\$';
+  }
+  static String replaceCurrencySymbol(String text) {
+    try {
+      return text.replaceAll('\$', currencySymbol);
+    } catch (_) {
+      return text;
+    }
+  }
+
   // =========================================================
   // 🔥 SUCCESS SNACKBAR
   // =========================================================

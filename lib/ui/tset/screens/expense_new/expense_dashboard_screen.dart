@@ -5,6 +5,7 @@ import '../../../../core/api/api_service.dart';
 import '../../../../core/api/endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/general_functions.dart';
+import '../../../../core/utils/shared_pref_helper.dart';
 import 'fresh/expense_data.dart';
 import 'fresh/expense_category_detail_screen.dart';
 import 'tax_years_screen.dart';
@@ -31,6 +32,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      SharedPrefHelper.getSelectedCurrencySymbol();
       getExpenseDashboardData();
       ExpenseData.currentYear = selectedYear;
     });
@@ -82,7 +84,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
   }
 
   String _fmt(double v) =>
-      '\$${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
 
   // ── Year summary (6 KPI boxes) ───────────────────────────────────────
   Widget _buildYearSummarySection() {
@@ -535,7 +537,7 @@ class _NotifIcon extends StatelessWidget {
 // ── Hero KPI card (teal gradient) ────────────────────────────────────
 class _HeroKpiCard extends StatelessWidget {
   String _fmt(double v) =>
-      '\$${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
 
   @override
   Widget build(BuildContext context) {
@@ -626,7 +628,7 @@ class _KpiDivider extends StatelessWidget {
 // ── Expense Summary card (donut + legend) ────────────────────────────
 class _ExpenseSummaryCard extends StatelessWidget {
   String _fmt(double v) =>
-      '\$${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
 
   String _pct(double part) =>
       '(${(part / ExpenseData.totalExpenses * 100).toStringAsFixed(0)}%)';
@@ -729,10 +731,10 @@ class _CategoriesSection extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('Expense Categories', style: WerlogTextStyles.sectionTitle),
-          GestureDetector(
+          /*GestureDetector(
             onTap: () {},
             child: const Text('View All', style: WerlogTextStyles.link),
-          ),
+          ),*/
         ]),
         const SizedBox(height: 12),
         GridView.builder(
@@ -759,7 +761,7 @@ class _CategoryTile extends StatelessWidget {
   const _CategoryTile({required this.cat, required this.selectedYear});
 
   String _fmt(double v) =>
-      '\$${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
 
   @override
   Widget build(BuildContext context) {

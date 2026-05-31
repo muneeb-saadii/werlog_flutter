@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wellness/core/utils/general_functions.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'fresh/expense_data.dart';
 import 'tax_ready_summary_screen.dart';
@@ -40,7 +41,7 @@ class _TaxYearsScreenState extends State<TaxYearsScreen> {
   }
 
   String _fmt(double v) =>
-      '\$${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
 
   @override
   Widget build(BuildContext context) {
@@ -356,7 +357,7 @@ class _MonthCell extends StatelessWidget {
   final MonthlyExpense data;
   const _MonthCell({required this.data});
 
-  String _fmt(double v) => '\$${v.toStringAsFixed(0).replaceAllMapped(
+  String _fmt(double v) => '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(
       RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
 
   @override
@@ -429,7 +430,7 @@ class _MonthCell extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            '\$${data.deduction.toInt()}',
+                            '${GeneralFunctions.currencySymbol}${data.deduction.toInt()}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: WerlogTextStyles.captionSmall.copyWith(fontSize: 9),
@@ -454,7 +455,7 @@ class _MonthCell extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            '\$${data.gst.toInt()}',
+                            '${GeneralFunctions.currencySymbol}${data.gst.toInt()}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: WerlogTextStyles.captionSmall.copyWith(fontSize: 9),
@@ -502,14 +503,14 @@ class _MonthCell extends StatelessWidget {
             Container(width: 6, height: 6,
                 decoration: const BoxDecoration(color: WerlogColors.teal, shape: BoxShape.circle)),
             const SizedBox(width: 3),
-            Text('\$${data.deduction.toInt()}',
+            Text('${GeneralFunctions.currencySymbol}${data.deduction.toInt()}',
                 style: WerlogTextStyles.captionSmall.copyWith(fontSize: 9)),
           ]),
           Row(children: [
             Container(width: 6, height: 6,
                 decoration: const BoxDecoration(color: WerlogColors.purple, shape: BoxShape.circle)),
             const SizedBox(width: 3),
-            Text('\$${data.gst.toInt()}',
+            Text('${GeneralFunctions.currencySymbol}${data.gst.toInt()}',
                 style: WerlogTextStyles.captionSmall.copyWith(fontSize: 9)),
           ]),
         ],

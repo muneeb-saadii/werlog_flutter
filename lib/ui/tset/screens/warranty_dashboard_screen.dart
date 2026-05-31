@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:marquee/marquee.dart';
+import 'package:wellness/ui/tset/screens/all_invoices_screen.dart';
 import '../../../core/api/api_service.dart';
 import '../../../core/api/endpoints.dart';
 import '../../../core/theme/app_theme.dart';
@@ -302,77 +303,94 @@ class _WarrantyDashboardScreenState
   // ── Warranty overview card ────────────────
   Widget _buildWarrantyOverview(BuildContext context) {
     final total = WarrantyDashboardData.totalWarranties.toDouble();
-    return Container(
-      decoration: BoxDecoration(
-        color: WerlogColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: WerlogColors.border, width: 0.8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AllInvoicesScreen(),
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Warranty Overview',
-                  style: WerlogTextStyles.sectionTitle),
-              GestureDetector(
-                onTap: () {},
-                child: Text('View All',
-                    style: WerlogTextStyles.link.copyWith(fontSize: 11)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Segmented progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: SizedBox(
-              height: 6,
-              child: Row(
-                children: [
-                  _progressSegment(
-                      WerlogColors.teal,
-                      WarrantyDashboardData.activeWarranties / total),
-                  const SizedBox(width: 2),
-                  _progressSegment(
-                      WerlogColors.amber,
-                      WarrantyDashboardData.expiringSoonWarranties / total),
-                  const SizedBox(width: 2),
-                  _progressSegment(
-                      WerlogColors.coral,
-                      WarrantyDashboardData.expiredWarranties / total),
-                  const SizedBox(width: 2),
-                  _progressSegment(
-                      WerlogColors.textTertiary,
-                      WarrantyDashboardData.claimedWarranties / total),
-                ],
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: WerlogColors.border, width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Warranty Overview',
+                    style: WerlogTextStyles.sectionTitle),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AllInvoicesScreen(),
+                      ),
+                    );
+                  },
+                  child: Text('View All',
+                      style: WerlogTextStyles.link.copyWith(fontSize: 11)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Segmented progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 6,
+                child: Row(
+                  children: [
+                    _progressSegment(
+                        WerlogColors.teal,
+                        WarrantyDashboardData.activeWarranties / total),
+                    const SizedBox(width: 2),
+                    _progressSegment(
+                        WerlogColors.amber,
+                        WarrantyDashboardData.expiringSoonWarranties / total),
+                    const SizedBox(width: 2),
+                    _progressSegment(
+                        WerlogColors.coral,
+                        WarrantyDashboardData.expiredWarranties / total),
+                    const SizedBox(width: 2),
+                    _progressSegment(
+                        WerlogColors.textTertiary,
+                        WarrantyDashboardData.claimedWarranties / total),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          _overviewRow(WerlogColors.teal, 'Active', null,
-              WarrantyDashboardData.activeWarranties,
-              '${WarrantyDashboardData.activePercent.toStringAsFixed(0)}%'),
-          _overviewRow(WerlogColors.amber, 'Expiring Soon',
-              'Within 90 days',
-              WarrantyDashboardData.expiringSoonWarranties,
-              '${WarrantyDashboardData.expiringSoonPercent.toStringAsFixed(0)}%'),
-          _overviewRow(WerlogColors.coral, 'Expired', null,
-              WarrantyDashboardData.expiredWarranties,
-              '${WarrantyDashboardData.expiredPercent.toStringAsFixed(0)}%'),
-          _overviewRow(WerlogColors.textTertiary, 'Claimed', null,
-              WarrantyDashboardData.claimedWarranties,
-              '${WarrantyDashboardData.claimedPercent.toStringAsFixed(0)}%'),
-        ],
+            const SizedBox(height: 14),
+            _overviewRow(WerlogColors.teal, 'Active', null,
+                WarrantyDashboardData.activeWarranties,
+                '${WarrantyDashboardData.activePercent.toStringAsFixed(0)}%'),
+            _overviewRow(WerlogColors.amber, 'Expiring Soon',
+                'Within 90 days',
+                WarrantyDashboardData.expiringSoonWarranties,
+                '${WarrantyDashboardData.expiringSoonPercent.toStringAsFixed(0)}%'),
+            _overviewRow(WerlogColors.coral, 'Expired', null,
+                WarrantyDashboardData.expiredWarranties,
+                '${WarrantyDashboardData.expiredPercent.toStringAsFixed(0)}%'),
+            _overviewRow(WerlogColors.textTertiary, 'Claimed', null,
+                WarrantyDashboardData.claimedWarranties,
+                '${WarrantyDashboardData.claimedPercent.toStringAsFixed(0)}%'),
+          ],
+        ),
       ),
     );
   }

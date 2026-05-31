@@ -297,7 +297,7 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
   void initState() {
     super.initState();
 
-    _totalSeconds    = int.tryParse(_data.processData['estimatedSeconds'].toString()) ?? 25;
+    _totalSeconds    = int.tryParse(_data.processData['estimatedSeconds'].toString()) ?? 20;
     _totalSeconds    += 5;
     _remainingSeconds = _totalSeconds;
 

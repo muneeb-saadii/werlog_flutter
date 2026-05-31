@@ -10,7 +10,7 @@ import '../../../core/routing/AppRoutes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
 import '../../../core/utils/shared_pref_helper.dart';
-import '../../screens/camera_screen.dart';
+import 'camera_screen.dart';
 import '../../screens/profile_segment/notifications_screen.dart';
 import '../../screens/ocr_processing_screen.dart' hide WerlogTextStyles, WerlogColors, WerlogGradients;
 import '../../screens/screen_04_ocr_flow.dart';
@@ -126,6 +126,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      GeneralFunctions.getCurrencySymbol();
       loadDashboardData();
     });
   }
@@ -742,8 +743,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right,
-              color: WerlogColors.textTertiary, size: 16),
+          /*const Icon(Icons.chevron_right,
+              color: WerlogColors.textTertiary, size: 16),*/
         ],
       ),
     );
@@ -1101,6 +1102,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     final profAbb = name.length >= 2
                         ? name.substring(0, 2).toUpperCase()
                         : name.toUpperCase();
+                    print("profile user data: $user");
                     Navigator.push(context,
                         MaterialPageRoute(builder: (_) => ProfileScreen(data: ProfileData(
                           fullName: name, email: email, planLabel: plan, initials: profAbb
@@ -1194,10 +1196,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 print("Camera closed");
                 Navigator.pop(context);
               },
-              onProceed: (images) async {
+              onProceed: (result) async {
 
                 // 🔥 Upload scanned images
-
                 final service = CameraUploadService(
                   baseUrl: ApiService.baseUrl,
                   authToken: await SharedPrefHelper.getString(SharedPrefHelper.accessToken),
@@ -1210,8 +1211,37 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   "subcategoryId": "",
                   "isBusiness": false,
                 };*/
-                var params;
-                if(images.length > 1) {
+
+                // Declare both at the top so they're in scope for uploadImages call below
+                final List<File> filesToUpload;
+                final Map<String, dynamic> params;
+                final String fieldName;
+
+                if (result.isPdf) {
+                  // ── PDF path: single file, empty params, fieldName 'files' ────────
+                  filesToUpload = [result.pdf!];
+                  params        = {};
+                  fieldName     = 'files';
+                } else {
+                  // ── Images path ────────────────────────────────────────────────────
+                  filesToUpload = result.images;   // already List<File>
+                  fieldName     = 'files';
+
+                  if (result.images.length > 1) {
+                    params = {
+                      "documentType": (scanType == ScanType.expense) ? "EXPENSE" : "WARRANTY",
+                      "engine": "GPT4",
+                      "mode": "MULTI_SEGMENT",
+                    };
+                  } else {
+                    params = {
+                      "documentType": (scanType == ScanType.expense) ? "EXPENSE" : "WARRANTY",
+                      "engine": "GPT4",
+                    };
+                  }
+                }
+
+                /*if(images.length > 1) {
                   params = {
                     "documentType": (scanType == ScanType.expense)
                         ? "EXPENSE"
@@ -1226,12 +1256,112 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         : "WARRANTY",
                     "engine": "GPT4"
                   };
-                }
+                }*/
 
                 // 🔥 IMPORTANT: SEND AS STRING JSON
                 // request.fields['params'] = jsonEncode(params);
 
-                final result = await service.uploadImages(
+                final results = await service.uploadImages(
+                  images:      filesToUpload,
+                  endpoint:    Endpoints.UPLOAD_SCANNED_IMAGE,
+                  fieldName:   fieldName,
+                  extraFields: params.isNotEmpty
+                      ? {"params": jsonEncode(params)}
+                      : {},            // empty params → send no extra fields for PDF
+                );
+
+                if (results.success) {
+                  print("Upload success");
+                  print(results.body);
+                } else {
+                  print("Upload failed: ${results.error ?? results.body}");
+                }
+
+                /*final uploadedData = await uploadScannedImages(images);
+                if (!context.mounted) return;
+                // Optional fail check
+                if (uploadedData == null) return;*/
+
+                if (!context.mounted) return;
+                print("#######\n" + results.body);
+                final Map<String, dynamic> data =
+                (jsonDecode(results.body)['data']['jobs'] as List).first
+                as Map<String, dynamic>;
+
+                // 🔥 Open OCR processing screen
+                AppRoutes.openNewOcrProcessingScreen(
+                  context,
+                  data: OcrProcessingDataNew(
+                    scanType:    scanType,
+                    processData: data,
+                  ),
+                  onBack: () {
+                    Navigator.pop(context);
+                    print("Back from OCR screen");
+                  },
+                  /* onProceed: () {}*/
+                );
+              },
+              /*onProceed: (result) async {
+
+                // 🔥 Upload scanned images
+
+                final service = CameraUploadService(
+                  baseUrl: ApiService.baseUrl,
+                  authToken: await SharedPrefHelper.getString(SharedPrefHelper.accessToken),
+                );
+
+                // 📦 BUILD PARAMS MAP
+                *//*final params = {
+                  "type": (scanType==ScanType.expense) ? "EXPENSE" : "WARRANTY",
+                  "engine": "GPT4",
+                  "subcategoryId": "",
+                  "isBusiness": false,
+                };*//*
+                var params;
+                if (result.isPdf) {
+                  // ── PDF path ──────────────────────────────────────────
+                  final pdfFile = result.pdf!;
+                  params = {};
+                  // upload pdfFile as a single file
+                } else {
+                  // ── Images path ───────────────────────────────────────
+                  final images = result.images;
+                  if (images.length > 1) {
+                    params = {
+                      "documentType": scanType == ScanType.expense ? "EXPENSE" : "WARRANTY",
+                      "engine": "GPT4",
+                      "mode": "MULTI_SEGMENT",
+                    };
+                  } else {
+                    params = {
+                      "documentType": scanType == ScanType.expense ? "EXPENSE" : "WARRANTY",
+                      "engine": "GPT4",
+                    };
+                  }
+                  // upload images list
+                }
+                *//*if(images.length > 1) {
+                  params = {
+                    "documentType": (scanType == ScanType.expense)
+                        ? "EXPENSE"
+                        : "WARRANTY",
+                    "engine": "GPT4",
+                    "mode":"MULTI_SEGMENT"
+                  };
+                }else  {
+                  params = {
+                    "documentType": (scanType == ScanType.expense)
+                        ? "EXPENSE"
+                        : "WARRANTY",
+                    "engine": "GPT4"
+                  };
+                }*//*
+
+                // 🔥 IMPORTANT: SEND AS STRING JSON
+                // request.fields['params'] = jsonEncode(params);
+
+                final results = await service.uploadImages(
                   images: images, // List<File>
                   endpoint: Endpoints.UPLOAD_SCANNED_IMAGE,
                   extraFields: {
@@ -1239,23 +1369,23 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   },
                 );
 
-                if (result.success) {
+                if (results.success) {
                   print("Upload success");
-                  print(result.body);
+                  print(results.body);
                 } else {
-                  print("Upload failed: ${result.error ?? result.body}");
+                  print("Upload failed: ${results.error ?? results.body}");
                 }
 
-                /*final uploadedData = await uploadScannedImages(images);
+                *//*final uploadedData = await uploadScannedImages(images);
 
                 if (!context.mounted) return;
 
                 // Optional fail check
-                if (uploadedData == null) return;*/
+                if (uploadedData == null) return;*//*
                 if (!context.mounted) return;
-                print("#######\n"+result.body);
+                print("#######\n"+results.body);
                 final Map<String, dynamic> data =
-                  (jsonDecode(result.body)['data']['jobs'] as List).first as Map<String, dynamic>;
+                  (jsonDecode(results.body)['data']['jobs'] as List).first as Map<String, dynamic>;
 
                 // 🔥 Open OCR processing screen
                 AppRoutes.openNewOcrProcessingScreen(
@@ -1268,9 +1398,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     Navigator.pop(context);
                     print("Back from OCR screen");
                   },
-                  /* onProceed: () {}*/
+                  *//* onProceed: () {}*//*
                 );
-              },
+              },*/
             );
             /*AppRoutes.openCameraScreen(
               context,
@@ -1350,7 +1480,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               taxSavings['year']?.toString() ?? '';
 
           MainDashboardData.taxSavingsAmount =
-          '\$${(taxSavings['estimatedSavings'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(taxSavings['estimatedSavings'] ?? 0).toString()}';
 
           MainDashboardData.taxSavingsChange =
           '${(taxSavings['vsLastYearPercent'] ?? 0).toString()}% higher than last year';
@@ -1359,10 +1489,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               (taxSavings['vsLastYearPercent'] ?? 0) >= 0;
 
           MainDashboardData.gstHstToClaim =
-          '\$${(taxSavings['gstHstClaimable'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(taxSavings['gstHstClaimable'] ?? 0).toString()}';
 
           MainDashboardData.taxDeductions =
-          '\$${(taxSavings['taxDeductions'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(taxSavings['taxDeductions'] ?? 0).toString()}';
 
           // =========================================================
           // WARRANTY SUMMARY
@@ -1388,13 +1518,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           // =========================================================
 
           MainDashboardData.totalExpenses =
-          '\$${(expenses['totalExpenses'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(expenses['totalExpenses'] ?? 0).toString()}';
 
           MainDashboardData.gstHstPaid =
-          '\$${(expenses['gstHstPaid'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(expenses['gstHstPaid'] ?? 0).toString()}';
 
           MainDashboardData.eligibleDeductions =
-          '\$${(expenses['eligibleDeductions'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(expenses['eligibleDeductions'] ?? 0).toString()}';
 
           MainDashboardData.documents =
               expenses['documentsCount'] ?? 0;
@@ -1403,12 +1533,23 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           // AI INSIGHTS
           // =========================================================
 
-          MainDashboardData.aiInsights =
+          print("AI_INSIGHTS:: ${data['aiInsights']}");
+          /*MainDashboardData.aiInsights =
               (data['aiInsights'] as List<dynamic>? ?? [])
                   .map<Map<String, String>>((item) => {
                 'title': item['title']?.toString() ?? '',
                 'subtitle': item['subtitle']?.toString() ?? '',
                 'icon': item['icon']?.toString() ?? 'sparkle',
+              })
+                  .toList();*/
+          MainDashboardData.aiInsights =
+              (data['aiInsights'] as List<dynamic>? ?? [])
+                  .map<Map<String, String>>((item) => {
+                'title':    GeneralFunctions.replaceCurrencySymbol(
+                    item['title']?.toString() ?? ''),
+                'subtitle': GeneralFunctions.replaceCurrencySymbol(
+                    item['subtitle']?.toString() ?? ''),
+                'icon':     item['icon']?.toString() ?? 'sparkle',
               })
                   .toList();
 
@@ -1450,7 +1591,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           // =========================================================
 
           MainDashboardData.totalSpending =
-          '\$${(spendingSnapshot['totalSpending'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(spendingSnapshot['totalSpending'] ?? 0).toString()}';
 
           MainDashboardData.spendingChange =
           '${(spendingSnapshot['vsLastYearPercent'] ?? 0).toString()}% vs last year';
@@ -1462,7 +1603,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               (spendingSnapshot['topCategories'] as List<dynamic>? ?? [])
                   .map<Map<String, dynamic>>((item) => {
                 'name': item['name']?.toString() ?? '',
-                'amount': '\$${(item['amount'] ?? 0).toString()}',
+                'amount': '${GeneralFunctions.currencySymbol}${(item['amount'] ?? 0).toString()}',
                 'color': item['color']?.toString() ?? 'teal',
               })
                   .toList();
@@ -1474,7 +1615,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ((split['personalPercent'] ?? 0) as num).toDouble();
 
           MainDashboardData.businessExpenses =
-          '\$${(split['businessAmount'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(split['businessAmount'] ?? 0).toString()}';
 
         });
 

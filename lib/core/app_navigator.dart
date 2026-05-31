@@ -48,6 +48,10 @@ class _AppNavigatorState extends State<AppNavigator> {
       }
     }
 
+    if(_screen == 2){
+      _screen = 3;
+    }
+
     switch (_screen) {
     // ── 01 Welcome ──────────────────────────────────────────
       case 0:
@@ -75,7 +79,7 @@ class _AppNavigatorState extends State<AppNavigator> {
         return EmailVerifyScreen(
           data: EmailVerifyScreenData(
             email:  'muneeb@gmail.com',
-            digits: ['4', '2', '9', '', '', ''],
+            digits: ['', '', '', '', '', ''],
           ),
           onBack:   _prev,
           onVerify: _next,

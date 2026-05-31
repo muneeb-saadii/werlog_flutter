@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../core/api/api_service.dart';
+import '../../core/api/endpoints.dart';
 import '../../core/models/app_models.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/general_functions.dart';
+import '../../core/utils/shared_pref_helper.dart';
 import '../../core/widgets/shared_widgets.dart';
 
 // ──────────────────────────────────────────────────────────────
@@ -38,6 +42,8 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   late int _cycle;     // 0 = Monthly, 1 = Yearly
   late int _selected;
+  String _currPlanCode = "FREE";
+  bool _isCurrPlanSel = false;
   late List<SubscriptionPlan> _plans;
 
   @override
@@ -46,6 +52,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _cycle    = widget.initialCycle;
     _selected = widget.initialSelectedIndex;
     _plans    = widget.plans ?? defaultPlans;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final data = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
+      final user = data?['meResponse'];
+      final planCode = user?['planCode'] ?? 'FREE';
+      _currPlanCode = planCode;
+
+      _fetchAllPlans();
+    });
   }
 
   String _price(SubscriptionPlan p) =>
@@ -57,139 +71,411 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true, // important
       backgroundColor: WerlogColors.transparent,
       body: Container(
         decoration: BoxDecoration(
           gradient: WerlogGradients.pageHeader(),
         ),
-        child: Column(
-          children: [
-            const FakeStatusBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Header ─────────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(child: StepDots(total: 4, current: 2)),
-                              const SizedBox(width: 12),
-                              GestureDetector(
-                                onTap: widget.onSkip,
-                                child: Text('Skip →',
-                                    style: WerlogTextStyles.bodySmall
-                                        .copyWith(fontWeight: FontWeight.w800)),
+        child: SafeArea(
+          top: false, // 👈 keep status bar area untouched
+          child: Column(
+            children: [
+              // const FakeStatusBar(),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ── Header ─────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            /*Row(
+                              children: [
+                                Expanded(child: StepDots(total: 4, current: 2)),
+                                const SizedBox(width: 12),
+                                GestureDetector(
+                                  onTap: widget.onSkip,
+                                  child: Text('Skip →',
+                                      style: WerlogTextStyles.bodySmall
+                                          .copyWith(fontWeight: FontWeight.w800)),
+                                ),
+                              ],
+                            ),*/
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => Navigator.of(context).pop(),
+                                  child: Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: WerlogColors.surface,
+                                      border: Border.all(color: WerlogColors.border),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Icon(
+                                      Icons.arrow_back,
+                                      size: 18,
+                                      color: WerlogColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Text('Choose your plan',
+                                    style: WerlogTextStyles.pageTitle),
+                            ]),
+                            const SizedBox(height: 6),
+                            Text('Upgrade anytime. No hidden fees.',
+                                style: WerlogTextStyles.bodySmall),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 14,),
+                      // ── Cycle toggle ────────────────────────────
+                      /*_CycleToggle(
+                        selected: _cycle,
+                        onChanged: (v) => setState(() => _cycle = v),
+                      ),*/
+                      // ── Plan cards ──────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: List.generate(_plans.length, (i) {
+                            final p = _plans[i];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: _PlanCard(
+                                plan:       p,
+                                price:      _price(p),
+                                original:   _original(p),
+                                isSelected: i == _selected,
+                                onTap: () => setState(() {
+                                  _selected = i;
+                                  _isCurrPlanSel = (p.code.toLowerCase() == _currPlanCode.toString().toLowerCase()) ? true : false;
+                                }),
                               ),
-                            ],
+                            );
+                          }),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // ── CTA footer ──────────────────────────────────────
+              Visibility(
+                visible: !_isCurrPlanSel,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 14),
+                  decoration: const BoxDecoration(
+                    color: WerlogColors.tealSurface,
+                    border: Border(
+                        top: BorderSide(color: WerlogColors.border, width: 0.5)),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style: WerlogTextStyles.caption,
+                          children: [
+                            /*TextSpan(
+                              text: '7 days free',
+                              style: WerlogTextStyles.caption.copyWith(
+                                  color: WerlogColors.textPrimary,
+                                  fontWeight: FontWeight.w500),
+                            ),*/
+                            const TextSpan(
+                                text:
+                                    ' · cancel anytime · no card required for Free'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      PrimaryButton(
+                        text: _selected < _plans.length
+                            ? 'Continue with ${_plans[_selected].name} →'
+                            : 'Continue →',
+                        onTap: () {
+                          _proceedToCheckout(_plans[_selected]);
+                        }
+                            // widget.onContinue?.call(_plans[_selected]),
+                      ),
+                      /*SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: widget.onFree,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          const SizedBox(height: 14),
-                          Text('Choose your plan',
-                              style: WerlogTextStyles.pageTitle),
-                          const SizedBox(height: 6),
-                          Text('Start free, upgrade anytime. No hidden fees.',
-                              style: WerlogTextStyles.bodySmall),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 14,),
-                    // ── Cycle toggle ────────────────────────────
-                    _CycleToggle(
-                      selected: _cycle,
-                      onChanged: (v) => setState(() => _cycle = v),
-                    ),
-                    // ── Plan cards ──────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        children: List.generate(_plans.length, (i) {
-                          final p = _plans[i];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: _PlanCard(
-                              plan:       p,
-                              price:      _price(p),
-                              original:   _original(p),
-                              isSelected: i == _selected,
-                              onTap: () => setState(() => _selected = i),
+                          child: Text(
+                            'Start with Free plan',
+                            style: WerlogTextStyles.bodySmall.copyWith(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13
                             ),
-                          );
-                        }),
-                      ),
-                    ),
-                  ],
+                          ),
+                        ),
+                      )*/
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // ── CTA footer ──────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(22, 16, 22, 14),
-              decoration: const BoxDecoration(
-                color: WerlogColors.tealSurface,
-                border: Border(
-                    top: BorderSide(color: WerlogColors.border, width: 0.5)),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                children: [
-                  RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                      style: WerlogTextStyles.caption,
-                      children: [
-                        TextSpan(
-                          text: '7 days free',
-                          style: WerlogTextStyles.caption.copyWith(
-                              color: WerlogColors.textPrimary,
-                              fontWeight: FontWeight.w500),
-                        ),
-                        const TextSpan(
-                            text:
-                                ' · cancel anytime · no card required for Free'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  PrimaryButton(
-                    text: _selected < _plans.length
-                        ? 'Continue with ${_plans[_selected].name} →'
-                        : 'Continue →',
-                    onTap: () =>
-                        widget.onContinue?.call(_plans[_selected]),
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: widget.onFree,
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        'Start with Free plan',
-                        style: WerlogTextStyles.bodySmall.copyWith(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13
-                        ),
-                      ),
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _fetchAllPlans_() async {
+    try {
+      final response = await ApiService.get(
+        context,
+        '${Endpoints.SUBSCRIPTION_PLANS}',
+      );
+
+      debugPrint('\nNOTIFICATIONS => $response');
+      final success = response['result'] == '1';
+
+      if (success) {
+
+      } else {
+        if (mounted) {
+          GeneralFunctions.showError(
+            context,
+            response['message']?.toString() ?? 'Something went wrong.',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('NOTIFICATIONS ERROR => $e');
+      if (mounted) {
+        GeneralFunctions.showError(
+          context,
+          'Process interrupted. Please try again!',
+        );
+      }
+    }
+  }
+  Future<void> _fetchAllPlans() async {
+    try {
+
+      final response = await ApiService.get(
+        context,
+        Endpoints.SUBSCRIPTION_PLANS,
+      );
+
+      debugPrint('\nSUBSCRIPTION PLANS => $response');
+
+      final success = response['result'] == '1';
+
+      if (success) {
+
+        final List plansData = response['data'] ?? [];
+
+        final List<SubscriptionPlan> tempPlans = [];
+
+        for (final item in plansData) {
+
+          final int priceCents =
+              int.tryParse(item['priceCents'].toString()) ?? 0;
+
+          final double monthlyPrice =
+              priceCents / 100;
+
+          final double yearlyPrice =
+          (monthlyPrice * 0.8); // 20% yearly discount example
+
+          final String code =
+              item['code']?.toString().toUpperCase() ?? '';
+
+          final bool isFeatured =
+              code == 'PRO';
+
+          final int scans =
+              item['monthlyScanLimit'] ?? 0;
+
+          final bool unlimited =
+              scans == -1;
+
+          final List<String> features = [
+
+            unlimited
+                ? 'Unlimited scans'
+                : '$scans scans/month',
+
+            'OCR Engines: ${item['allowedEngines'] ?? ''}',
+
+            item['showAds'] == true
+                ? 'With ads'
+                : 'No ads',
+          ];
+
+          if (code == 'PRO' || code == 'ENTERPRISE') {
+            features.add('Priority queue');
+          }
+
+          if (code == 'PRO' || code == 'ENTERPRISE') {
+            features.add('Advanced AI OCR');
+          }
+
+          tempPlans.add(
+            SubscriptionPlan(
+              id: item['id']?.toString() ?? '',
+
+              name: item['name']?.toString() ?? '',
+
+              code: item['code']?.toString() ?? '',
+
+              tagline:
+              item['description']?.toString() ?? '',
+
+              monthlyPrice:
+              '\$${monthlyPrice.toStringAsFixed(0)}',
+
+              yearlyPrice:
+              '\$${yearlyPrice.toStringAsFixed(0)}',
+
+              originalMonthlyPrice: null,
+
+              originalYearlyPrice:
+              monthlyPrice != yearlyPrice
+                  ? '\$${monthlyPrice.toStringAsFixed(0)}'
+                  : null,
+
+              pricePeriod: '/month',
+
+              features: features,
+
+              isFeatured: isFeatured,
+
+              featuredBadge:
+              isFeatured ? 'MOST POPULAR' : null,
+            ),
+          );
+        }
+
+
+        // Optional default selection
+        if (_plans.isNotEmpty) {
+
+          final proIndex = _plans.indexWhere(
+                (e) => e.name.toUpperCase() == 'PRO',
+          );
+          _selected = proIndex != -1 ? proIndex : 0;
+
+
+          final currIndex = _plans.indexWhere(
+                (e) => e.code.toLowerCase() == _currPlanCode.toString().toLowerCase(),
+          );
+
+          if (mounted) {
+            setState(() {
+              if(currIndex >= 0){
+                _isCurrPlanSel = true;
+                _selected = currIndex;
+              }else{
+                _isCurrPlanSel = false;
+                _selected = 0;
+              }
+            });
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _plans = tempPlans;
+          });
+        }
+
+      } else {
+
+        if (mounted) {
+          GeneralFunctions.showError(
+            context,
+            response['message']?.toString() ??
+                'Something went wrong.',
+          );
+        }
+      }
+
+    } catch (e) {
+
+      debugPrint('SUBSCRIPTION ERROR => $e');
+
+      if (mounted) {
+        GeneralFunctions.showError(
+          context,
+          'Process interrupted. Please try again!',
+        );
+      }
+    }
+  }
+
+  void _proceedToCheckout(SubscriptionPlan plan) {
+    final checkoutData = CheckoutData(
+      planDisplayName: '${plan.name} · ${plan.pricePeriod == "/month" ? "Monthly" : "Yearly"}',
+      priceLabel: plan.pricePeriod == "/month"
+          ? plan.monthlyPrice
+          : plan.yearlyPrice,
+      pricePeriod: plan.pricePeriod,
+
+      billingNote:
+      '${plan.monthlyPrice}/month · billed annually · 7-day free trial',
+
+      lineTotal: plan.pricePeriod == "/month"
+          ? plan.monthlyPrice
+          : plan.yearlyPrice,
+
+      dueAfterTrial: plan.pricePeriod == "/month"
+          ? plan.monthlyPrice
+          : plan.yearlyPrice,
+
+      // optional defaults (you can replace later from API)
+      cardBrand: 'VISA',
+      cardLast4: '4242',
+      billingAddress: '123 Market St, SF, CA 94103',
+      tax: '\$0.00',
+      discountLabel: plan.originalYearlyPrice != null ? 'Annual discount' : null,
+      discountAmount: plan.originalYearlyPrice != null
+          ? _calculateDiscount(plan)
+          : null,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(data: checkoutData, onBack: (){
+          Navigator.of(context).pop;
+          Navigator.of(context).pop;
+        }),
+      ),
+    );
+  }
+
+  String _calculateDiscount(SubscriptionPlan plan) {
+    try {
+      final original = double.parse(plan.originalYearlyPrice?.replaceAll("\$", "") ?? "0");
+      final current = double.parse(plan.yearlyPrice.replaceAll("\$", ""));
+      final diff = original - current;
+
+      return diff > 0 ? "−\$${diff.toStringAsFixed(0)}" : "−\$0";
+    } catch (_) {
+      return "−\$0";
+    }
   }
 }
 

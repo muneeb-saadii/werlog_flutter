@@ -16,7 +16,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:wellness/ui/screens/profile_segment/edit_profile_screen.dart';
+import 'package:wellness/ui/screens/profile_segment/subscription_usage_screen.dart';
 
+import '../../ui/screens/profile_segment/currency_screen.dart';
 import '../../ui/screens/profile_segment/info_screens.dart';
 import '../../ui/screens/profile_segment/notifications_screen.dart';
 import '../../ui/screens/profile_segment/ocr_engines_screen.dart';
@@ -41,10 +43,22 @@ class ProfileNavigation {
         MaterialPageRoute(builder: (_) => const ResetPasswordScreen()));
   }
 
+  /// Change password.
+  static void openCurrencySelection(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const CurrencyScreen()));
+  }
+
   /// Notifications.
   static void openNotifications(BuildContext context) {
     Navigator.push(context,
         MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+  }
+
+
+  static void openPlanUsage(BuildContext context) {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (_) => const SubscriptionUsageScreen()));
   }
 
   /// FAQs.

@@ -4,11 +4,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:wellness/ui/screens/ocr_processing_screen.dart' hide ScanType;
 
-import '../../ui/screens/camera_screen.dart';
+// import '../../ui/screens/camera_screen.dart';
 import '../../ui/screens/screen_04_ocr_flow.dart';
 import '../../ui/screens/screen_05_invoice_detail.dart';
 import '../../ui/screens/screen_06_dashboard.dart';
 import '../../ui/screens/screen_06_list_reports_profile.dart';
+import '../../ui/tset/screens/camera_screen.dart';
 import '../models/app_models.dart';
 import '../models/app_models_extended.dart' hide CameraViewData;
 
@@ -72,7 +73,7 @@ class AppRoutes {
       BuildContext context, {
         CameraViewData? data,
         VoidCallback? onClose,
-        void Function(List<File> images)? onProceed,
+        void Function(CameraResult)? onProceed,
       }) async {
 
     Navigator.push(
