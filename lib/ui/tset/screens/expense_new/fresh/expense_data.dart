@@ -311,7 +311,7 @@ class ChecklistItem {
 // ═══════════════════════════════════════════════════════════════════════
 //  DEMO DATA — replace statics with API response
 // ═══════════════════════════════════════════════════════════════════════
-class ExpenseData {
+/*class ExpenseData {
   ExpenseData._();
 
   static String currentYear       = '2025';
@@ -400,6 +400,87 @@ class ExpenseData {
     ChecklistItem(label:'Bank / Payment Proofs',status:'complete', icon:Icons.account_balance_rounded),
     ChecklistItem(label:'Business Use % Set',   status:'complete', icon:Icons.tune_rounded),
     ChecklistItem(label:'Review & Validate',    status:'pending',  icon:Icons.fact_check_rounded),
+  ];
+}*/
+class ExpenseData {
+  ExpenseData._();
+
+  static String currentYear = '';
+
+  static double totalExpenses = 0;
+  static double estDeduction = 0;
+  static double gstHstClaimable = 0;
+  static double taxRefundForecast = 0;
+
+  static double deductibleAmt = 0;
+  static double gstPaidAmt = 0;
+  static double nonDeductibleAmt = 0;
+  static double personalAmt = 0;
+
+  static List<Map<String, String>> aiInsights = [
+    {
+      'text': '',
+      'type': '',
+    }
+  ];
+
+  static final List<ExpenseCategory> categories = [
+    ExpenseCategory(
+      id: '',
+      name: '',
+      description: '',
+      icon: Icons.directions_car_rounded,
+      iconBg: const Color(0xFFE8F5E9),
+      iconColor: const Color(0xFF2E7D32),
+      totalSpent: 0,
+      deductiblePct: 0,
+      gstPaid: 0,
+      missingCount: 0,
+      items: [
+        ExpenseItem(
+          id: '',
+          title: '',
+          date: '',
+          subType: '',
+          amount: 0,
+          gst: 0,
+          icon: Icons.receipt_long_rounded,
+          iconBg: const Color(0xFFE8F5E9),
+          iconColor: const Color(0xFF2E7D32),
+        ),
+      ],
+    ),
+  ];
+
+  static List<MonthlyExpense> vehicleMonthly = [
+    MonthlyExpense(
+      month: '',
+      expenses: 0,
+      deduction: 0,
+      gst: 0,
+    ),
+  ];
+
+  static List<TaxYear> taxYears = [
+    TaxYear(
+      year: 0,
+      status: '',
+      totalExpenses: 0,
+      estDeduction: 0,
+      gstPaid: 0,
+      documents: 0,
+      missingReceipts: 0,
+      auditReadinessPct: 0,
+      monthly: [],
+    ),
+  ];
+
+  static List<ChecklistItem> checklist = [
+    ChecklistItem(
+      label: 'Expense Entries',
+      status: '',
+      icon: Icons.receipt_long_rounded,
+    ),
   ];
 }
 

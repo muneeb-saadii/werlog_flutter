@@ -22,7 +22,7 @@ import 'expenses_tax_screen.dart';
 // ─────────────────────────────────────────
 //  DATA MODELS — replace with API response
 // ─────────────────────────────────────────
-class MainDashboardData {
+/*class MainDashboardData {
   // Header
   static String salutation = 'Good Morning';
   static String subtitle = "Here's your ownership & tax overview";
@@ -110,6 +110,51 @@ class MainDashboardData {
   static double businessPercent = 68;
   static double personalPercent = 32;
   static String businessExpenses = '\$8,432';
+}*/
+class MainDashboardData {
+  // Header
+  static String salutation = '';
+  static String subtitle = '';
+  static String userName = '';
+  static int notificationCount = 0;
+
+  // Tax savings card
+  static String taxSavingsAmount = '';
+  static String taxSavingsYear = '';
+  static String taxSavingsChange = '';
+  static bool taxSavingsPositive = false;
+  static String gstHstToClaim = '';
+  static String taxDeductions = '';
+
+  // Warranty summary
+  static int totalWarranties = 0;
+  static int activeWarranties = 0;
+  static int expiringSoonWarranties = 0;
+  static int expiredWarranties = 0;
+  static int claimedWarranties = 0;
+
+  // Expenses & Tax
+  static String totalExpenses = '';
+  static String gstHstPaid = '';
+  static String eligibleDeductions = '';
+  static int documents = 0;
+
+  // AI Insights
+  static List<Map<String, String>> aiInsights = [];
+
+  // Alerts
+  static List<Map<String, String>> alerts = [];
+
+  // Spending Snapshot
+  static String totalSpending = '';
+  static String spendingChange = '';
+  static bool spendingPositive = false;
+
+  static List<Map<String, dynamic>> topCategories = [];
+
+  static double businessPercent = 0.0;
+  static double personalPercent = 0.0;
+  static String businessExpenses = '';
 }
 
 class MainDashboardScreen extends StatefulWidget {
@@ -444,8 +489,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           WerlogColors.amber, 'Expiring Soon', MainDashboardData.expiringSoonWarranties),
                       _warrantyLegendRow(
                           WerlogColors.coral, 'Expired', MainDashboardData.expiredWarranties),
-                      _warrantyLegendRow(
-                          WerlogColors.textTertiary, 'Claimed', MainDashboardData.claimedWarranties),
+                      /*_warrantyLegendRow(
+                          WerlogColors.textTertiary, 'Claimed', MainDashboardData.claimedWarranties),*/
                     ],
                   ),
                 ),

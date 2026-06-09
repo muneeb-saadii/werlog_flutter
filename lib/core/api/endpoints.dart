@@ -21,9 +21,11 @@ class Endpoints {
   static const String EXPENSE_DASHBOARD_DETAILS = 'v1/expense/details?year=';
   static const String EXPENSE_CATEGORY_DETAILS = 'v1/expense/category/';
   static const String EXPENSE_TAX_YEARS = 'v1/expense/tax-years';
+  static const String UPDATE_EXPENSE_CATEGORY_TAX = 'v1/expense/update/tax';
 
   static const String SUBSCRIPTION_PLANS = 'v1/subscription/plans';
   static const String SUBSCRIPTION_USAGE = 'v1/subscription/current';
+  static const String SUBSCRIBE_PLAN = 'v1/subscription/checkout';
 
   static const String SCANNED_OCR_JOB_DETAILS = 'v1/ocr/jobs/';
   static const String UPLOAD_SCANNED_IMAGE = 'v1/ocr/upload';

@@ -153,7 +153,7 @@ class MonthlyTrend {
 // ══════════════════════════════════════════════════════════════════════════════
 //  EXPENSE DASHBOARD DATA  — replace statics with API calls
 // ══════════════════════════════════════════════════════════════════════════════
-class ExpenseDashboardData {
+/*class ExpenseDashboardData {
   ExpenseDashboardData._();
 
   // ── Header KPIs ─────────────────────────────────────────────────────────────
@@ -378,6 +378,46 @@ class ExpenseDashboardData {
     'Meals with clients are 50% deductible — always note the business purpose.',
     'Software subscriptions used solely for business are fully deductible.',
   ];
+}*/
+class ExpenseDashboardData {
+  ExpenseDashboardData._();
+
+  // ── Header KPIs ─────────────────────────────────────────────────────────────
+  static const String periodLabel          = '';
+  static const double totalExpenses        = 0.0;
+  static const double totalGstPaid         = 0.0;
+  static const double eligibleDeductions   = 0.0;
+  static const double estimatedTaxSavings  = 0.0;
+  static const double businessExpenses     = 0.0;
+  static const double personalExpenses     = 0.0;
+  static const double yoyChange            = 0.0;
+  static const bool   yoyPositive          = false;
+  static const int    totalDocuments       = 0;
+  static const int    needsReviewCount     = 0;
+  static const int    missingInfoCount     = 0;
+
+  // ── Quick stats for dashboard cards ─────────────────────────────────────────
+  static const double claimableGst         = 0.0;
+  static const double nonClaimableGst      = 0.0;
+  static const double totalDeductions      = 0.0;
+
+  // ── Categories ───────────────────────────────────────────────────────────────
+  static const List<ExpenseCategory> categories = [];
+
+  // ── Monthly trend (12 months) ────────────────────────────────────────────────
+  static const List<MonthlyTrend> monthlyTrend = [];
+
+  // ── Alerts ────────────────────────────────────────────────────────────────────
+  static const List<Map<String, String>> alerts = [];
+
+  // ── AI Insights ───────────────────────────────────────────────────────────────
+  static const List<Map<String, String>> aiInsights = [];
+
+  // ── Tax summary rows ──────────────────────────────────────────────────────────
+  static const List<Map<String, String>> taxSummaryRows = [];
+
+  // ── Tax tips ──────────────────────────────────────────────────────────────────
+  static const List<String> taxTips = [];
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -386,7 +426,8 @@ class ExpenseDashboardData {
 class ExpenseItemsData {
   ExpenseItemsData._();
 
-  static const List<ExpenseItem> all = [
+  static const List<ExpenseItem> all = [];
+  /*static const List<ExpenseItem> all = [
     // ── Office & Supplies ──
     ExpenseItem(
       id: 'e001', title: 'Adobe Creative Cloud', vendor: 'Adobe Inc.',
@@ -515,7 +556,7 @@ class ExpenseItemsData {
       icon: Icons.school_outlined, iconColorHex: 0xFF1D9E75,
       invoiceRef: 'UDM-2024-0310', attachmentNames: ['Udemy_Invoice.pdf'],
     ),
-  ];
+  ];*/
 
   /// Filter items by categoryId — replace with API query parameter
   static List<ExpenseItem> forCategory(String categoryId) =>

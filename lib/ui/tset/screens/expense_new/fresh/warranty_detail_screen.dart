@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/api/api_service.dart';
 import '../../../../../core/api/endpoints.dart';
@@ -15,29 +16,25 @@ import '../../category_overview_screen.dart';
 //  Invoice line-item data model  (read-only display + edit form seed)
 // ────────────────────────────────────────────────────────────────────
 
-  /// Converts an ISO-8601 date string to "DD/MM/YYYY" for display in form fields.
-
+/// Converts an ISO-8601 date string to "DD/MM/YYYY" for display in form fields.
 
 // ════════════════════════════════════════════════════════════════════
 
 class WarrantyDetailScreen extends StatefulWidget {
   final WarrantyItem item;
   final List<String> imageUrls;
+
   /// Extra images from API (e.g. data -> extraImages) — shown above Update button
   /// in the edit sheet and editable (add from gallery/camera).
 
-  const WarrantyDetailScreen({
-    super.key,
-    required this.item,
-    this.imageUrls   = const []
-  });
+  const WarrantyDetailScreen(
+      {super.key, required this.item, this.imageUrls = const []});
 
   @override
   State<WarrantyDetailScreen> createState() => _WarrantyDetailScreenState();
 }
 
 class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
-
   List<String> extraImages = const [];
 
   static String isoToDisplay(String iso) {
@@ -56,12 +53,14 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       final s = widget.item.purchaseDate.split('/');
       final e = widget.item.expiresOn.split('/');
       final start = DateTime(int.parse(s[2]), int.parse(s[1]), int.parse(s[0]));
-      final end   = DateTime(int.parse(e[2]), int.parse(e[1]), int.parse(e[0]));
-      final now   = DateTime.now();
+      final end = DateTime(int.parse(e[2]), int.parse(e[1]), int.parse(e[0]));
+      final now = DateTime.now();
       final total = end.difference(start).inDays;
       if (total <= 0) return 0;
       return (end.difference(now).inDays / total).clamp(0.0, 1.0);
-    } catch (_) { return 0; }
+    } catch (_) {
+      return 0;
+    }
   }
 
   String get _remainingLabel {
@@ -70,23 +69,28 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       final end = DateTime(int.parse(e[2]), int.parse(e[1]), int.parse(e[0]));
       final now = DateTime.now();
       if (end.isBefore(now)) return 'Expired';
-      int years  = end.year  - now.year;
+      int years = end.year - now.year;
       int months = end.month - now.month;
       if (end.day < now.day) months--;
-      if (months < 0) { years--; months += 12; }
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
       if (years <= 0 && months <= 0)
         return '${end.difference(now).inDays} Days Remaining';
-      if (years > 0 && months > 0) return '$years Year, $months Month Remaining';
+      if (years > 0 && months > 0)
+        return '$years Year, $months Month Remaining';
       if (years > 0) return '$years Year Remaining';
       return '$months Month Remaining';
-    } catch (_) { return 'N/A'; }
+    } catch (_) {
+      return 'N/A';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    extraImages =
-      widget.item.evidenceUrl != null &&
-        widget.item.evidenceUrl!.trim().isNotEmpty
+    extraImages = widget.item.evidenceUrl != null &&
+            widget.item.evidenceUrl!.trim().isNotEmpty
         ? [widget.item.evidenceUrl!]
         : [];
     return Scaffold(
@@ -109,14 +113,17 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
                   _buildWarrantyStatusCard(context),
                   const SizedBox(height: 14),
                   _buildWarrantyInfoCard(context),
-                  if (widget.item != null &&
-                      widget.item.items.isNotEmpty) ...[
+                  if (widget.item != null && widget.item.items.isNotEmpty) ...[
                     const SizedBox(height: 14),
                     _buildInvoiceItemsCard(context),
                   ],
                   if (widget.imageUrls.isNotEmpty) ...[
                     const SizedBox(height: 14),
                     _buildInvoiceImagesCard(context),
+                  ],
+                  if ((widget.item.evidenceUrl ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _buildWarrantyInvImagesCard(context),
                   ],
                   const SizedBox(height: 20),
                 ],
@@ -153,7 +160,8 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       padding: const EdgeInsets.all(16),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
-          width: 80, height: 80,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
             gradient: WerlogGradients.pageHeader(),
             borderRadius: BorderRadius.circular(14),
@@ -164,7 +172,8 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
                 child: Text(widget.item.name,
@@ -184,10 +193,26 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
 
   Widget _statusBadge(String status) {
     final configs = {
-      'active':        {'label': 'Active',        'bg': WerlogColors.tealSurface,  'text': WerlogColors.teal},
-      'expiring_soon': {'label': 'Expiring Soon', 'bg': WerlogColors.amberSurface, 'text': WerlogColors.amber},
-      'expired':       {'label': 'Expired',       'bg': WerlogColors.coralSurface, 'text': WerlogColors.coral},
-      'claimed':       {'label': 'Claimed',       'bg': WerlogColors.surfaceAlt,   'text': WerlogColors.textSecondary},
+      'active': {
+        'label': 'Active',
+        'bg': WerlogColors.tealSurface,
+        'text': WerlogColors.teal
+      },
+      'expiring_soon': {
+        'label': 'Expiring Soon',
+        'bg': WerlogColors.amberSurface,
+        'text': WerlogColors.amber
+      },
+      'expired': {
+        'label': 'Expired',
+        'bg': WerlogColors.coralSurface,
+        'text': WerlogColors.coral
+      },
+      'claimed': {
+        'label': 'Claimed',
+        'bg': WerlogColors.surfaceAlt,
+        'text': WerlogColors.textSecondary
+      },
     };
     final c = configs[status] ?? configs['active']!;
     return Container(
@@ -195,7 +220,8 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       decoration: BoxDecoration(
         color: c['bg'] as Color,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: (c['text'] as Color).withOpacity(0.3), width: 0.8),
+        border: Border.all(
+            color: (c['text'] as Color).withOpacity(0.3), width: 0.8),
       ),
       child: Text(c['label'] as String,
           style: WerlogTextStyles.badgeText
@@ -208,7 +234,8 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
       child: Row(children: [
-        _infoChip(Icons.calendar_today_outlined, 'Purchased On', widget.item.purchaseDate),
+        _infoChip(Icons.calendar_today_outlined, 'Purchased On',
+            widget.item.purchaseDate),
         // const SizedBox(width: 10),
         // _infoChip(Icons.receipt_outlined, 'Price', widget.item.price),
         const SizedBox(width: 10),
@@ -224,8 +251,12 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
         color: WerlogColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: WerlogColors.border, width: 0.8),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
-            blurRadius: 4, offset: const Offset(0, 1))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 1))
+        ],
       ),
       child: Row(children: [
         Icon(icon, color: WerlogColors.textTertiary, size: 14),
@@ -250,30 +281,40 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(children: [
         Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Warranty Status', style: WerlogTextStyles.caption),
-            const SizedBox(height: 6),
-            Row(children: [
-              Container(
-                width: 26, height: 26,
-                decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                child: Icon(
-                  widget.item.status == 'active' ? Icons.check
-                      : widget.item.status == 'expiring_soon' ? Icons.timer
-                      : Icons.close,
-                  color: Colors.white, size: 14,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.item.status == 'active' ? 'Active'
-                    : widget.item.status == 'expiring_soon' ? 'Expiring Soon'
-                    : 'Expired',
-                style: WerlogTextStyles.sectionTitle
-                    .copyWith(color: statusColor, fontSize: 16),
-              ),
-            ]),
-          ])),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('Warranty Status', style: WerlogTextStyles.caption),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                        color: statusColor, shape: BoxShape.circle),
+                    child: Icon(
+                      widget.item.status == 'active'
+                          ? Icons.check
+                          : widget.item.status == 'expiring_soon'
+                              ? Icons.timer
+                              : Icons.close,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.item.status == 'active'
+                        ? 'Active'
+                        : widget.item.status == 'expiring_soon'
+                            ? 'Expiring Soon'
+                            : 'Expired',
+                    style: WerlogTextStyles.sectionTitle
+                        .copyWith(color: statusColor, fontSize: 16),
+                  ),
+                ]),
+              ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text('Expires On', style: WerlogTextStyles.caption),
             Text(widget.item.expiresOn,
@@ -303,20 +344,25 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
   Widget _buildWarrantyInfoCard(BuildContext context) {
     final rows = [
       {'label': 'Warranty Type', 'value': widget.item.warrantyType},
-      {'label': 'Title',      'value': widget.item.name/*provider*/},
-      {'label': 'Duration',      'value': widget.item.duration},
-      {'label': 'Start Date',    'value': widget.item.purchaseDate},
-      {'label': 'End Date',      'value': widget.item.expiresOn},
+      {
+        'label': 'Title',
+        'value': widget.item.name /*provider*/
+      },
+      {'label': 'Duration', 'value': widget.item.duration},
+      {'label': 'Start Date', 'value': widget.item.purchaseDate},
+      {'label': 'End Date', 'value': widget.item.expiresOn},
       {'label': 'Claim Support', 'value': widget.item.claimSupport},
-      {'label': 'Website',       'value': widget.item.website, 'isLink': 'true'},
+      {'label': 'Website', 'value': widget.item.website, 'isLink': 'true'},
     ];
+    print("WARRANTY :: data-rows: $rows");
 
     return Container(
       decoration: _cardDeco(),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Text('Warranty Information', style: WerlogTextStyles.sectionTitle),
+          child: Text('Warranty Information',
+              style: WerlogTextStyles.sectionTitle),
         ),
         const Divider(height: 0.5, color: WerlogColors.borderLight),
         ...rows.asMap().entries.map((e) {
@@ -331,13 +377,31 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
                         .copyWith(color: WerlogColors.textTertiary)),
                 const Spacer(),
                 row['isLink'] == 'true'
-                    ? Row(children: [
-                        Text(row['value']!,
-                            style: WerlogTextStyles.link.copyWith(fontSize: 12)),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.open_in_new,
-                            color: WerlogColors.teal, size: 12),
-                      ])
+                    ? GestureDetector(
+                  onTap: () async {
+                    final raw = row['value'] ?? '';
+                    // Prepend https:// if no scheme present
+                    final urlStr = raw.startsWith('http')
+                        ? raw
+                        : 'https://$raw';
+                    final uri = Uri.tryParse(urlStr);
+                    if (uri != null) {
+                      print(":: URI: $uri");
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication, // opens default browser
+                      );
+                    }
+                  },
+                  child: Row(children: [
+                          Text(row['value']!,
+                              style:
+                                  WerlogTextStyles.link.copyWith(fontSize: 12)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.open_in_new,
+                              color: WerlogColors.teal, size: 12),
+                        ]),
+                    )
                     : Text(row['value']!,
                         style: WerlogTextStyles.txTitle.copyWith(fontSize: 12)),
               ]),
@@ -352,7 +416,7 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
 
   // ── Invoice line items display card ───────────────────────────────
   Widget _buildInvoiceItemsCard(BuildContext context) {
-    final inv   = widget.item;
+    final inv = widget.item;
     final items = inv.items;
 
     // Running total from items
@@ -361,13 +425,13 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
     return Container(
       decoration: _cardDeco(),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         // ── Header ────────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
           child: Row(children: [
             Container(
-              width: 32, height: 32,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: WerlogColors.tealSurface,
                 borderRadius: BorderRadius.circular(9),
@@ -376,12 +440,13 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
                   color: WerlogColors.teal, size: 16),
             ),
             const SizedBox(width: 10),
-            Expanded(child: Column(
+            Expanded(
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Invoice Items',
-                    style: WerlogTextStyles.sectionTitle),
-                Text('${items.length} item${items.length == 1 ? '' : 's'} · ${inv.invoiceNo}',
+                Text('Invoice Items', style: WerlogTextStyles.sectionTitle),
+                Text(
+                    '${items.length} item${items.length == 1 ? '' : 's'} · ${inv.invoiceNo}',
                     style: WerlogTextStyles.captionSmall),
               ],
             )),
@@ -456,7 +521,8 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 4, right: 8),
                     child: Container(
-                      width: 5, height: 5,
+                      width: 5,
+                      height: 5,
                       decoration: BoxDecoration(
                         color: WerlogColors.teal.withOpacity(0.6),
                         shape: BoxShape.circle,
@@ -480,24 +546,25 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
                   SizedBox(
                     width: 30,
                     child: Text('×${it.quantity}',
-                        style: WerlogTextStyles.captionSmall.copyWith(
-                            color: WerlogColors.textSecondary),
+                        style: WerlogTextStyles.captionSmall
+                            .copyWith(color: WerlogColors.textSecondary),
                         textAlign: TextAlign.center),
                   ),
                   SizedBox(
                     width: 68,
                     child: Text(it.amount.toStringAsFixed(2),
-                        style: WerlogTextStyles.txTitle
-                            .copyWith(fontSize: 12),
+                        style: WerlogTextStyles.txTitle.copyWith(fontSize: 12),
                         textAlign: TextAlign.right),
                   ),
                 ],
               ),
             ),
             if (!isLast)
-              const Divider(height: 0.5,
+              const Divider(
+                  height: 0.5,
                   color: WerlogColors.borderLight,
-                  indent: 16, endIndent: 16),
+                  indent: 16,
+                  endIndent: 16),
           ]);
         }),
 
@@ -505,8 +572,7 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
         Container(
           decoration: const BoxDecoration(
             color: WerlogColors.tealLightSurface,
-            borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(16)),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(
@@ -544,9 +610,8 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text('${widget.imageUrls.length}',
-                style: WerlogTextStyles.captionSmall
-                    .copyWith(color: WerlogColors.teal,
-                        fontWeight: FontWeight.w600)),
+                style: WerlogTextStyles.captionSmall.copyWith(
+                    color: WerlogColors.teal, fontWeight: FontWeight.w600)),
           ),
         ]),
         const SizedBox(height: 12),
@@ -556,12 +621,13 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
           child: Row(
             children: widget.imageUrls.asMap().entries.map((e) {
               final index = e.key;
-              final url   = ApiService.baseImgUrl + e.value;
-              print("pop: "+url);
+              final url = ApiService.baseImgUrl + e.value;
+              print("pop: " + url);
               return GestureDetector(
                 onTap: () => _openImageViewer(context, index),
                 child: Container(
-                  width: 90, height: 90,
+                  width: 90,
+                  height: 90,
                   margin: const EdgeInsets.only(right: 10),
                   decoration: BoxDecoration(
                     color: WerlogColors.surfaceAlt,
@@ -577,7 +643,8 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
                           ? child
                           : const Center(
                               child: SizedBox(
-                                width: 20, height: 20,
+                                width: 20,
+                                height: 20,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: WerlogColors.teal),
                               ),
@@ -589,7 +656,9 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
                     ),
                     // Zoom hint overlay
                     Positioned(
-                      bottom: 0, left: 0, right: 0,
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
                       child: Container(
                         height: 26,
                         decoration: BoxDecoration(
@@ -618,6 +687,114 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
     );
   }
 
+  // Invoice images horizontal list
+  Widget _buildWarrantyInvImagesCard(BuildContext context) {
+    return Container(
+      decoration: _cardDeco(),
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.photo_library_outlined,
+              size: 15, color: WerlogColors.textTertiary),
+          const SizedBox(width: 6),
+          Text('Warranty Invoice', style: WerlogTextStyles.sectionTitle),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: WerlogColors.tealSurface,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text('1',
+                style: WerlogTextStyles.captionSmall.copyWith(
+                    color: WerlogColors.teal, fontWeight: FontWeight.w600)),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => _openInvImageViewer(context),
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    color: WerlogColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: WerlogColors.border,
+                      width: 0.8,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        ApiService.baseImgUrl + widget.item.evidenceUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (_, child, progress) => progress == null
+                            ? child
+                            : const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: WerlogColors.teal,
+                                  ),
+                                ),
+                              ),
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: WerlogColors.textTertiary,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+
+                      // Zoom hint overlay
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 26,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.45),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                          alignment: Alignment.bottomCenter,
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: const Icon(
+                            Icons.zoom_in_rounded,
+                            color: Colors.white,
+                            size: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+
   void _openImageViewer(BuildContext context, int initialIndex) {
     showDialog(
       context: context,
@@ -625,6 +802,16 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       builder: (_) => _ImageViewerDialog(
         urls: widget.imageUrls,
         initialIndex: initialIndex,
+      ),
+    );
+  }
+  void _openInvImageViewer(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.92),
+      builder: (_) => _ImageViewerDialog(
+        urls: [widget.item.evidenceUrl!],
+        initialIndex: 0,
       ),
     );
   }
@@ -658,7 +845,7 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
               Icons.edit_outlined,
               'Update Details',
               false,
-                  () => _openUpdateSheet(context),
+              () => _openUpdateSheet(context),
             ),
           ),
           /*const SizedBox(width: 10),
@@ -683,16 +870,22 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
             color: primary ? WerlogColors.teal : WerlogColors.border,
             width: 0.8,
           ),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03),
-              blurRadius: 4, offset: const Offset(0, 1))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 4,
+                offset: const Offset(0, 1))
+          ],
         ),
         child: Row(children: [
-          Icon(icon, size: 16,
+          Icon(icon,
+              size: 16,
               color: primary ? Colors.white : WerlogColors.textSecondary),
           const SizedBox(width: 6),
-          Text(label, style: WerlogTextStyles.txTitle.copyWith(
-              fontSize: 12,
-              color: primary ? Colors.white : WerlogColors.textPrimary)),
+          Text(label,
+              style: WerlogTextStyles.txTitle.copyWith(
+                  fontSize: 12,
+                  color: primary ? Colors.white : WerlogColors.textPrimary)),
         ]),
       ),
     );
@@ -701,13 +894,14 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
   void _openUpdateSheet(BuildContext context) {
     // Seed line items from API invoiceData if available
     final seedItems = widget.item.items
-        .map((e) => _LineItem(
-              description: e.description,
-              quantity:    e.quantity.toString(),
-              unitPrice:   e.unitPrice.toStringAsFixed(2),
-              amount:      e.amount.toStringAsFixed(2),
-            ))
-        .toList() ?? [];
+            .map((e) => _LineItem(
+                  description: e.description,
+                  quantity: e.quantity.toString(),
+                  unitPrice: e.unitPrice.toStringAsFixed(2),
+                  amount: e.amount.toStringAsFixed(2),
+                ))
+            .toList() ??
+        [];
 
     showModalBottomSheet(
       context: context,
@@ -727,12 +921,16 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
   }
 
   BoxDecoration _cardDeco() => BoxDecoration(
-    color: WerlogColors.surface,
-    borderRadius: BorderRadius.circular(16),
-    border: Border.all(color: WerlogColors.border, width: 0.8),
-    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
-        blurRadius: 8, offset: const Offset(0, 2))],
-  );
+        color: WerlogColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: WerlogColors.border, width: 0.8),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
+      );
 }
 
 // Full-screen image viewer
@@ -756,7 +954,7 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
   @override
   void initState() {
     super.initState();
-    _current    = widget.initialIndex;
+    _current = widget.initialIndex;
     _controller = PageController(initialPage: widget.initialIndex);
   }
 
@@ -773,7 +971,6 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
       body: GestureDetector(
         onTap: () => Navigator.pop(context),
         child: Stack(children: [
-
           // Swipeable image pages
           PageView.builder(
             controller: _controller,
@@ -787,7 +984,7 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
                   minScale: 0.8,
                   maxScale: 4.0,
                   child: Image.network(
-                    ApiService.baseImgUrl+widget.urls[i],
+                    ApiService.baseImgUrl + widget.urls[i],
                     fit: BoxFit.contain,
                     loadingBuilder: (_, child, progress) => progress == null
                         ? child
@@ -796,7 +993,8 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
                                 color: WerlogColors.teal)),
                     errorBuilder: (_, __, ___) => const Icon(
                         Icons.broken_image_outlined,
-                        color: Colors.white54, size: 48),
+                        color: Colors.white54,
+                        size: 48),
                   ),
                 ),
               ),
@@ -806,15 +1004,16 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
           // Top bar: counter + close
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
-            left: 0, right: 0,
+            left: 0,
+            right: 0,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.55),
                       borderRadius: BorderRadius.circular(20),
@@ -822,14 +1021,17 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
                     child: Text(
                       '${_current + 1} / ${widget.urls.length}',
                       style: const TextStyle(
-                          color: Colors.white, fontSize: 12,
-                          fontFamily: 'DMSans', fontWeight: FontWeight.w500),
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontFamily: 'DMSans',
+                          fontWeight: FontWeight.w500),
                     ),
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      width: 36, height: 36,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.55),
                         shape: BoxShape.circle,
@@ -847,7 +1049,8 @@ class _ImageViewerDialogState extends State<_ImageViewerDialog> {
           if (widget.urls.length > 1)
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 20,
-              left: 0, right: 0,
+              left: 0,
+              right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(widget.urls.length, (i) {
@@ -884,29 +1087,29 @@ class _LineItem {
 
   _LineItem({
     String description = '',
-    String quantity    = '1',
-    String unitPrice   = '',
-    String amount      = '',
-  })  : descCtrl      = TextEditingController(text: description),
-        qtyCtrl       = TextEditingController(text: quantity),
+    String quantity = '1',
+    String unitPrice = '',
+    String amount = '',
+  })  : descCtrl = TextEditingController(text: description),
+        qtyCtrl = TextEditingController(text: quantity),
         unitPriceCtrl = TextEditingController(text: unitPrice),
-        amountCtrl    = TextEditingController(text: amount);
+        amountCtrl = TextEditingController(text: amount);
 
   factory _LineItem.fromJson(Map<String, dynamic> json) {
     return _LineItem(
       description: json['description']?.toString() ?? '',
-      quantity:    (json['quantity'] as num?)?.toString() ?? '1',
-      unitPrice:   (json['unitPrice'] as num?)?.toStringAsFixed(2) ?? '',
-      amount:      (json['amount']    as num?)?.toStringAsFixed(2) ?? '',
+      quantity: (json['quantity'] as num?)?.toString() ?? '1',
+      unitPrice: (json['unitPrice'] as num?)?.toStringAsFixed(2) ?? '',
+      amount: (json['amount'] as num?)?.toStringAsFixed(2) ?? '',
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'description': descCtrl.text.trim(),
-    'quantity':    int.tryParse(qtyCtrl.text.trim()) ?? 1,
-    'unit_price':   double.tryParse(unitPriceCtrl.text.trim()) ?? 0.0,
-    'amount':      double.tryParse(amountCtrl.text.trim()) ?? 0.0,
-  };
+        'description': descCtrl.text.trim(),
+        'quantity': int.tryParse(qtyCtrl.text.trim()) ?? 1,
+        'unit_price': double.tryParse(unitPriceCtrl.text.trim()) ?? 0.0,
+        'amount': double.tryParse(amountCtrl.text.trim()) ?? 0.0,
+      };
 
   void dispose() {
     descCtrl.dispose();
@@ -920,11 +1123,12 @@ class _LineItem {
 //  Update Warranty bottom sheet
 // ════════════════════════════════════════════════════════════════════
 class _UpdateWarrantySheet extends StatefulWidget {
-  final WarrantyItem    item;
+  final WarrantyItem item;
   final List<_LineItem> initialItems;
+
   /// Network URL strings from the API — shown in the horizontal list.
-  final List<String>    initialExtraImages;
-  final VoidCallback    onUpdated;
+  final List<String> initialExtraImages;
+  final VoidCallback onUpdated;
 
   const _UpdateWarrantySheet({
     required this.item,
@@ -944,8 +1148,8 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
   // Basic fields
   late final TextEditingController _nameCtrl;
   late final TextEditingController _serialCtrl;
-  late final TextEditingController _invoiceDateCtrl;   // display: DD/MM/YYYY
-  late final TextEditingController _expiryDateCtrl;    // display: DD/MM/YYYY
+  late final TextEditingController _invoiceDateCtrl; // display: DD/MM/YYYY
+  late final TextEditingController _expiryDateCtrl; // display: DD/MM/YYYY
   late final TextEditingController _invoiceNoCtrl;
 
   // Dynamic line items
@@ -960,9 +1164,9 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
   void initState() {
     super.initState();
     final i = widget.item;
-    _nameCtrl        = TextEditingController(text: i.name/*provider*/);
-    _serialCtrl      = TextEditingController(text: i.serial);
-    _invoiceNoCtrl   = TextEditingController(text: i.invoiceNo);
+    _nameCtrl = TextEditingController(text: i.name /*provider*/);
+    _serialCtrl = TextEditingController(text: i.serial);
+    _invoiceNoCtrl = TextEditingController(text: i.invoiceNo);
 
     // Prefer ISO dates from invoiceData (more precise); fall back to WarrantyItem strings
     final inv = widget.item;
@@ -982,9 +1186,9 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
         ? widget.initialItems
             .map((e) => _LineItem(
                   description: e.descCtrl.text,
-                  quantity:    e.qtyCtrl.text,
-                  unitPrice:   e.unitPriceCtrl.text,
-                  amount:      e.amountCtrl.text,
+                  quantity: e.qtyCtrl.text,
+                  unitPrice: e.unitPriceCtrl.text,
+                  amount: e.amountCtrl.text,
                 ))
             .toList()
         : [_LineItem()]; // start with one blank row if no data
@@ -1013,8 +1217,8 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
         networkUrls.clear();
       });
     } else {
-      final picked = await _picker.pickImage(
-          source: ImageSource.camera, imageQuality: 85);
+      final picked =
+          await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
       if (picked == null) return;
       setState(() {
         // _newImageFiles.add(File(picked.path));
@@ -1038,7 +1242,8 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
             20, 12, 20, MediaQuery.of(context).padding.bottom + 20),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 36, height: 4,
+            width: 36,
+            height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
               color: WerlogColors.border,
@@ -1049,7 +1254,8 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
             alignment: Alignment.centerLeft,
             child: Text('Add Image',
                 style: TextStyle(
-                  fontFamily: 'DMSans', fontSize: 15,
+                  fontFamily: 'DMSans',
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: WerlogColors.textPrimary,
                 )),
@@ -1058,13 +1264,19 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
           _SourceTile(
             icon: Icons.photo_library_outlined,
             label: 'Choose from Gallery',
-            onTap: () { Navigator.pop(context); _pickImages(ImageSource.gallery); },
+            onTap: () {
+              Navigator.pop(context);
+              _pickImages(ImageSource.gallery);
+            },
           ),
           const SizedBox(height: 10),
           _SourceTile(
             icon: Icons.camera_alt_outlined,
             label: 'Take a Photo',
-            onTap: () { Navigator.pop(context); _pickImages(ImageSource.camera); },
+            onTap: () {
+              Navigator.pop(context);
+              _pickImages(ImageSource.camera);
+            },
           ),
         ]),
       ),
@@ -1078,11 +1290,13 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
     try {
       final parts = displayDate.trim().split('/');
       if (parts.length != 3) return '';
-      final day   = parts[0].padLeft(2, '0');
+      final day = parts[0].padLeft(2, '0');
       final month = parts[1].padLeft(2, '0');
-      final year  = parts[2];
+      final year = parts[2];
       return '${year}-${month}-${day}T00:00:00Z';
-    } catch (_) { return ''; }
+    } catch (_) {
+      return '';
+    }
   }
 
   // ── API submit — postFormData ───────────────────────────────────────
@@ -1093,12 +1307,12 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
     try {
       // ── Params map (sent as JSON string in the "params" field) ────────
       final paramsMap = {
-        'id':          widget.item.id,
-        'name':        _nameCtrl.text.trim(),
-        'serialno':    _serialCtrl.text.trim(),
-        'invoiceno':   _invoiceNoCtrl.text.trim(),
+        'id': widget.item.id,
+        'name': _nameCtrl.text.trim(),
+        'serialno': _serialCtrl.text.trim(),
+        'invoiceno': _invoiceNoCtrl.text.trim(),
         'invoiceDate': _toIso(_invoiceDateCtrl.text),
-        'expiryDate':  _toIso(_expiryDateCtrl.text),
+        'expiryDate': _toIso(_expiryDateCtrl.text),
         // 'items':       _items.map((e) => e.toJson()).toList(),
         'items': _items.map((e) {
           final json = e.toJson();
@@ -1114,12 +1328,13 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
 
       // ── Build MultipartFile list from newly picked images ─────────────
       final files = <http.MultipartFile>[];
-      /*for (final file in _newImageFiles)*/if(_newImageFiles.isNotEmpty) {
-      final file = _newImageFiles.first;
-        final ext      = file.path.split('.').last.toLowerCase();
+      /*for (final file in _newImageFiles)*/
+      if (_newImageFiles.isNotEmpty) {
+        final file = _newImageFiles.first;
+        final ext = file.path.split('.').last.toLowerCase();
         final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
         files.add(await http.MultipartFile.fromPath(
-          'file',          // param name the API expects
+          'file', // param name the API expects
           file.path,
           contentType: http.MediaType.parse(mimeType),
         ));
@@ -1140,7 +1355,8 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
         if (mounted) {
           GeneralFunctions.showError(
             context,
-            response?['message']?.toString() ?? 'Update failed. Please try again.',
+            response?['message']?.toString() ??
+                'Update failed. Please try again.',
           );
         }
       }
@@ -1156,100 +1372,107 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
   // ── Build ──────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final mq         = MediaQuery.of(context);
-    final bottom     = mq.viewInsets.bottom;
-    final statusBar  = mq.padding.top;
+    final mq = MediaQuery.of(context);
+    final bottom = mq.viewInsets.bottom;
+    final statusBar = mq.padding.top;
     // Leave at least the status-bar height + 16 dp gap visible above the sheet
-    final maxHeight  = mq.size.height - statusBar - 16;
+    final maxHeight = mq.size.height - statusBar - 16;
     networkUrls = widget.initialExtraImages;
 
     return ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: WerlogColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-
-            // Drag handle
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: WerlogColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Drag handle
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: WerlogColors.border,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
+          ),
 
-            // Header row
-            Row(children: [
-              Container(
-                width: 36, height: 36,
+          // Header row
+          Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: WerlogColors.tealSurface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.edit_outlined,
+                  color: WerlogColors.teal, size: 17),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+                child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Update Details',
+                    style:
+                        WerlogTextStyles.sectionTitle.copyWith(fontSize: 15)),
+                Text('Edit warranty information below',
+                    style: WerlogTextStyles.captionSmall),
+              ],
+            )),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: WerlogColors.tealSurface,
-                  borderRadius: BorderRadius.circular(10),
+                  color: WerlogColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.edit_outlined,
-                    color: WerlogColors.teal, size: 17),
+                child: const Icon(Icons.close_rounded,
+                    color: WerlogColors.textSecondary, size: 16),
               ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Update Details',
-                      style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 15)),
-                  Text('Edit warranty information below',
-                      style: WerlogTextStyles.captionSmall),
-                ],
-              )),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(
-                    color: WerlogColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.close_rounded,
-                      color: WerlogColors.textSecondary, size: 16),
-                ),
-              ),
-            ]),
+            ),
+          ]),
 
-        const SizedBox(height: 16),
-        const Divider(color: WerlogColors.borderLight),
-        const SizedBox(height: 4),
+          const SizedBox(height: 16),
+          const Divider(color: WerlogColors.borderLight),
+          const SizedBox(height: 4),
 
-        // Scrollable form
-        Flexible(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          // Scrollable form
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Basic fields ─────────────────────────────────────
+                    _field(
+                        _nameCtrl, 'Product Name', Icons.inventory_2_outlined,
+                        required: true),
+                    _field(_serialCtrl, 'Serial No.', Icons.numbers_outlined),
+                    _field(
+                        _invoiceNoCtrl, 'Invoice No.', Icons.receipt_outlined),
+                    _field(_invoiceDateCtrl, 'Invoice Date',
+                        Icons.calendar_today_outlined,
+                        hint: 'DD/MM/YYYY'),
+                    _field(_expiryDateCtrl, 'Expiry Date', Icons.event_outlined,
+                        hint: 'DD/MM/YYYY'),
 
-                  // ── Basic fields ─────────────────────────────────────
-                  _field(_nameCtrl,        'Product Name',  Icons.inventory_2_outlined, required: true),
-                  _field(_serialCtrl,      'Serial No.',    Icons.numbers_outlined),
-                  _field(_invoiceNoCtrl,   'Invoice No.',   Icons.receipt_outlined),
-                  _field(_invoiceDateCtrl, 'Invoice Date',  Icons.calendar_today_outlined,
-                      hint: 'DD/MM/YYYY'),
-                  _field(_expiryDateCtrl,  'Expiry Date',   Icons.event_outlined,
-                      hint: 'DD/MM/YYYY'),
+                    const SizedBox(height: 6),
 
-                  const SizedBox(height: 6),
-
-                  // ── Items section header ──────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      /*Row(children: [
+                    // ── Items section header ──────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        /*Row(children: [
                         const Icon(Icons.list_alt_rounded,
                             size: 15, color: WerlogColors.textTertiary),
                         const SizedBox(width: 6),
@@ -1292,74 +1515,83 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                           ]),
                         ),
                       ),*/
-                    ],
-                  ),
+                      ],
+                    ),
 
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                  // ── Item cards ────────────────────────────────────────
-                  ..._items.asMap().entries.map((e) {
-                    final idx  = e.key;
-                    final item = e.value;
-                    return _buildItemCard(idx, item);
-                  }),
+                    // ── Item cards ────────────────────────────────────────
+                    ..._items.asMap().entries.map((e) {
+                      final idx = e.key;
+                      final item = e.value;
+                      return _buildItemCard(idx, item);
+                    }),
 
-                  const SizedBox(height: 8),
-                ],
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
 
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-        // ── Extra images list + Add button ────────────────────────────
-        _buildExtraImagesRow(),
+          // ── Extra images list + Add button ────────────────────────────
+          _buildExtraImagesRow(),
 
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-        // Update button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _loading ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: WerlogColors.teal,
-              disabledBackgroundColor: WerlogColors.teal.withOpacity(0.6),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              elevation: 0,
+          // Update button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: WerlogColors.teal,
+                disabledBackgroundColor: WerlogColors.teal.withOpacity(0.6),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white),
+                    )
+                  : const Text('Update',
+                      style: TextStyle(
+                        fontFamily: 'DMSans',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      )),
             ),
-            child: _loading
-                ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: Colors.white),
-                  )
-                : const Text('Update',
-                    style: TextStyle(
-                      fontFamily: 'DMSans', fontSize: 14,
-                      fontWeight: FontWeight.w600, color: Colors.white,
-                    )),
           ),
-        ),
-          ]),
-        ),   // end Container
-    );   // end ConstrainedBox
+        ]),
+      ), // end Container
+    ); // end ConstrainedBox
   }
 
   // ── Extra images horizontal list ──────────────────────────────────
   Widget _buildExtraImagesRow() {
     // Combine: existing network URLs + newly picked local files
-    final totalCount  = networkUrls.length + _newImageFiles.length;
-    print("Evidence images:: "+networkUrls.toString()+", cnt:"+totalCount.toString()+", icnt:"+_newImageFiles.toString());
+    final totalCount = networkUrls.length + _newImageFiles.length;
+    print("Evidence images:: " +
+        networkUrls.toString() +
+        ", cnt:" +
+        totalCount.toString() +
+        ", icnt:" +
+        _newImageFiles.toString());
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // Section header
       Row(children: [
         Container(
-          width: 28, height: 28,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             color: WerlogColors.tealSurface,
             borderRadius: BorderRadius.circular(8),
@@ -1380,8 +1612,7 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
             ),
             child: Text('$totalCount',
                 style: WerlogTextStyles.captionSmall.copyWith(
-                    color: WerlogColors.teal,
-                    fontWeight: FontWeight.w600)),
+                    color: WerlogColors.teal, fontWeight: FontWeight.w600)),
           ),
       ]),
 
@@ -1392,47 +1623,48 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         child: Row(children: [
-
           // ── Add image button — hidden when 1 image already exists ────
           // Rule: user can only have one image at a time.
           // Hide when: networkUrls has 1+ entry OR 1 local file is already picked.
           if (networkUrls.isEmpty && _newImageFiles.isEmpty)
-          GestureDetector(
-            onTap: _showImageSourceSheet,
-            child: Container(
-              width: 76, height: 76,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                color: WerlogColors.tealSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: WerlogColors.teal.withOpacity(0.3),
-                  width: 1.2,
+            GestureDetector(
+              onTap: _showImageSourceSheet,
+              child: Container(
+                width: 76,
+                height: 76,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: WerlogColors.tealSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: WerlogColors.teal.withOpacity(0.3),
+                    width: 1.2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.add_photo_alternate_outlined,
+                        color: WerlogColors.teal, size: 22),
+                    const SizedBox(height: 4),
+                    Text('Add',
+                        style: WerlogTextStyles.captionSmall.copyWith(
+                            color: WerlogColors.teal,
+                            fontWeight: FontWeight.w500)),
+                  ],
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add_photo_alternate_outlined,
-                      color: WerlogColors.teal, size: 22),
-                  const SizedBox(height: 4),
-                  Text('Add',
-                      style: WerlogTextStyles.captionSmall.copyWith(
-                          color: WerlogColors.teal,
-                          fontWeight: FontWeight.w500)),
-                ],
-              ),
             ),
-          ),
 
           // ── Existing network images ─────────────────────────────────────
           ...networkUrls.map((url) {
             print("EvidenceUrl: " + ApiService.baseImgUrl + url);
             return GestureDetector(
-              onTap: _showImageSourceSheet,   // tap to replace
+              onTap: _showImageSourceSheet, // tap to replace
               child: Stack(children: [
                 Container(
-                  width: 76, height: 76,
+                  width: 76,
+                  height: 76,
                   margin: const EdgeInsets.only(right: 10),
                   decoration: BoxDecoration(
                     color: WerlogColors.surfaceAlt,
@@ -1446,12 +1678,13 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                     loadingBuilder: (_, child, progress) => progress == null
                         ? child
                         : const Center(
-                      child: SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: WerlogColors.teal),
-                      ),
-                    ),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: WerlogColors.teal),
+                            ),
+                          ),
                     errorBuilder: (_, __, ___) => const Center(
                       child: Icon(Icons.broken_image_outlined,
                           color: WerlogColors.textTertiary, size: 22),
@@ -1460,7 +1693,9 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                 ),
                 // Replace hint overlay
                 Positioned(
-                  bottom: 0, left: 0, right: 10,
+                  bottom: 0,
+                  left: 0,
+                  right: 10,
                   child: Container(
                     height: 22,
                     decoration: BoxDecoration(
@@ -1509,17 +1744,17 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
             ),
           );}),*/
 
-
           // ── Newly picked local images ───────────────────────────────────
           ..._newImageFiles.asMap().entries.map((e) {
-            final idx  = e.key;
+            final idx = e.key;
             final file = e.value;
             return Stack(children: [
               GestureDetector(
-                onTap: _showImageSourceSheet,   // tap to replace
+                onTap: _showImageSourceSheet, // tap to replace
                 child: Stack(children: [
                   Container(
-                    width: 76, height: 76,
+                    width: 76,
+                    height: 76,
                     margin: const EdgeInsets.only(right: 10),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
@@ -1531,7 +1766,9 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                   ),
                   // Replace hint overlay
                   Positioned(
-                    bottom: 0, left: 0, right: 10,
+                    bottom: 0,
+                    left: 0,
+                    right: 10,
                     child: Container(
                       height: 22,
                       decoration: BoxDecoration(
@@ -1548,11 +1785,13 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
               ),
               // Remove button
               Positioned(
-                top: 3, right: 13,
+                top: 3,
+                right: 13,
                 child: GestureDetector(
                   onTap: () => setState(() => _newImageFiles.removeAt(idx)),
                   child: Container(
-                    width: 18, height: 18,
+                    width: 18,
+                    height: 18,
                     decoration: const BoxDecoration(
                       color: WerlogColors.coral,
                       shape: BoxShape.circle,
@@ -1598,7 +1837,6 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
               ),
             ]);
           }),*/
-
         ]),
       ),
     ]);
@@ -1615,7 +1853,6 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
       ),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         // Card header: index badge + remove button
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Container(
@@ -1626,8 +1863,7 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
             ),
             child: Text('Item ${idx + 1}',
                 style: WerlogTextStyles.captionSmall.copyWith(
-                    color: WerlogColors.darkTeal,
-                    fontWeight: FontWeight.w600)),
+                    color: WerlogColors.darkTeal, fontWeight: FontWeight.w600)),
           ),
           if (_items.length > 1)
             GestureDetector(
@@ -1636,7 +1872,8 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                 _items.removeAt(idx);
               }),
               child: Container(
-                width: 26, height: 26,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: WerlogColors.coralSurface,
                   borderRadius: BorderRadius.circular(7),
@@ -1663,16 +1900,14 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
           const SizedBox(width: 8),
           Expanded(
             flex: 3,
-            child: _field(item.unitPriceCtrl, 'Unit Price',
-                Icons.attach_money_rounded,
-                isPriceDisplay: true,
-                keyboardType: TextInputType.number),
+            child: _field(
+                item.unitPriceCtrl, 'Unit Price', Icons.attach_money_rounded,
+                isPriceDisplay: true, keyboardType: TextInputType.number),
           ),
           const SizedBox(width: 8),
           Expanded(
             flex: 3,
-            child: _field(item.amountCtrl, 'Amount',
-                Icons.calculate_outlined,
+            child: _field(item.amountCtrl, 'Amount', Icons.calculate_outlined,
                 keyboardType: TextInputType.number),
           ),
         ]),
@@ -1701,31 +1936,29 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
           hintText: hint,
           prefixIcon: isPriceDisplay
               ? Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Center(
-              widthFactor: 1,
-              child: Text(
-                GeneralFunctions.currencySymbol,
-                style: WerlogTextStyles.txTitle.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          )
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Center(
+                    widthFactor: 1,
+                    child: Text(
+                      GeneralFunctions.currencySymbol,
+                      style: WerlogTextStyles.txTitle.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
               : Icon(
-            icon,
-            size: 16,
-            color: WerlogColors.textTertiary,
-          ),
-
+                  icon,
+                  size: 16,
+                  color: WerlogColors.textTertiary,
+                ),
           prefixIconConstraints: isPriceDisplay
               ? const BoxConstraints(
-            minWidth: 45,
-            minHeight: 45,
-          )
+                  minWidth: 45,
+                  minHeight: 45,
+                )
               : null,
-
           labelStyle: WerlogTextStyles.caption
               .copyWith(color: WerlogColors.textSecondary),
           hintStyle: WerlogTextStyles.captionSmall,
@@ -1744,19 +1977,16 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: WerlogColors.teal, width: 1.5),
+            borderSide: const BorderSide(color: WerlogColors.teal, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: WerlogColors.coral, width: 1),
+            borderSide: const BorderSide(color: WerlogColors.coral, width: 1),
           ),
         ),
         validator: required
-            ? (v) => (v == null || v.trim().isEmpty)
-                ? '$label is required'
-                : null
+            ? (v) =>
+                (v == null || v.trim().isEmpty) ? '$label is required' : null
             : null,
       ),
     );
@@ -1790,7 +2020,8 @@ class _SourceTile extends StatelessWidget {
         ),
         child: Row(children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: WerlogColors.tealSurface,
               borderRadius: BorderRadius.circular(10),
@@ -1798,8 +2029,7 @@ class _SourceTile extends StatelessWidget {
             child: Icon(icon, color: WerlogColors.teal, size: 17),
           ),
           const SizedBox(width: 12),
-          Text(label,
-              style: WerlogTextStyles.txTitle.copyWith(fontSize: 13)),
+          Text(label, style: WerlogTextStyles.txTitle.copyWith(fontSize: 13)),
           const Spacer(),
           const Icon(Icons.chevron_right_rounded,
               color: WerlogColors.textTertiary, size: 18),

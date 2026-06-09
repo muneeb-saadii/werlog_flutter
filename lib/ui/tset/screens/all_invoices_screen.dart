@@ -53,9 +53,11 @@ class CategoryData {
 
 
 class AllInvoicesScreen extends StatefulWidget {
+  final String filter; // all, active, expired, claimed, expiring_soon
 
   const AllInvoicesScreen({
     super.key,
+    this.filter = "",
   });
 
   @override
@@ -63,6 +65,7 @@ class AllInvoicesScreen extends StatefulWidget {
 }
 
 class _AllInvoicesScreenState extends State<AllInvoicesScreen> {
+  late String selectedFilter;
   String _sortBy = 'Purchase Date';
   String _searchQuery = '';
   Map<String, int> stats = CategoryData.stats("");
@@ -92,6 +95,8 @@ class _AllInvoicesScreenState extends State<AllInvoicesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      selectedFilter = widget.filter;
+      selectedStatus = selectedFilter;
       getWarrantyInvoices();
     });
   }
@@ -620,6 +625,7 @@ class _AllInvoicesScreenState extends State<AllInvoicesScreen> {
             "status": selectedStatus
           }
       );
+      print("## ## ## Status: $selectedStatus");
 
       print('\nSUCCESS => $response');
 
@@ -777,7 +783,7 @@ class _AllInvoicesScreenState extends State<AllInvoicesScreen> {
 
                 claimSupport: 'N/A',
 
-                website: '',
+                website: item['websiteurl']?.toString() ?? '',
               ),
             );
           }
@@ -816,7 +822,7 @@ class _AllInvoicesScreenState extends State<AllInvoicesScreen> {
         return "Expiring soon";
 
       default:
-        return "Active";
+        return "All";
     }
   }
 }

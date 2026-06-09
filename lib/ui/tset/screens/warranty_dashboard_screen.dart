@@ -11,7 +11,7 @@ import 'main_dashboard_screen.dart';
 // ─────────────────────────────────────────
 //  DATA MODELS — replace with API response
 // ─────────────────────────────────────────
-class WarrantyDashboardData {
+/*class WarrantyDashboardData {
   // Stats
   static int totalWarranties = 24;
   static int activeWarranties = 14;
@@ -116,6 +116,52 @@ class WarrantyDashboardData {
       'color': 0xFF5DCAA5,
     },
   ];
+}*/
+class WarrantyDashboardData {
+  // Stats
+  static int totalWarranties = 0;
+  static int activeWarranties = 0;
+  static int expiringSoonWarranties = 0;
+  static int expiredWarranties = 0;
+  static int claimedWarranties = 0;
+
+  // Overview percentages
+  // static double get activePercent => 0.0;
+  // static double get expiringSoonPercent => 0.0;
+  // static double get expiredPercent => 0.0;
+  // static double get claimedPercent => 0.0;
+  static double get activePercent =>
+      totalWarranties == 0 ? 0 : (activeWarranties / totalWarranties) * 100;
+  static double get expiringSoonPercent =>
+      totalWarranties == 0 ? 0 : (expiringSoonWarranties / totalWarranties) * 100;
+  static double get expiredPercent =>
+      totalWarranties == 0 ? 0 : (expiredWarranties / totalWarranties) * 100;
+  static double get claimedPercent =>
+      totalWarranties == 0 ? 0 : (claimedWarranties / totalWarranties) * 100;
+
+  // Categories
+  static const List<int> catColors = [
+    0xFF1D9E75, // Electronics
+    0xFF0F2A2E, // Home Appliances
+    0xFF7B5EA7, // Mobile & Tablets
+    0xFFBA7517, // Furniture
+    0xFF1D9E75, // Vehicles
+    0xFF0F2A2E, // Bikes
+    0xFFD85A30, // Kitchen Appliances
+    0xFF5DCAA5, // Tools & Equipment
+  ];
+  static List<IconData> categoryIcons = [
+    Icons.monitor,
+    Icons.kitchen,
+    Icons.smartphone,
+    Icons.chair,
+    Icons.directions_car,
+    Icons.pedal_bike,
+    Icons.soup_kitchen,
+    Icons.handyman,
+  ];
+
+  static List<Map<String, dynamic>> categories = [];
 }
 
 class WarrantyDashboardScreen extends StatefulWidget {
@@ -305,12 +351,12 @@ class _WarrantyDashboardScreenState
     final total = WarrantyDashboardData.totalWarranties.toDouble();
     return GestureDetector(
       onTap: () {
-        Navigator.push(
+        /*Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => const AllInvoicesScreen(),
           ),
-        );
+        );*/
       },
       child: Container(
         decoration: BoxDecoration(
@@ -378,17 +424,17 @@ class _WarrantyDashboardScreenState
             const SizedBox(height: 14),
             _overviewRow(WerlogColors.teal, 'Active', null,
                 WarrantyDashboardData.activeWarranties,
-                '${WarrantyDashboardData.activePercent.toStringAsFixed(0)}%'),
+                '${WarrantyDashboardData.activePercent.toStringAsFixed(0)}%', "ACTIVE"),
             _overviewRow(WerlogColors.amber, 'Expiring Soon',
                 'Within 90 days',
                 WarrantyDashboardData.expiringSoonWarranties,
-                '${WarrantyDashboardData.expiringSoonPercent.toStringAsFixed(0)}%'),
+                '${WarrantyDashboardData.expiringSoonPercent.toStringAsFixed(0)}%', "COMING_SOON"),
             _overviewRow(WerlogColors.coral, 'Expired', null,
                 WarrantyDashboardData.expiredWarranties,
-                '${WarrantyDashboardData.expiredPercent.toStringAsFixed(0)}%'),
-            _overviewRow(WerlogColors.textTertiary, 'Claimed', null,
+                '${WarrantyDashboardData.expiredPercent.toStringAsFixed(0)}%', "EXPIRED"),
+            /*_overviewRow(WerlogColors.textTertiary, 'Claimed', null,
                 WarrantyDashboardData.claimedWarranties,
-                '${WarrantyDashboardData.claimedPercent.toStringAsFixed(0)}%'),
+                '${WarrantyDashboardData.claimedPercent.toStringAsFixed(0)}%'),*/
           ],
         ),
       ),
@@ -406,45 +452,55 @@ class _WarrantyDashboardScreenState
   }
 
   Widget _overviewRow(
-      Color color, String label, String? sub, int count, String percent) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      Color color, String label, String? sub, int count, String percent, String filter) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AllInvoicesScreen(filter: filter,),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: WerlogTextStyles.body.copyWith(fontSize: 12)),
-                if (sub != null)
-                  Text(sub,
-                      style: WerlogTextStyles.caption
-                          .copyWith(color: WerlogColors.amber)),
-              ],
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-          ),
-          // Dotted line
-          Expanded(
-            child: CustomPaint(
-              painter: _DottedLinePainter(),
-              child: const SizedBox(height: 1),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: WerlogTextStyles.body.copyWith(fontSize: 12)),
+                  if (sub != null)
+                    Text(sub,
+                        style: WerlogTextStyles.caption
+                            .copyWith(color: WerlogColors.amber)),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Text('$count',
-              style:
-                  WerlogTextStyles.txTitle.copyWith(fontSize: 13)),
-          const SizedBox(width: 12),
-          Text(percent,
-              style: WerlogTextStyles.caption
-                  .copyWith(color: color, fontWeight: FontWeight.w600)),
-        ],
+            // Dotted line
+            Expanded(
+              child: CustomPaint(
+                painter: _DottedLinePainter(),
+                child: const SizedBox(height: 1),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text('$count',
+                style:
+                    WerlogTextStyles.txTitle.copyWith(fontSize: 13)),
+            const SizedBox(width: 12),
+            Text(percent,
+                style: WerlogTextStyles.caption
+                    .copyWith(color: color, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }
@@ -681,6 +737,188 @@ class _WarrantyDashboardScreenState
 
   Future<void> getWarrantyDetails() async {
     try {
+      print('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🚀 WARRANTY API CALL STARTED');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      final response = await ApiService.get(
+        context,
+        Endpoints.WARRANTY_DASHBOARD_DETAILS,
+      );
+
+      print('📦 RAW RESPONSE => $response');
+
+      // ---------------------------
+      // RESULT CHECK
+      // ---------------------------
+      final rawResult = response['result'];
+      print('🔎 result raw => $rawResult (${rawResult.runtimeType})');
+
+      final result = rawResult == "1";
+      print('✅ parsed result => $result');
+
+      if (!result) {
+        print('❌ API returned failure');
+        print('❌ message => ${response['message']}');
+
+        GeneralFunctions.showError(
+          context,
+          response['message'].toString(),
+        );
+        return;
+      }
+
+      // ---------------------------
+      // DATA EXTRACTION
+      // ---------------------------
+      final data = response['data'];
+      print('📊 data type => ${data.runtimeType}');
+      print('📊 data => $data');
+
+      final warranty = data['warranty'];
+      print('📌 warranty raw => $warranty');
+      print('📌 warranty type => ${warranty.runtimeType}');
+
+      // ---------------------------
+      // SAFE INT PARSING (IMPORTANT)
+      // ---------------------------
+      final total = int.tryParse(warranty['total'].toString()) ?? 0;
+      final active = int.tryParse(warranty['active'].toString()) ?? 0;
+      final expiringSoon = int.tryParse(warranty['expiringSoon'].toString()) ?? 0;
+      final expired = int.tryParse(warranty['expired'].toString()) ?? 0;
+      final claimed = int.tryParse(warranty['claimed'].toString()) ?? 0;
+
+      print('🔢 PARSED VALUES:');
+      print('   total => $total');
+      print('   active => $active');
+      print('   expiringSoon => $expiringSoon');
+      print('   expired => $expired');
+      print('   claimed => $claimed');
+
+      final categoriesJson = data['categories'];
+      print('📂 categories raw => $categoriesJson');
+      print('📂 categories type => ${categoriesJson.runtimeType}');
+
+      if (categoriesJson == null || categoriesJson is! List) {
+        print('⚠️ categories invalid or null');
+        return;
+      }
+
+      // ---------------------------
+      // CATEGORY MAPPING TRACE
+      // ---------------------------
+      final categories = categoriesJson.asMap().entries.map((entry) {
+        /*final index = entry.key;
+        final item = entry.value;
+
+        print('\n--- CATEGORY INDEX $index ---');
+        print('item => $item');
+
+        final icons = WarrantyDashboardData.categoryIcons;
+        final colors = WarrantyDashboardData.catColors;
+
+        final iconIndex = icons.isEmpty ? 0 : index % icons.length;
+        final colorIndex = colors.isEmpty ? 0 : index % colors.length;
+
+        final icon = icons.isEmpty
+            ? Icons.category_outlined
+            : icons[iconIndex];
+
+        final color = colors.isEmpty
+            ? 0xFF000000
+            : colors[colorIndex];
+
+        print('iconIndex => $iconIndex');
+        print('colorIndex => $colorIndex');
+
+        return {
+          'id': item['id'],
+          'name': item['name'],
+          'slug': item['slug'],
+          'icon': icon,
+          'active': item['active'],
+          'expiring': item['comingSoon'],
+          'expired': item['expired'],
+          'color': color,
+        };*/
+
+        final index = entry.key;
+        final item  = entry.value;
+
+        print('\n--- CATEGORY INDEX $index ---');
+        print('item => $item');
+
+// ── Color: read from API hex string, fall back to static list ────────
+        final int color = _parseHexColor(item['icon_color']) ??
+            (WarrantyDashboardData.catColors.isEmpty
+                ? 0xFF1D9E75
+                : WarrantyDashboardData.catColors[
+            index % WarrantyDashboardData.catColors.length]);
+
+// ── Icon: map API string key to IconData, fall back to static list ───
+        final IconData icon = _mapApiIcon(item['icon']?.toString()) ??
+            (WarrantyDashboardData.categoryIcons.isEmpty
+                ? Icons.category_outlined
+                : WarrantyDashboardData.categoryIcons[
+            index % WarrantyDashboardData.categoryIcons.length]);
+
+        print('color => ${item['icon_color']} => $color');
+        print('icon  => ${item['icon']} => $icon');
+
+        return {
+          'id':       item['id'],
+          'name':     item['name'],
+          'slug':     item['slug'],
+          'icon':     icon,
+          'active':   item['active'],
+          'expiring': item['comingSoon'],
+          'expired':  item['expired'],
+          'color':    color,
+        };
+      }).toList();
+
+      // ---------------------------
+      // FINAL STATE UPDATE TRACE
+      // ---------------------------
+      print('\n🧠 UPDATING WARRANTY STATE...');
+
+      setState(() {
+        print('📌 setting totalWarranties => $total');
+        WarrantyDashboardData.totalWarranties = total;
+
+        print('📌 setting activeWarranties => $active');
+        WarrantyDashboardData.activeWarranties = active;
+
+        print('📌 setting expiringSoon => $expiringSoon');
+        WarrantyDashboardData.expiringSoonWarranties = expiringSoon;
+
+        print('📌 setting expired => $expired');
+        WarrantyDashboardData.expiredWarranties = expired;
+
+        print('📌 setting claimed => $claimed');
+        WarrantyDashboardData.claimedWarranties = claimed;
+
+        print('📌 setting categories => ${categories.length}');
+        WarrantyDashboardData.categories = categories;
+      });
+
+      print('🎉 WARRANTY DATA UPDATED SUCCESSFULLY');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    } catch (e, stack) {
+      print('\n❌❌❌ WARRANTY API ERROR ❌❌❌');
+      print('ERROR => $e');
+      print('STACKTRACE => $stack');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!",
+      );
+    }
+  }
+  /*Future<void> getWarrantyDetails() async {
+    try {
       final response = await ApiService.get(
           context,
           Endpoints.WARRANTY_DASHBOARD_DETAILS,
@@ -732,6 +970,90 @@ class _WarrantyDashboardScreenState
         context,
         "Process interrupted. Please try again!"
       );
+    }
+  }*/
+
+  /// Converts "#7B5EA7" or "7B5EA7" → 0xFF7B5EA7, returns null on failure.
+  static int? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final cleaned = hex.replaceFirst('#', '').trim();
+    if (cleaned.length != 6) return null;
+    return int.tryParse('FF$cleaned', radix: 16);
+  }
+
+  /// Maps the icon string key from the API to a Flutter IconData.
+  /// Returns null if the key is unknown — caller falls back to static list.
+  static IconData? _mapApiIcon(String? key) {
+    if (key == null) return null;
+    switch (key.toLowerCase().trim()) {
+      case 'monitor':
+      case 'electronics':
+      case 'tv':
+        return Icons.monitor;
+
+      case 'kitchen':
+      case 'home_appliances':
+      case 'appliances':
+        return Icons.kitchen;
+
+      case 'smartphone':
+      case 'mobile':
+      case 'phone':
+        return Icons.smartphone;
+
+      case 'chair':
+      case 'furniture':
+        return Icons.chair;
+
+      case 'directions_car':
+      case 'car':
+      case 'vehicle':
+      case 'vehicles':
+        return Icons.directions_car;
+
+      case 'pedal_bike':
+      case 'bike':
+      case 'bikes':
+        return Icons.pedal_bike;
+
+      case 'soup_kitchen':
+      case 'kitchen_appliances':
+        return Icons.soup_kitchen;
+
+      case 'handyman':
+      case 'tools':
+      case 'tool':
+        return Icons.handyman;
+
+      case 'category':
+      case 'other':
+      case 'other_warranty':
+        return Icons.category_outlined;
+
+      case 'watch':
+        return Icons.watch;
+
+      case 'computer':
+      case 'laptop':
+        return Icons.computer;
+
+      case 'camera':
+        return Icons.camera_alt_outlined;
+
+      case 'games':
+      case 'gaming':
+        return Icons.sports_esports_outlined;
+
+      case 'speaker':
+      case 'audio':
+        return Icons.speaker_outlined;
+
+      case 'ac':
+      case 'air_conditioner':
+        return Icons.ac_unit_outlined;
+
+      default:
+        return null; // unknown key → use static fallback
     }
   }
 }

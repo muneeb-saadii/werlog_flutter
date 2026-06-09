@@ -75,7 +75,8 @@ class WarrantyItem {
 
 // Demo data per category
 class CategoryData {
-  static List<WarrantyItem> electronics = [
+  static List<WarrantyItem> electronics = [];
+  /*static List<WarrantyItem> electronics = [
     WarrantyItem(
       id: 'w001',
       name: 'MacBook Air M2',
@@ -156,7 +157,7 @@ class CategoryData {
       claimSupport: '1800-419-5034',
       website: 'www.westerndigital.com/support',
     ),
-  ];
+  ];*/
 
   static List<WarrantyItem> forCategory(String categoryName) {
     // In production, filter from API by category
@@ -785,7 +786,7 @@ class _CategoryOverviewScreenState extends State<CategoryOverviewScreen> {
 
                 claimSupport: 'N/A',
 
-                website: '',
+                website: item['websiteurl']?.toString() ?? '',
               ),
             );
           }

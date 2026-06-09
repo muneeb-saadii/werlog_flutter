@@ -35,6 +35,9 @@ class _ExpenseCategoryDetailScreenState
 
   // ── State ──────────────────────────────────────────────────────────
   late double _businessUsePct;
+  double _incomeTaxPct   = 0;          // NEW
+  double _gstHstTaxPct   = 0;          // NEW
+
   int? _hoveredBarIndex;
   bool _invoicesExpanded = true;   // invoice list open by default
 
@@ -184,6 +187,126 @@ class _ExpenseCategoryDetailScreenState
   // ── Business use slider ────────────────────────────────────────────
   Widget _buildBusinessUseCard() {
     final helpText = _detail?.helpText ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Container(
+        decoration: _cardDecoration(),
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          // ── Header row ─────────────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(children: [
+                Container(
+                  width: 28, height: 28,
+                  decoration: BoxDecoration(
+                    color: WerlogColors.tealSurface,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.tune_rounded,
+                      size: 14, color: WerlogColors.teal),
+                ),
+                const SizedBox(width: 8),
+                const Text('Tax Settings', style: WerlogTextStyles.cardTitle),
+              ]),
+              // Edit button
+              GestureDetector(
+                onTap: () => _openTaxEditSheet(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: WerlogColors.tealSurface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: WerlogColors.teal.withOpacity(0.25),
+                        width: 0.8),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.edit_outlined,
+                        size: 11, color: WerlogColors.teal),
+                    const SizedBox(width: 4),
+                    const Text('Edit',
+                        style: TextStyle(
+                          fontFamily: 'DMSans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: WerlogColors.teal,
+                        )),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+          const Divider(color: WerlogColors.borderLight, height: 1),
+          const SizedBox(height: 14),
+
+          // ── Business use slider (static) ────────────────────────────
+          /*_TaxRow(
+            label: 'Business Use',
+            icon: Icons.business_center_outlined,
+            iconBg: WerlogColors.tealSurface,
+            iconColor: WerlogColors.teal,
+            percent: _businessUsePct,
+            trackColor: WerlogColors.teal,
+          ),
+
+          const SizedBox(height: 12),*/
+
+          // ── Income tax slider (static) ──────────────────────────────
+          _TaxRow(
+            label: 'Income Tax',
+            icon: Icons.account_balance_outlined,
+            iconBg: WerlogColors.blueSurface,
+            iconColor: WerlogColors.blue,
+            percent: _incomeTaxPct,
+            trackColor: WerlogColors.blue,
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── GST/HST slider (static) ─────────────────────────────────
+          _TaxRow(
+            label: 'GST / HST',
+            icon: Icons.receipt_outlined,
+            iconBg: WerlogColors.amberSurface,
+            iconColor: WerlogColors.amber,
+            percent: _gstHstTaxPct,
+            trackColor: WerlogColors.amber,
+          ),
+
+          if (helpText.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: WerlogColors.tealSurface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 12, color: WerlogColors.teal),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(helpText,
+                      style: WerlogTextStyles.captionSmall
+                          .copyWith(color: WerlogColors.teal)),
+                ),
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+  Widget _buildBusinessUseCard_old() {
+
+    final helpText = _detail?.helpText ?? '';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Container(
@@ -239,6 +362,22 @@ class _ExpenseCategoryDetailScreenState
             style: WerlogTextStyles.captionSmall,
           ),
         ]),
+      ),
+    );
+  }
+
+  void _openTaxEditSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TaxEditSheet(
+        categoryId:     _detail?.categoryId ?? widget.catId,
+        incomeTaxPct:   _incomeTaxPct,
+        gstHstTaxPct:   _gstHstTaxPct,
+        onSaved: () {
+          loadExpenseCategoryData(); // re-fetch updated data
+        },
       ),
     );
   }
@@ -518,6 +657,8 @@ class _ExpenseCategoryDetailScreenState
           _detail = CategoryDetail.fromJson(data);
           // Sync business-use slider from API
           _businessUsePct = _detail!.businessUsePercent.toDouble();
+          _incomeTaxPct   = (_detail!.businessUsePercent/*incomeTax*/  ?? 0).toDouble();
+          _gstHstTaxPct   = (_detail!.businessUsePercent/*gstHstTax*/ ?? 0).toDouble();
         });
       } else {
         GeneralFunctions.showError(
@@ -821,3 +962,411 @@ BoxDecoration _cardDecoration() => BoxDecoration(
     ),
   ],
 );
+
+
+// ════════════════════════════════════════════════════════════════════
+//  _TaxRow — reusable static slider row
+// ════════════════════════════════════════════════════════════════════
+class _TaxRow extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final double percent;       // 0–100
+  final Color trackColor;
+
+  const _TaxRow({
+    required this.label,
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.percent,
+    required this.trackColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Label row
+      Row(children: [
+        Container(
+          width: 22, height: 22,
+          decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(6)),
+          child: Icon(icon, size: 11, color: iconColor),
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(label,
+              style: const TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: WerlogColors.textPrimary,
+              )),
+        ),
+        // Percentage badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text('${percent.toInt()}%',
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: iconColor,
+              )),
+        ),
+      ]),
+      const SizedBox(height: 6),
+      // Progress track
+      ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: LinearProgressIndicator(
+          value: percent / 100,
+          minHeight: 5,
+          backgroundColor: WerlogColors.borderLight,
+          valueColor: AlwaysStoppedAnimation<Color>(trackColor),
+        ),
+      ),
+    ]);
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+//  _TaxEditSheet — bottom sheet with income + gst/hst fields
+// ════════════════════════════════════════════════════════════════════
+class _TaxEditSheet extends StatefulWidget {
+  final String categoryId;
+  final double incomeTaxPct;
+  final double gstHstTaxPct;
+  final VoidCallback onSaved;
+
+  const _TaxEditSheet({
+    required this.categoryId,
+    required this.incomeTaxPct,
+    required this.gstHstTaxPct,
+    required this.onSaved,
+  });
+
+  @override
+  State<_TaxEditSheet> createState() => _TaxEditSheetState();
+}
+
+class _TaxEditSheetState extends State<_TaxEditSheet> {
+  late double _incomeTax;
+  late double _gstHst;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _incomeTax = widget.incomeTaxPct;
+    _gstHst    = widget.gstHstTaxPct;
+  }
+
+  // ── API call ──────────────────────────────────────────────────────
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final response = await ApiService.post(
+        context,
+        Endpoints.UPDATE_EXPENSE_CATEGORY_TAX,
+        body: {
+          'category_id': widget.categoryId,
+          'income_tax':  '${_incomeTax.toStringAsFixed(0)}%',
+          'gst_hst_tax': '${_gstHst.toStringAsFixed(0)}%',
+        },
+        showLoader: false,
+      );
+
+      debugPrint('\nSUCCESS => $response');
+
+      final result = response['result'] == '1';
+
+      if (result) {
+        if (mounted) Navigator.pop(context);
+        widget.onSaved();   // triggers loadExpenseCategoryData()
+      } else {
+        setState(() => _saving = false);
+        if (mounted) {
+          GeneralFunctions.showError(
+            context,
+            response['message']?.toString() ?? 'Update failed.',
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _saving = false);
+      if (mounted) {
+        GeneralFunctions.showError(context,
+            'Something went wrong. Please try again.');
+      }
+    }
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    final mq     = MediaQuery.of(context);
+    final bottom = mq.viewInsets.bottom;
+    final maxH   = mq.size.height - mq.padding.top - 16;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxH),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+
+          // Drag handle
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: WerlogColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Sheet header
+          Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: WerlogColors.tealSurface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.tune_rounded,
+                  color: WerlogColors.teal, size: 17),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Edit Tax Rates',
+                    style: TextStyle(
+                      fontFamily: 'DMSans', fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: WerlogColors.textPrimary,
+                    )),
+                Text('Drag sliders to set your rates',
+                    style: WerlogTextStyles.captionSmall),
+              ],
+            )),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  color: WerlogColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.close_rounded,
+                    color: WerlogColors.textSecondary, size: 16),
+              ),
+            ),
+          ]),
+
+          const SizedBox(height: 16),
+          const Divider(color: WerlogColors.borderLight),
+          const SizedBox(height: 16),
+
+          // ── Income Tax slider ─────────────────────────────────────
+          _EditSliderRow(
+            label: 'Income Tax',
+            icon: Icons.account_balance_outlined,
+            iconBg: WerlogColors.blueSurface,
+            iconColor: WerlogColors.blue,
+            trackColor: WerlogColors.blue,
+            value: _incomeTax,
+            onChanged: (v) => setState(() => _incomeTax = v),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ── GST / HST slider ──────────────────────────────────────
+          _EditSliderRow(
+            label: 'GST / HST Tax',
+            icon: Icons.receipt_outlined,
+            iconBg: WerlogColors.amberSurface,
+            iconColor: WerlogColors.amber,
+            trackColor: WerlogColors.amber,
+            value: _gstHst,
+            onChanged: (v) => setState(() => _gstHst = v),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Info note ─────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: WerlogColors.tealSurface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(children: [
+              const Icon(Icons.info_outline_rounded,
+                  size: 13, color: WerlogColors.teal),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'These rates are used to calculate your estimated tax deductions.',
+                  style: TextStyle(
+                    fontFamily: 'DMSans', fontSize: 10,
+                    color: WerlogColors.teal, height: 1.5,
+                  ),
+                ),
+              ),
+            ]),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ── Save button ───────────────────────────────────────────
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: WerlogColors.teal,
+                disabledBackgroundColor:
+                WerlogColors.teal.withOpacity(0.6),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: _saving
+                  ? const SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: Colors.white))
+                  : const Text('Save Changes',
+                  style: TextStyle(
+                    fontFamily: 'DMSans', fontSize: 14,
+                    fontWeight: FontWeight.w600, color: Colors.white,
+                  )),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+//  _EditSliderRow — interactive slider row used inside the edit sheet
+// ════════════════════════════════════════════════════════════════════
+class _EditSliderRow extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final Color trackColor;
+  final double value;           // 0–100
+  final ValueChanged<double> onChanged;
+
+  const _EditSliderRow({
+    required this.label,
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.trackColor,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Label + value badge
+      Row(children: [
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, size: 13, color: iconColor),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(label,
+              style: const TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: WerlogColors.textPrimary,
+              )),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: iconColor.withOpacity(0.2), width: 0.8),
+          ),
+          child: Text('${value.toInt()}%',
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: iconColor,
+              )),
+        ),
+      ]),
+      const SizedBox(height: 8),
+      // Slider
+      SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          trackHeight: 6,
+          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+          overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+          activeTrackColor: trackColor,
+          inactiveTrackColor: WerlogColors.borderLight,
+          thumbColor: trackColor,
+          overlayColor: trackColor.withOpacity(0.12),
+          valueIndicatorColor: trackColor,
+          showValueIndicator: ShowValueIndicator.always,
+          valueIndicatorTextStyle: const TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        child: Slider(
+          value: value,
+          min: 0,
+          max: 100,
+          divisions: 20,
+          label: '${value.toInt()}%',
+          onChanged: onChanged,
+        ),
+      ),
+      // Min / Max labels
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('0%', style: WerlogTextStyles.captionSmall),
+            Text('100%', style: WerlogTextStyles.captionSmall),
+          ],
+        ),
+      ),
+    ]);
+  }
+}

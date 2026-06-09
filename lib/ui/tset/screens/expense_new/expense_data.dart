@@ -125,6 +125,101 @@ class ExpenseData {
   ExpenseData._();
 
   // ── Screen 1 KPIs ──────────────────────────────────────────────────
+  static String currentYear = '';
+
+  static double totalExpenses     = 0;
+  static double estDeduction      = 0;
+  static double gstHstClaimable   = 0;
+  static double taxRefundForecast = 0;
+
+  // Donut segments
+  static double deductibleAmt    = 0;
+  static double gstPaidAmt       = 0;
+  static double nonDeductibleAmt = 0;
+  static double personalAmt      = 0;
+
+  // AI insights
+  static List<Map<String, String>> aiInsights = [
+    {
+      'text': '',
+      'type': '',
+    }
+  ];
+
+  // ── Categories ─────────────────────────────────────────────────────
+  static final List<ExpenseCategory> categories = [
+    ExpenseCategory(
+      id: '',
+      name: '',
+      description: '',
+      icon: Icons.receipt_long_rounded,
+      iconBg: const Color(0xFFFFFFFF),
+      iconColor: const Color(0xFF000000),
+      totalSpent: 0,
+      deductiblePct: 0,
+      gstPaid: 0,
+      missingCount: 0,
+      items: [
+        ExpenseItem(
+          id: '',
+          title: '',
+          date: '',
+          subType: '',
+          amount: 0,
+          gst: 0,
+          icon: Icons.receipt_long_rounded,
+          iconBg: const Color(0xFFFFFFFF),
+          iconColor: const Color(0xFF000000),
+        ),
+      ],
+    ),
+  ];
+
+  // ── Monthly bar chart data ────────────────────────────────────────
+  static List<MonthlyExpense> vehicleMonthly = [
+    MonthlyExpense(
+      month: '',
+      expenses: 0,
+      deduction: 0,
+      gst: 0,
+    ),
+  ];
+
+  // ── Tax years ─────────────────────────────────────────────────────
+  static List<TaxYear> taxYears = [
+    TaxYear(
+      year: 0,
+      status: '',
+      totalExpenses: 0,
+      estDeduction: 0,
+      gstPaid: 0,
+      documents: 0,
+      missingReceipts: 0,
+      auditReadinessPct: 0,
+      monthly: [
+        MonthlyExpense(
+          month: '',
+          expenses: 0,
+          deduction: 0,
+          gst: 0,
+        ),
+      ],
+    ),
+  ];
+
+  // ── Checklist ─────────────────────────────────────────────────────
+  static List<ChecklistItem> checklist = [
+    ChecklistItem(
+      label: 'Expense Entries',
+      status: '',
+      icon: Icons.receipt_long_rounded,
+    ),
+  ];
+}
+/*class ExpenseData {
+  ExpenseData._();
+
+  // ── Screen 1 KPIs ──────────────────────────────────────────────────
   static String currentYear       = '2025';
   static double totalExpenses     = 28540.00;
   static double estDeduction      = 8620.00;
@@ -420,11 +515,6 @@ class ExpenseData {
 
   // ── Checklist for Tax Ready Summary (screen 4) ──────────────────────
   static List<ChecklistItem> checklist = [
-    ChecklistItem(label:'Expense Entries',     status:'complete', icon:Icons.receipt_long_rounded),
-    ChecklistItem(label:'Receipts Uploaded',   status:'partial',  detail:'179 / 186', icon:Icons.upload_file_rounded),
-    ChecklistItem(label:'GST/HST Details',     status:'complete', icon:Icons.percent_rounded),
-    ChecklistItem(label:'Bank / Payment Proofs',status:'complete',icon:Icons.account_balance_rounded),
-    ChecklistItem(label:'Business Use % Set',  status:'complete', icon:Icons.tune_rounded),
-    ChecklistItem(label:'Review & Validate',   status:'pending',  icon:Icons.fact_check_rounded),
+    ChecklistItem(label:'Expense Entries',     status:'complete', icon:Icons.receipt_long_rounded)
   ];
-}
+}*/

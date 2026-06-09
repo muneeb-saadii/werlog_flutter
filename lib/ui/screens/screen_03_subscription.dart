@@ -57,6 +57,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       final user = data?['meResponse'];
       final planCode = user?['planCode'] ?? 'FREE';
       _currPlanCode = planCode;
+      print("PLAN_CODE: $planCode");
 
       _fetchAllPlans();
     });
@@ -197,7 +198,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             ),*/
                             const TextSpan(
                                 text:
-                                    ' · cancel anytime · no card required for Free'),
+                                    ' · cancel anytime ·'),
                           ],
                         ),
                       ),
@@ -207,7 +208,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             ? 'Continue with ${_plans[_selected].name} →'
                             : 'Continue →',
                         onTap: () {
-                          _proceedToCheckout(_plans[_selected]);
+                          // _proceedToCheckout(_plans[_selected]);
+                          widget.onContinue?.call(_plans[_selected]);
                         }
                             // widget.onContinue?.call(_plans[_selected]),
                       ),
@@ -317,7 +319,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ? 'Unlimited scans'
                 : '$scans scans/month',
 
-            'OCR Engines: ${item['allowedEngines'] ?? ''}',
+            // 'OCR Engines: ${item['allowedEngines'] ?? ''}',
 
             item['showAds'] == true
                 ? 'With ads'
@@ -371,6 +373,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
         // Optional default selection
         if (_plans.isNotEmpty) {
+          _plans = tempPlans;
 
           final proIndex = _plans.indexWhere(
                 (e) => e.name.toUpperCase() == 'PRO',
@@ -391,15 +394,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 _isCurrPlanSel = false;
                 _selected = 0;
               }
+              _currPlanCode = _currPlanCode;
             });
           }
         }
 
-        if (mounted) {
+        /*if (mounted) {
           setState(() {
             _plans = tempPlans;
           });
-        }
+        }*/
 
       } else {
 

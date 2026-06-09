@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:wellness/core/routing/profile_navigation.dart';
 import 'package:wellness/core/utils/shared_pref_helper.dart';
+import 'package:wellness/ui/screens/profile_segment/checkout_webview_screen.dart';
 import 'package:wellness/ui/screens/screen_03_subscription.dart';
+import '../../core/api/api_service.dart';
+import '../../core/api/endpoints.dart';
 import '../../core/models/app_models.dart';
 import '../../core/models/app_models_extended.dart' hide defaultPlans;
 import '../../core/theme/app_theme.dart';
@@ -1222,7 +1225,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute(
           builder: (_) => SubscriptionScreen(
             onContinue: (plan) {
-              final checkoutData = CheckoutData(
+              _proceedCheckout(plan);
+              /*final checkoutData = CheckoutData(
                 planDisplayName: '${plan.name} · ${plan.pricePeriod == "/month" ? "Monthly" : "Yearly"}',
                 priceLabel: plan.pricePeriod == "/month"
                     ? plan.monthlyPrice
@@ -1256,7 +1260,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 MaterialPageRoute(
                   builder: (_) => CheckoutScreen(data: checkoutData, onBack: Navigator.of(context).pop),
                 ),
-              );
+              );*/
             },
           ),
         ),
@@ -1271,6 +1275,143 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }*/
+  }
+
+
+  Future<void> _proceedCheckout(SubscriptionPlan plan) async {
+    try {
+      final response = await ApiService.post(
+        context,
+        Endpoints.SUBSCRIBE_PLAN,
+        body: {
+          'planCode':    plan.code,
+        },
+      );
+
+      debugPrint('\nSUBSCRIPTION PLANS => $response');
+
+      final success = response['result'] == '1';
+
+      if (success) {
+        final responseData = response['data'];
+        final checkoutUrl = responseData['checkoutUrl']?.toString();
+
+        if (checkoutUrl == null || checkoutUrl.isEmpty) {
+          if (mounted) {
+            GeneralFunctions.showError(context, 'Invalid checkout URL.');
+          }
+          return;
+        }
+
+        if (!mounted) return;
+
+        // Open WebView and wait for result
+        final result = await Navigator.push<CheckoutResult>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CheckoutWebViewScreen(
+              checkoutUrl: checkoutUrl,
+              successUrl: 'https://werlog.com/billing/success', // match your Stripe success_url
+              cancelUrl: 'https://werlog.com/billing/cancel',   // match your Stripe cancel_url
+            ),
+          ),
+        );
+
+        if (!mounted) return;
+
+        // Show result dialog
+        _showCheckoutResultDialog(result ?? CheckoutResult.cancelled);
+
+      } else {
+        if (mounted) {
+          GeneralFunctions.showError(
+            context,
+            response['message']?.toString() ?? 'Something went wrong.',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('SUBSCRIPTION ERROR => $e');
+      if (mounted) {
+        GeneralFunctions.showError(
+          context,
+          'Process interrupted. Please try again!',
+        );
+      }
+    }
+  }
+
+  void _showCheckoutResultDialog(CheckoutResult result) {
+    final isSuccess = result == CheckoutResult.success;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: isSuccess
+                    ? Colors.green.shade50
+                    : Colors.orange.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined,
+                color: isSuccess ? Colors.green : Colors.orange,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isSuccess ? 'Payment Successful!' : 'Payment Cancelled',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isSuccess
+                  ? 'Your subscription has been activated. Enjoy your plan!'
+                  : 'Your payment was cancelled. You can try again anytime.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isSuccess ? Colors.green : Colors.black87,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(ctx).pop(); // close dialog
+                  ProfileNavigation.openPlanUsage(context);
+                },
+                child: Text(isSuccess ? 'View My Plan' : 'Okay'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

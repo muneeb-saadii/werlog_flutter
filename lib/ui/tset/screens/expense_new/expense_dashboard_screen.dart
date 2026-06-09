@@ -155,7 +155,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
         "${Endpoints.EXPENSE_DASHBOARD_DETAILS}$selectedYear",
       );
 
-      print('\nSUCCESS => $response');
+      print('\nSUCCE => $response');
 
       final result = response['result'] == "1";
 
@@ -166,6 +166,8 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
         final totalExpenseAndTax = data['totalExpesneAndTax'] ?? {};
         final summaryExpense = data['summaryExpense'] ?? {};
         final expenseCategories = data['expenseCategories'] ?? [];
+
+        print('\nExpense categories: => $expenseCategories');
 
         setState(() {
 
@@ -221,7 +223,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
 
           for (int i = 0; i < expenseCategories.length; i++) {
 
-            final item = expenseCategories[i];
+            /*final item = expenseCategories[i];
 
             final colors = [
               {
@@ -268,6 +270,61 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
 
                 totalSpent:
                 (item['expenseTotal'] ?? 0).toDouble(),
+
+                deductiblePct: 0,
+
+                gstPaid: 0,
+
+                missingCount: item['counter'] ?? 0,
+
+                items: [],
+              ),
+            );*/
+
+            final item = expenseCategories[i];
+
+// ── Color from API hex string, fallback palette ───────────────────
+            final int? apiColorInt = _parseHexColor(item['icon_color']?.toString());
+
+            final Color iconColor = apiColorInt != null
+                ? Color(apiColorInt)
+                : [
+              const Color(0xFF2E7D32),
+              const Color(0xFF1565C0),
+              const Color(0xFF6A1B9A),
+              const Color(0xFFE65100),
+            ][i % 4];
+
+// Background is the icon color at ~12% opacity
+            final Color iconBg = iconColor.withOpacity(0.12);
+
+// ── Icon from API string key, fallback palette ────────────────────
+            final IconData icon = _mapApiIcon(item['icon']?.toString()) ??
+                [
+                  Icons.directions_car_rounded,
+                  Icons.home_work_rounded,
+                  Icons.inventory_2_rounded,
+                  Icons.campaign_rounded,
+                ][i % 4];
+
+            ExpenseData.categories.add(
+              ExpenseCategory(
+                id: item['id']
+                    .toString()
+                    .toLowerCase()
+                    .replaceAll(' ', '_'),
+
+                name: item['expenseName'] ?? '',
+
+                description: '${item['expenseName'] ?? ''} related expenses.',
+
+                icon: icon,
+
+                iconBg: iconBg,
+
+                iconColor: iconColor,
+
+                totalSpent: (item['expenseTotal'] ?? 0).toDouble(),
 
                 deductiblePct: 0,
 
@@ -390,6 +447,90 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
     }
   }
 
+
+  /// Converts "#7B5EA7" or "7B5EA7" → 0xFF7B5EA7, returns null on failure.
+  static int? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final cleaned = hex.replaceFirst('#', '').trim();
+    if (cleaned.length != 6) return null;
+    return int.tryParse('FF$cleaned', radix: 16);
+  }
+
+  /// Maps the icon string key from the API to a Flutter IconData.
+  /// Returns null if the key is unknown — caller falls back to static list.
+  static IconData? _mapApiIcon(String? key) {
+    if (key == null) return null;
+    switch (key.toLowerCase().trim()) {
+      case 'monitor':
+      case 'electronics':
+      case 'tv':
+        return Icons.monitor;
+
+      case 'kitchen':
+      case 'home_appliances':
+      case 'appliances':
+        return Icons.kitchen;
+
+      case 'smartphone':
+      case 'mobile':
+      case 'phone':
+        return Icons.smartphone;
+
+      case 'chair':
+      case 'furniture':
+        return Icons.chair;
+
+      case 'directions_car':
+      case 'car':
+      case 'vehicle':
+      case 'vehicles':
+        return Icons.directions_car;
+
+      case 'pedal_bike':
+      case 'bike':
+      case 'bikes':
+        return Icons.pedal_bike;
+
+      case 'soup_kitchen':
+      case 'kitchen_appliances':
+        return Icons.soup_kitchen;
+
+      case 'handyman':
+      case 'tools':
+      case 'tool':
+        return Icons.handyman;
+
+      case 'category':
+      case 'other':
+      case 'other_warranty':
+        return Icons.category_outlined;
+
+      case 'watch':
+        return Icons.watch;
+
+      case 'computer':
+      case 'laptop':
+        return Icons.computer;
+
+      case 'camera':
+        return Icons.camera_alt_outlined;
+
+      case 'games':
+      case 'gaming':
+        return Icons.sports_esports_outlined;
+
+      case 'speaker':
+      case 'audio':
+        return Icons.speaker_outlined;
+
+      case 'ac':
+      case 'air_conditioner':
+        return Icons.ac_unit_outlined;
+
+      default:
+        return null; // unknown key → use static fallback
+    }
+  }
 }
 
 // ─── Reusable widgets ──────────────────────────────────────────────────
@@ -812,7 +953,7 @@ class _CategoryTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     cat.name,
-                    maxLines: 3, // allow growth safely
+                    maxLines: 2, // allow growth safely
                     overflow: TextOverflow.ellipsis,
                     style: WerlogTextStyles.captionSmall.copyWith(
                       color: WerlogColors.textPrimary,

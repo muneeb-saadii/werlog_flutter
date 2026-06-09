@@ -6,7 +6,171 @@
 // ─────────────────────────────────────────────
 
 // ignore_for_file: non_constant_identifier_names
+class UserData {
+  String name;
+  String email;
+  String plan;
 
+  UserData({
+    this.name = '',
+    this.email = '',
+    this.plan = '',
+  });
+}
+
+class DashboardStats {
+  String totalTracked;
+  String periodLabel;
+  String totalSubtext;
+
+  int scansUsed;
+  int scansTotal;
+
+  String expenseAmount;
+  int expenseCount;
+  String warrantyAmount;
+  int warrantyCount;
+
+  DashboardStats({
+    this.totalTracked = '',
+    this.periodLabel = '',
+    this.totalSubtext = '',
+    this.scansUsed = 0,
+    this.scansTotal = 0,
+    this.expenseAmount = '',
+    this.expenseCount = 0,
+    this.warrantyAmount = '',
+    this.warrantyCount = 0,
+  });
+
+  double get scanProgress =>
+      scansTotal == 0 ? 0 : scansUsed / scansTotal;
+}
+
+class WarrantyAlert {
+  String title;
+  String subtitle;
+  bool isVisible;
+
+  WarrantyAlert({
+    this.title = '',
+    this.subtitle = '',
+    this.isVisible = false,
+  });
+}
+
+enum TxType { expense, warranty }
+
+class TransactionItem {
+  String label;
+  String category;
+  String amount;
+  String dateLabel;
+  TxType type;
+  String iconEmoji;
+
+  TransactionItem({
+    required this.label,
+    required this.category,
+    required this.amount,
+    required this.dateLabel,
+    required this.type,
+    required this.iconEmoji,
+  });
+}
+
+List<TransactionItem> defaultTransactions = [
+  TransactionItem(
+    label: '',
+    category: '',
+    amount: '',
+    dateLabel: '',
+    type: TxType.expense,
+    iconEmoji: '',
+  ),
+];
+
+class SubscriptionPlan {
+  String id;
+  String name;
+  String code;
+  String tagline;
+  String monthlyPrice;
+  String yearlyPrice;
+  String? originalMonthlyPrice;
+  String? originalYearlyPrice;
+  String pricePeriod;
+  List<String> features;
+  bool isFeatured;
+  String? featuredBadge;
+
+  SubscriptionPlan({
+    required this.id,
+    required this.name,
+    required this.code,
+    required this.tagline,
+    required this.monthlyPrice,
+    required this.yearlyPrice,
+    required this.pricePeriod,
+    required this.features,
+    this.originalMonthlyPrice,
+    this.originalYearlyPrice,
+    this.isFeatured = false,
+    this.featuredBadge,
+  });
+}
+
+List<SubscriptionPlan> defaultPlans = [
+  SubscriptionPlan(
+    id: '',
+    name: '',
+    code: '',
+    tagline: '',
+    monthlyPrice: '',
+    yearlyPrice: '',
+    pricePeriod: '',
+    features: [''],
+    originalMonthlyPrice: '',
+    originalYearlyPrice: '',
+    isFeatured: false,
+    featuredBadge: '',
+  ),
+];
+
+class CheckoutData {
+  String planDisplayName;
+  String priceLabel;
+  String pricePeriod;
+  String billingNote;
+
+  String cardBrand;
+  String cardLast4;
+
+  String billingAddress;
+
+  String lineTotal;
+  String tax;
+  String? discountLabel;
+  String? discountAmount;
+  String dueAfterTrial;
+
+  CheckoutData({
+    this.planDisplayName = '',
+    this.priceLabel = '',
+    this.pricePeriod = '',
+    this.billingNote = '',
+    this.cardBrand = '',
+    this.cardLast4 = '',
+    this.billingAddress = '',
+    this.lineTotal = '',
+    this.tax = '',
+    this.discountLabel = '',
+    this.discountAmount = '',
+    this.dueAfterTrial = '',
+  });
+}
+
+/*
 /// ── AUTH / USER ──────────────────────────────
 class UserData {
   /// Displayed on the dashboard greeting
@@ -241,3 +405,4 @@ class CheckoutData {
     this.dueAfterTrial   = '\$276.00',
   });
 }
+*/

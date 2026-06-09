@@ -69,11 +69,7 @@ class OcrProcessingData {
     List<File>? images,
   }) : images = images ?? [], processData = processData ?? {},
        steps = steps ?? [
-    ProcessingStep(label: 'Uploaded securely',      status: ProcessingStepStatus.done,   duration: '0.4s'),
-    ProcessingStep(label: 'Image enhanced',          status: ProcessingStepStatus.done,   duration: '0.9s'),
-    ProcessingStep(label: 'GPT-4 extracting fields', status: ProcessingStepStatus.active, duration: '3s'),
-    ProcessingStep(label: 'Parsing warranty dates',  status: ProcessingStepStatus.pending),
-    ProcessingStep(label: 'Saving to library',       status: ProcessingStepStatus.pending),
+    ProcessingStep(label: 'Uploaded securely',      status: ProcessingStepStatus.done)
   ];
 }
 
@@ -121,10 +117,10 @@ class WarrantyBadgeData {
   String serialNumber; // e.g. "C02XY9ABZDK3"
 
   WarrantyBadgeData({
-    this.daysRemaining = 358,
-    this.status        = 'Warranty active',
-    this.expiryText    = 'Expires March 24, 2027 · 1-year AppleCare included',
-    this.serialNumber  = 'C02XY9ABZDK3',
+    this.daysRemaining = 0,
+    this.status = 'Warranty active',
+    this.expiryText = '',
+    this.serialNumber = '',
   });
 }
 
@@ -136,10 +132,10 @@ class OcrConfidenceData {
   String statusNote;   // e.g. "Tap any field to edit"
 
   OcrConfidenceData({
-    this.confidencePct = 96,
-    this.engineLabel   = 'GPT-4',
-    this.lineItemCount = 5,
-    this.statusNote    = 'Tap any field to edit',
+    this.confidencePct = 0,
+    this.engineLabel = '',
+    this.lineItemCount = 0,
+    this.statusNote = 'Tap any field to edit',
   });
 }
 
@@ -172,44 +168,79 @@ class InvoiceDetailData {
   String secondaryButtonLabel; // e.g. "Download PDF"
 
   InvoiceDetailData({
-    this.type          = InvoiceType.expense,
-    this.categoryLabel = 'EXPENSE · GROCERIES',
-    this.vendor        = 'Whole Foods Market',
-    this.dateLabel     = 'Mar 28, 2026 · 10:42 AM · Inv #WF-4421',
-    this.amount        = '\$84.30',
-    this.currency      = 'USD',
+    this.type = InvoiceType.expense,
+    this.categoryLabel = '',
+    this.vendor = '',
+    this.dateLabel = '',
+    this.amount = '',
+    this.currency = '',
     OcrConfidenceData? confidence,
     List<InvoiceLineItem>? lineItems,
     List<InvoiceSummaryRow>? summaryRows,
-    this.totalPaid           = '\$84.30',
-    this.categoryTag         = 'Groceries',
-    this.paymentInfo         = 'Visa •• 4242',
+    this.totalPaid = '',
+    this.categoryTag = '',
+    this.paymentInfo = '',
     this.warrantyBadge,
     this.warrantyTypeLabel,
-    this.primaryButtonLabel   = 'Mark reviewed ✓',
+    this.primaryButtonLabel = 'Mark reviewed',
     this.secondaryButtonLabel = 'Download PDF',
   })  : confidence = confidence ?? OcrConfidenceData(),
-        lineItems  = lineItems ?? _defaultExpenseItems,
+        lineItems = lineItems ?? _defaultExpenseItems,
         summaryRows = summaryRows ?? _defaultExpenseSummary;
 }
 
 final List<InvoiceLineItem> _defaultExpenseItems = [
+  InvoiceLineItem(
+    name: '',
+    meta: '',
+    amount: '',
+    unit: '',
+  ),
+];
+/*final List<InvoiceLineItem> _defaultExpenseItems = [
   InvoiceLineItem(name: 'Organic Bananas',        meta: 'Produce · \$0.69/lb',   amount: '\$4.29',   unit: '6.22 lb'),
   InvoiceLineItem(name: 'Greek Yogurt · Plain',    meta: 'Dairy · 32oz tub',      amount: '\$6.99',   unit: '1 × \$6.99'),
   InvoiceLineItem(name: 'Sourdough Bread',         meta: 'Bakery · fresh baked',  amount: '\$5.50',   unit: '1 × \$5.50'),
   InvoiceLineItem(name: 'Hass Avocados',           meta: 'Produce · large',       amount: '\$8.99',   unit: '3 × \$3.00'),
   InvoiceLineItem(name: 'Chicken Breast · Organic',meta: 'Meat · 2.1 lb',        amount: '\$14.50',  unit: '\$6.90/lb'),
-];
+];*/
 
 final List<InvoiceSummaryRow> _defaultExpenseSummary = [
+  InvoiceSummaryRow(
+    label: '',
+    value: '',
+  ),
+];
+/*final List<InvoiceSummaryRow> _defaultExpenseSummary = [
   InvoiceSummaryRow(label: 'Subtotal (5 items)', value: '\$40.27'),
   InvoiceSummaryRow(label: 'Sales tax (8%)',     value: '\$3.22'),
   InvoiceSummaryRow(label: 'Bag fee',            value: '\$0.10'),
   InvoiceSummaryRow(label: 'Discount',           value: '−\$0.00', isDiscount: true),
-];
+];*/
 
 // Convenience factory for warranty detail
 InvoiceDetailData warrantyDetailData() => InvoiceDetailData(
+  type: InvoiceType.warranty,
+  confidence: OcrConfidenceData(),
+  lineItems: [
+    InvoiceLineItem(
+      name: '',
+      meta: '',
+      amount: '',
+      unit: '',
+    ),
+  ],
+  summaryRows: [
+    InvoiceSummaryRow(
+      label: '',
+      value: '',
+    ),
+  ],
+  warrantyBadge: WarrantyBadgeData(),
+  primaryButtonLabel: 'Mark reviewed',
+  secondaryButtonLabel: 'Set reminder',
+);
+/*InvoiceDetailData warrantyDetailData() => InvoiceDetailData(
   type:          InvoiceType.warranty,
   categoryLabel: 'WARRANTY · ELECTRONICS',
   vendor:        'Apple Store',
@@ -237,7 +268,7 @@ InvoiceDetailData warrantyDetailData() => InvoiceDetailData(
   warrantyTypeLabel:   'AppleCare+ · 1 year',
   primaryButtonLabel:  'Mark reviewed ✓',
   secondaryButtonLabel: 'Set reminder',
-);
+);*/
 
 // ══════════════════════════════════════════════════════════════
 //  INVOICE LIST  (screen 12)
@@ -286,19 +317,36 @@ class InvoiceListData {
   List<InvoiceListGroup> groups;
 
   InvoiceListData({
-    this.filter          = InvoiceFilterType.all,
-    this.totalCount      = 87,
-    this.expenseCount    = 76,
-    this.warrantyCount   = 11,
-    this.thisMonthTotal  = '\$612.50',
-    this.thisMonthDelta  = '↑ \$84 vs Mar',
-    this.avgWeeklyTotal  = '\$156.40',
-    this.avgWeeklyDelta  = '↓ 8% saved',
+    this.filter = InvoiceFilterType.all,
+    this.totalCount = 0,
+    this.expenseCount = 0,
+    this.warrantyCount = 0,
+    this.thisMonthTotal = '',
+    this.thisMonthDelta = '',
+    this.avgWeeklyTotal = '',
+    this.avgWeeklyDelta = '',
     List<InvoiceListGroup>? groups,
   }) : groups = groups ?? _defaultGroups;
 }
 
 final List<InvoiceListGroup> _defaultGroups = [
+  InvoiceListGroup(
+    dateLabel: '',
+    items: [
+      InvoiceListItem(
+        vendor: '',
+        category: '',
+        typeMeta: '',
+        amount: '',
+        timeLabel: '',
+        type: InvoiceType.expense,
+        iconEmoji: '',
+        iconColorKey: '',
+      ),
+    ],
+  ),
+];
+/*final List<InvoiceListGroup> _defaultGroups = [
   InvoiceListGroup(dateLabel: 'TODAY · MONDAY', items: [
     InvoiceListItem(vendor: 'Whole Foods Market', category: 'Groceries', typeMeta: '5 items · Groceries', amount: '−\$84.30', timeLabel: '10:42 AM', type: InvoiceType.expense, iconEmoji: '🛒', iconColorKey: 'food'),
     InvoiceListItem(vendor: 'Xfinity Internet',  category: 'Utilities',  typeMeta: 'Monthly · Utilities', amount: '−\$79.99', timeLabel: '9:15 AM',  type: InvoiceType.expense, iconEmoji: '⬡', iconColorKey: 'util'),
@@ -310,7 +358,7 @@ final List<InvoiceListGroup> _defaultGroups = [
   InvoiceListGroup(dateLabel: 'MAR 28', items: [
     InvoiceListItem(vendor: 'Blue Bottle Coffee', category: 'Coffee', typeMeta: '2 items · Coffee', amount: '−\$12.50', timeLabel: '8:15 AM', type: InvoiceType.expense, iconEmoji: '☕', iconColorKey: 'food'),
   ]),
-];
+];*/
 
 // ══════════════════════════════════════════════════════════════
 //  REPORTS  (screen 13)
@@ -361,35 +409,52 @@ class ReportsData {
   List<CategoryReportItem> categories;
 
   ReportsData({
-    this.periodLabel         = 'April 2026',
-    this.totalTracked        = '\$2,147.30',
-    this.expensesTotal       = '\$612',
-    this.expensesRatioPct    = '72%',
-    this.expensesRatio       = 0.72,
-    this.warrantiesTotal     = '\$1,535',
-    this.warrantiesRatioPct  = '28%',
-    this.warrantiesRatio     = 0.28,
+    this.periodLabel = '',
+    this.totalTracked = '',
+    this.expensesTotal = '',
+    this.expensesRatioPct = '',
+    this.expensesRatio = 0,
+    this.warrantiesTotal = '',
+    this.warrantiesRatioPct = '',
+    this.warrantiesRatio = 0,
     List<MonthBarData>? monthlyBars,
     List<CategoryReportItem>? categories,
   })  : monthlyBars = monthlyBars ?? _defaultBars,
-        categories  = categories  ?? _defaultCategories;
+        categories = categories ?? _defaultCategories;
 }
 
 const List<MonthBarData> _defaultBars = [
+  MonthBarData(
+    month: 'Jan',
+    expenseRatio: 0,
+    warrantyRatio: 0,
+  ),
+];
+/*const List<MonthBarData> _defaultBars = [
   MonthBarData(month: 'Nov', expenseRatio: 0.42, warrantyRatio: 0.06),
   MonthBarData(month: 'Dec', expenseRatio: 0.58, warrantyRatio: 0.15),
   MonthBarData(month: 'Jan', expenseRatio: 0.48, warrantyRatio: 0.04),
   MonthBarData(month: 'Feb', expenseRatio: 0.50, warrantyRatio: 0.22),
   MonthBarData(month: 'Mar', expenseRatio: 0.60, warrantyRatio: 0.08),
   MonthBarData(month: 'Apr', expenseRatio: 0.62, warrantyRatio: 0.35, isCurrent: true),
-];
+];*/
 
 final List<CategoryReportItem> _defaultCategories = [
+  CategoryReportItem(
+    name: '',
+    ratio: 0,
+    amount: '',
+    percentage: '',
+    iconEmoji: '',
+    colorKey: '',
+  ),
+];
+/*final List<CategoryReportItem> _defaultCategories = [
   CategoryReportItem(name: 'Utilities',     ratio: 1.00, amount: '\$238', percentage: '38%', iconEmoji: '⬡',  colorKey: 'util'),
   CategoryReportItem(name: 'Food & Dining', ratio: 0.68, amount: '\$162', percentage: '25%', iconEmoji: '🛒', colorKey: 'food'),
   CategoryReportItem(name: 'Electronics',   ratio: 0.54, amount: '\$128', percentage: '20%', iconEmoji: '💻', colorKey: 'elec'),
   CategoryReportItem(name: 'Fuel',          ratio: 0.28, amount: '\$65',  percentage: '10%', iconEmoji: '⛽', colorKey: 'fuel'),
-];
+];*/
 
 // ══════════════════════════════════════════════════════════════
 //  PROFILE  (screen 14)
@@ -431,11 +496,11 @@ class ProfileData {
   List<SettingSection> sections;
 
   ProfileData({
-    this.fullName   = 'Alice Smith',
-    this.initials   = 'AS',
-    this.email      = 'alice@example.com',
-    this.planLabel  = 'PRO · YEARLY',
-    this.appVersion = 'Werlog v2.1.4 · Terms · Privacy',
+    this.fullName = '',
+    this.initials = '',
+    this.email = '',
+    this.planLabel = '',
+    this.appVersion = '',
     List<SettingSection>? sections,
   }) : sections = sections ?? _defaultSections;
 }
@@ -453,7 +518,7 @@ final List<SettingSection> _defaultSections = [
   ]),
   SettingSection(header: 'PREFERENCES', rows: [
     // SettingRow(title: 'Categories',           iconColorKey: 'a', iconEmoji: '◈'),
-    SettingRow(title: 'Model Engines',           iconColorKey: 'a', iconEmoji: '◆'),
+    // SettingRow(title: 'Model Engines',           iconColorKey: 'a', iconEmoji: '◆'),
     SettingRow(title: 'Notifications',      subtitle: 'Your activity updates',    iconColorKey: 'a', iconEmoji: '↗'),
     // SettingRow(title: 'Warranty reminders',   iconColorKey: 'a', iconEmoji: '◈', trailing: SettingTrailingType.toggle, toggleValue: true),
     // SettingRow(title: 'Email notifications',  iconColorKey: 'a', iconEmoji: '✉', trailing: SettingTrailingType.toggle, toggleValue: true),

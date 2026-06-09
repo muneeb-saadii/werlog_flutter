@@ -314,8 +314,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       color: WerlogColors.textPrimary,
                       letterSpacing: -0.3,
                     )),
-                const SizedBox(height: 4),
-                _PlanBadge(planCode: user.planCode),
+                /*const SizedBox(height: 4),
+                _PlanBadge(planCode: user.planCode),*/
               ],
             ),
           ),
@@ -368,11 +368,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   label: 'Role',
                   value: user.role == 'ROLE_USER' ? 'User' : user.role,
                 ),
-                _InfoRow(
+                /*_InfoRow(
                   icon: Icons.psychology_outlined,
                   label: 'OCR Engine',
                   value: user.engine,
-                ),
+                ),*/
                 _InfoRow(
                   icon: Icons.workspace_premium_outlined,
                   label: 'Plan',
