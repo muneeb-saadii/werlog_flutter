@@ -5,16 +5,21 @@ import 'package:flutter/material.dart';
 // import 'package:wellness/ui/tset/screens/expenses/expense_dashboard_screen.dart';
 import '../../../core/api/api_service.dart';
 import '../../../core/api/endpoints.dart';
+import '../../../core/models/app_models.dart';
 import '../../../core/models/app_models_extended.dart' hide CameraViewData;
 import '../../../core/routing/AppRoutes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
 import '../../../core/utils/shared_pref_helper.dart';
+import '../../screens/profile_segment/checkout_webview_screen.dart';
+import '../../screens/profile_segment/subscription_usage_screen.dart' hide SubscriptionPlan;
+import '../../screens/screen_03_subscription.dart';
 import 'camera_screen.dart';
 import '../../screens/profile_segment/notifications_screen.dart';
 import '../../screens/ocr_processing_screen.dart' hide WerlogTextStyles, WerlogColors, WerlogGradients;
 import '../../screens/screen_04_ocr_flow.dart';
 import '../../screens/screen_06_list_reports_profile.dart';
+import '../../../core/widgets/plan_restriction_dialog.dart';
 import 'expense_new/expense_dashboard_screen.dart';
 import 'warranty_dashboard_screen.dart';
 import 'expenses_tax_screen.dart';
@@ -1307,6 +1312,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 // request.fields['params'] = jsonEncode(params);
 
                 final results = await service.uploadImages(
+                  context: context,
                   images:      filesToUpload,
                   endpoint:    Endpoints.UPLOAD_SCANNED_IMAGE,
                   fieldName:   fieldName,
@@ -1320,6 +1326,56 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   print(results.body);
                 } else {
                   print("Upload failed: ${results.error ?? results.body}");
+                  print("## ## Upload failed: ${results.body}");
+
+                  if (!context.mounted) return;
+
+                  // ── Parse error body ────────────────────────────────────────────
+                  Map<String, dynamic>? errorBody;
+                  try {
+                    errorBody = jsonDecode(results.body) as Map<String, dynamic>?;
+                  } catch (_) {}
+
+                  final errorCode    = errorBody?['error']?.toString() ?? '';
+                  final errorMessage = errorBody?['message']?.toString() ?? 'Something went wrong.';
+
+                  if (errorCode == 'PLAN_RESTRICTION') {
+                    // ── Show upgrade dialog ───────────────────────────────────────
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => PlanRestrictionDialog(
+                        message: errorMessage,
+                        onViewPlans: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SubscriptionScreen(
+                                onContinue: (plan) {
+                                  _proceedCheckout(plan);
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        onViewUsage: () {
+                          Navigator.pop(context);
+                          Navigator.push(context,
+                              MaterialPageRoute(builder: (_) => const SubscriptionUsageScreen())); // or your usage screen route
+                        },
+                        onCancel: () {
+                          Navigator.pop(context);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    );
+                  } else {
+                    // ── Generic toast error ───────────────────────────────────────
+                    GeneralFunctions.showError(context, errorMessage);
+                  }
+
+                  return; // stop — don't proceed to OCR screen
                 }
 
                 /*final uploadedData = await uploadScannedImages(images);
@@ -1732,6 +1788,145 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   void callWarrantyDashboardScreen() {
     Navigator.push(context,
         MaterialPageRoute(builder: (_) => const  WarrantyDashboardScreen()));
+  }
+
+
+
+  Future<void> _proceedCheckout(SubscriptionPlan plan) async {
+    try {
+      final response = await ApiService.post(
+        context,
+        Endpoints.SUBSCRIBE_PLAN,
+        body: {
+          'planCode':    plan.code,
+        },
+      );
+
+      debugPrint('\nSUBSCRIPTION PLANS => $response');
+
+      final success = response['result'] == '1';
+
+      if (success) {
+        final responseData = response['data'];
+        final checkoutUrl = responseData['checkoutUrl']?.toString();
+
+        if (checkoutUrl == null || checkoutUrl.isEmpty) {
+          if (mounted) {
+            GeneralFunctions.showError(context, 'Invalid checkout URL.');
+          }
+          return;
+        }
+
+        if (!mounted) return;
+
+        // Open WebView and wait for result
+        final result = await Navigator.push<CheckoutResult>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CheckoutWebViewScreen(
+              checkoutUrl: checkoutUrl,
+              successUrl: 'https://werlog.com/billing/success', // match your Stripe success_url
+              cancelUrl: 'https://werlog.com/billing/cancel',   // match your Stripe cancel_url
+            ),
+          ),
+        );
+
+        if (!mounted) return;
+
+        // Show result dialog
+        _showCheckoutResultDialog(result ?? CheckoutResult.cancelled);
+
+      } else {
+        if (mounted) {
+          GeneralFunctions.showError(
+            context,
+            response['message']?.toString() ?? 'Something went wrong.',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('SUBSCRIPTION ERROR => $e');
+      if (mounted) {
+        GeneralFunctions.showError(
+          context,
+          'Process interrupted. Please try again!',
+        );
+      }
+    }
+  }
+
+  void _showCheckoutResultDialog(CheckoutResult result) {
+    final isSuccess = result == CheckoutResult.success;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: isSuccess
+                    ? Colors.green.shade50
+                    : Colors.orange.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined,
+                color: isSuccess ? Colors.green : Colors.orange,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isSuccess ? 'Payment Successful!' : 'Payment Cancelled',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isSuccess
+                  ? 'Your subscription has been activated. Enjoy your plan!'
+                  : 'Your payment was cancelled. You can try again anytime.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isSuccess ? Colors.green : Colors.black87,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(ctx).pop(); // close dialog
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const SubscriptionUsageScreen()));
+                },
+                child: Text(isSuccess ? 'View My Plan' : 'Okay'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

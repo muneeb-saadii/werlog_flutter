@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:wellness/core/utils/helpers.dart';
 
 import '../../../core/models/app_models_extended.dart';
 
@@ -69,6 +70,7 @@ class NewCameraScreen extends StatefulWidget {
 
 class _NewCameraScreenState extends State<NewCameraScreen>
     with WidgetsBindingObserver {
+  bool _proceeded = false;
   // ── permission ──────────────────────────────────────────────────────────────
   _PermState _permState = _PermState.checking;
 
@@ -366,6 +368,9 @@ class _NewCameraScreenState extends State<NewCameraScreen>
   // ── proceed ──────────────────────────────────────────────────────────────────
 
   void _proceed() {
+    if (_proceeded) return;           // ← block double-tap
+    _proceeded = true;
+
     if (_selectedPdf != null) {
       widget.onProceed?.call(CameraResult.pdf(_selectedPdf!));
     } else if (_images.isNotEmpty) {
@@ -415,7 +420,7 @@ class _NewCameraScreenState extends State<NewCameraScreen>
             onCrop: _cropImage,
             onRemove: _removeImage,
             onRemovePdf: _clearPdf,
-            onProceed: (_images.isNotEmpty || _selectedPdf != null)
+            onProceed: (_images.isNotEmpty || _selectedPdf != null) && !_proceeded
                 ? _proceed
                 : null,
           ),
@@ -1515,6 +1520,7 @@ class CameraUploadService {
   /// if (result.success) { /* proceed */ }
   /// ```
   Future<UploadResult> uploadImages({
+    required BuildContext context,
     required List<File> images,
     String endpoint = 'v1/ocr/jobs',
     String fieldName = 'files',
@@ -1524,6 +1530,7 @@ class CameraUploadService {
     print('\n================ UPLOAD STARTED ================');
 
     try {
+      LoadingHelper.show(context);
 
       // =========================================================
       // URL
@@ -1668,6 +1675,9 @@ class CameraUploadService {
         body: '',
         error: e.toString(),
       );
+
+    }finally{
+      LoadingHelper.hide(context);
     }
   }
 }

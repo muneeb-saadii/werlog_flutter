@@ -657,8 +657,8 @@ class _ExpenseCategoryDetailScreenState
           _detail = CategoryDetail.fromJson(data);
           // Sync business-use slider from API
           _businessUsePct = _detail!.businessUsePercent.toDouble();
-          _incomeTaxPct   = (_detail!.businessUsePercent/*incomeTax*/  ?? 0).toDouble();
-          _gstHstTaxPct   = (_detail!.businessUsePercent/*gstHstTax*/ ?? 0).toDouble();
+          _incomeTaxPct   = (_detail!.busIncomeTaxPercent ?? 0).toDouble();
+          _gstHstTaxPct   = (_detail!.busGstTaxPercent ?? 0).toDouble();
         });
       } else {
         GeneralFunctions.showError(

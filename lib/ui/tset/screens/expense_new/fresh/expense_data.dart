@@ -179,6 +179,8 @@ class CategoryDetail {
 
   // businessUse
   final int businessUsePercent;
+  final int busIncomeTaxPercent;
+  final int busGstTaxPercent;
   final bool appliesToCategory;
   final String helpText;
 
@@ -200,6 +202,8 @@ class CategoryDetail {
     required this.invoiceCount,
     required this.currency,
     required this.businessUsePercent,
+    required this.busIncomeTaxPercent,
+    required this.busGstTaxPercent,
     required this.appliesToCategory,
     required this.helpText,
     required this.monthly,
@@ -227,7 +231,9 @@ class CategoryDetail {
       invoiceCount:       (stats['invoiceCount'] as num?)?.toInt() ?? 0,
       currency:           stats['currency']?.toString() ?? '',
 
-      businessUsePercent: (businessUse['currentPercent'] as num?)?.toInt() ?? 100,
+      businessUsePercent: (businessUse['currentPercent'] as num?)?.toInt() ?? 10,
+      busIncomeTaxPercent: (businessUse['incomeTax'] as num?)?.toInt() ?? 10,
+      busGstTaxPercent: (businessUse['gstHstTax'] as num?)?.toInt() ?? 10,
       appliesToCategory:  businessUse['appliesToCategory'] == true,
       helpText:           businessUse['helpText']?.toString() ?? '',
 
