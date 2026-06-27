@@ -986,74 +986,221 @@ class _WarrantyDashboardScreenState
   static IconData? _mapApiIcon(String? key) {
     if (key == null) return null;
     switch (key.toLowerCase().trim()) {
+
+    // ── Warranty categories (new _rounded keys) ─────────────────────
+      case 'monitor_rounded':
       case 'monitor':
       case 'electronics':
-      case 'tv':
-        return Icons.monitor;
+      case 'computers_laptops':
+        return Icons.monitor_rounded;
 
+      case 'kitchen_rounded':
       case 'kitchen':
       case 'home_appliances':
       case 'appliances':
-        return Icons.kitchen;
+        return Icons.kitchen_rounded;
 
+      case 'smartphone_rounded':
       case 'smartphone':
       case 'mobile':
-      case 'phone':
-        return Icons.smartphone;
+      case 'mobile_phones':
+        return Icons.smartphone_rounded;
 
+      case 'chair_rounded':
       case 'chair':
       case 'furniture':
-        return Icons.chair;
+        return Icons.chair_rounded;
 
+      case 'directions_car_rounded':
       case 'directions_car':
       case 'car':
-      case 'vehicle':
+      case 'automotive':
       case 'vehicles':
-        return Icons.directions_car;
+        return Icons.directions_car_rounded;
 
-      case 'pedal_bike':
-      case 'bike':
-      case 'bikes':
-        return Icons.pedal_bike;
+      case 'home_rounded':
+      case 'home':
+      case 'home_devices':
+        return Icons.home_rounded;
 
-      case 'soup_kitchen':
-      case 'kitchen_appliances':
-        return Icons.soup_kitchen;
-
+      case 'handyman_rounded':
       case 'handyman':
       case 'tools':
-      case 'tool':
-        return Icons.handyman;
+      case 'power_tools':
+      case 'industrial_equipment':
+        return Icons.handyman_rounded;
 
+      case 'medical_services_rounded':
+      case 'medical_services':
+      case 'medical':
+      case 'medical_devices':
+        return Icons.medical_services_rounded;
+
+      case 'watch_rounded':
+      case 'watch':
+      case 'wearables':
+        return Icons.watch_rounded;
+
+      case 'sports_esports_rounded':
+      case 'sports_esports':
+      case 'gaming':
+      case 'games':
+        return Icons.sports_esports_rounded;
+
+      case 'router_rounded':
+      case 'router':
+      case 'networking':
+        return Icons.router_rounded;
+
+      case 'photo_camera_rounded':
+      case 'photo_camera':
+      case 'camera':
+      case 'cameras_photography':
+        return Icons.photo_camera_rounded;
+
+      case 'soup_kitchen_rounded':
+      case 'soup_kitchen':
+      case 'kitchen_equipment':
+        return Icons.soup_kitchen_rounded;
+
+      case 'category_rounded':
       case 'category':
       case 'other':
       case 'other_warranty':
-        return Icons.category_outlined;
+        return Icons.category_rounded;
 
-      case 'watch':
-        return Icons.watch;
+    // ── Expense categories ───────────────────────────────────────────
+      case 'campaign_rounded':
+      case 'campaign':
+        return Icons.campaign_rounded;
+
+      case 'agriculture_rounded':
+      case 'agriculture':
+        return Icons.agriculture_rounded;
+
+      case 'account_balance_rounded':
+      case 'account_balance':
+        return Icons.account_balance_rounded;
+
+      case 'business_rounded':
+      case 'business':
+        return Icons.business_rounded;
+
+      case 'volunteer_activism_rounded':
+      case 'volunteer_activism':
+        return Icons.volunteer_activism_rounded;
+
+      case 'construction_rounded':
+      case 'construction':
+        return Icons.construction_rounded;
+
+      case 'storefront_rounded':
+      case 'storefront':
+        return Icons.storefront_rounded;
+
+      case 'school_rounded':
+      case 'school':
+        return Icons.school_rounded;
+
+      case 'movie_rounded':
+      case 'movie':
+        return Icons.movie_rounded;
+
+      case 'fastfood_rounded':
+      case 'fastfood':
+        return Icons.fastfood_rounded;
+
+      case 'local_gas_station_rounded':
+      case 'local_gas_station':
+        return Icons.local_gas_station_rounded;
+
+      case 'balance_rounded':
+      case 'balance':
+        return Icons.balance_rounded;
+
+      case 'health_and_safety_rounded':
+      case 'health_and_safety':
+        return Icons.health_and_safety_rounded;
+
+      case 'home_work_rounded':
+      case 'home_work':
+        return Icons.home_work_rounded;
+
+      case 'shield_rounded':
+      case 'shield':
+        return Icons.shield_rounded;
+
+      case 'restaurant_rounded':
+      case 'restaurant':
+        return Icons.restaurant_rounded;
+
+      case 'business_center_rounded':
+      case 'business_center':
+        return Icons.business_center_rounded;
+
+      case 'inventory_2_rounded':
+      case 'inventory_2':
+        return Icons.inventory_2_rounded;
+
+      case 'pets_rounded':
+      case 'pets':
+        return Icons.pets_rounded;
+
+      case 'gavel_rounded':
+      case 'gavel':
+        return Icons.gavel_rounded;
+
+      case 'payments_rounded':
+      case 'payments':
+        return Icons.payments_rounded;
+
+      case 'shopping_bag_rounded':
+      case 'shopping_bag':
+        return Icons.shopping_bag_rounded;
+
+      case 'subscriptions_rounded':
+      case 'subscriptions':
+        return Icons.subscriptions_rounded;
+
+      case 'receipt_long_rounded':
+      case 'receipt_long':
+        return Icons.receipt_long_rounded;
+
+      case 'phone_rounded':
+      case 'phone':
+        return Icons.phone_rounded;
+
+      case 'commute_rounded':
+      case 'commute':
+        return Icons.commute_rounded;
+
+      case 'flight_rounded':
+      case 'flight':
+        return Icons.flight_rounded;
+
+      case 'bolt_rounded':
+      case 'bolt':
+        return Icons.bolt_rounded;
+
+    // ── Legacy fallbacks ─────────────────────────────────────────────
+      case 'pedal_bike':
+      case 'bike':
+        return Icons.pedal_bike_rounded;
 
       case 'computer':
       case 'laptop':
-        return Icons.computer;
-
-      case 'camera':
-        return Icons.camera_alt_outlined;
-
-      case 'games':
-      case 'gaming':
-        return Icons.sports_esports_outlined;
-
-      case 'speaker':
-      case 'audio':
-        return Icons.speaker_outlined;
+        return Icons.computer_rounded;
 
       case 'ac':
-      case 'air_conditioner':
-        return Icons.ac_unit_outlined;
+      case 'ac_unit':
+        return Icons.ac_unit_rounded;
+
+      case 'tv':
+      case 'television':
+        return Icons.tv_rounded;
 
       default:
-        return null; // unknown key → use static fallback
+        return null; // unknown → caller uses static fallback
     }
   }
 }

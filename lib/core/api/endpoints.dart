@@ -22,6 +22,7 @@ class Endpoints {
   static const String EXPENSE_CATEGORY_DETAILS = 'v1/expense/category/';
   static const String EXPENSE_TAX_YEARS = 'v1/expense/tax-years';
   static const String UPDATE_EXPENSE_CATEGORY_TAX = 'v1/expense/update/tax';
+  static const String UPDATE_EXPENSE_TYPE = 'v1/ocr/updateInvoiceType';
 
   static const String SUBSCRIPTION_PLANS = 'v1/subscription/plans';
   static const String SUBSCRIPTION_USAGE = 'v1/subscription/current';

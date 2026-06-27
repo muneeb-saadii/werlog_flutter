@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wellness/core/utils/general_functions.dart';
 
+import '../../../core/api/api_service.dart';
+import '../../../core/api/endpoints.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/shared_pref_helper.dart';
 
@@ -129,8 +131,47 @@ class _CurrencyScreenState extends State<CurrencyScreen>
         SharedPrefHelper.selectedCurrencyName,   c.name);
     await GeneralFunctions.getCurrencySymbol();
 
-    if (mounted) Navigator.pop(context, c);
-    GeneralFunctions.resetAppState();
+    _saveProfile(c);
+  }
+
+  Future<void> _saveProfile(CurrencyItem c) async {
+
+    // setState(() => _saving = true);
+
+    try {
+
+      final response = await ApiService.postFormData(
+        context,
+        Endpoints.UPDATE_USER_PROFILE,
+        // _pickedImage!,
+        // 'file',
+        fields: {'currency': c.code},
+      );
+
+      final result = response['result'] == "1";
+
+      if (result && mounted) {
+
+        // final updated = _user!.copyWith(fullName: name);
+        // await ProfilePrefs.save(updated);
+        // setState(() {
+        //   _user = updated;
+        //   _pickedImage = null;
+        //   _saving = false;
+        // });
+        // _showSnack('Profile updated successfully!');
+        // Navigator.of(context).pop();
+      } else {
+        // setState(() => _saving = false);
+        // _showSnack('Update failed. Please try again.', isError: true);
+      }
+    } catch (e) {
+      // setState(() => _saving = false);
+      // _showSnack('Something went wrong. Please try again.', isError: true);
+    } finally {
+      if (mounted) Navigator.pop(context, c);
+      GeneralFunctions.resetAppState();
+    }
   }
 
   // ── Filtered list ─────────────────────────────────────────────────

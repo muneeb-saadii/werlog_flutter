@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:wellness/ui/screens/profile_segment/currency_screen.dart';
 import 'package:wellness/ui/screens/screen_03_subscription.dart';
 import '../../core/api/api_service.dart';
 import '../../core/api/endpoints.dart';
@@ -225,6 +226,31 @@ class _SignInScreenState extends State<SignInScreen> {
         SharedPrefHelper.refreshToken,
         data['refreshToken'],
       );
+
+      // In handleAuthResponse, after saving tokens:
+      // await GeneralFunctions.initCurrencyForNewUser();
+      // In handleAuthResponse, after saving tokens:
+      final String? serverCurrency = meResponse['currency']?.toString();
+      print("::handleAuthResponse currency from server => $serverCurrency");
+
+      if (serverCurrency != null && serverCurrency.isNotEmpty) {
+        // Server provided a currency — find it in the fixed list and save
+        final match = GeneralFunctions.kCurrencies.firstWhere(
+              (c) => c.code.toUpperCase() == serverCurrency.toUpperCase(),
+          orElse: () => const CurrencyItem(
+              id: 'usd', code: 'USD', symbol: '\$',
+              name: 'US Dollar', country: 'United States', region: 'Americas'),
+        );
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyId,     match.id);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyCode,   match.code);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyName,   match.name);
+        GeneralFunctions.currencySymbol = '${match.code/*symbol*/} ';
+        print("::handleAuthResponse currency set => ${match.code} ${match.symbol}");
+      } else {
+        // Server returned null — keep existing saved currency or default $
+        print("::handleAuthResponse currency is null — keeping existing or \$ default");
+      }
 
       meResponse['password'] = _data.passwordValue;
       data['meResponse'] = meResponse;

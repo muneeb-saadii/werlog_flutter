@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pdfx/pdfx.dart';
 
 import '../../../../../core/api/api_service.dart';
 import '../../../../../core/api/endpoints.dart';
@@ -601,7 +602,7 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
           const Icon(Icons.photo_library_outlined,
               size: 15, color: WerlogColors.textTertiary),
           const SizedBox(width: 6),
-          Text('Invoice Images', style: WerlogTextStyles.sectionTitle),
+          Text('Invoices', style: WerlogTextStyles.sectionTitle),
           const SizedBox(width: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -621,7 +622,39 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
           child: Row(
             children: widget.imageUrls.asMap().entries.map((e) {
               final index = e.key;
-              final url = ApiService.baseImgUrl + e.value;
+              final url   = ApiService.baseImgUrl + e.value;
+
+              // ── PDF tile ─────────────────────────────────────────────────────
+              if (_isPdfUrl(url)) {
+                return GestureDetector(
+                  onTap: () => _openPdfViewer(context, url),
+                  child: Container(
+                    width: 90, height: 90,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: WerlogColors.coralSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: WerlogColors.coral.withOpacity(0.3), width: 0.8),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.picture_as_pdf_rounded,
+                            color: WerlogColors.coral, size: 28),
+                        const SizedBox(height: 4),
+                        Text('PDF',
+                            style: WerlogTextStyles.captionSmall.copyWith(
+                                color: WerlogColors.coral,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+            /*children: widget.imageUrls.asMap().entries.map((e) {
+              final index = e.key;
+              final url = ApiService.baseImgUrl + e.value;*/
               print("pop: " + url);
               return GestureDetector(
                 onTap: () => _openImageViewer(context, index),
@@ -684,6 +717,13 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
           ),
         ),
       ]),
+    );
+  }
+  void _openPdfViewer(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.92),
+      builder: (_) => _PdfViewerDialog(url: url),
     );
   }
 
@@ -815,6 +855,10 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
       ),
     );
   }
+  bool _isPdfUrl(String url) {
+    final lower = url.toLowerCase().split('?').first; // strip query params
+    return lower.endsWith('.pdf');
+  }
 
   Widget _buildActionBar(BuildContext context) {
     return Container(
@@ -931,6 +975,127 @@ class _WarrantyDetailScreenState extends State<WarrantyDetailScreen> {
               offset: const Offset(0, 2))
         ],
       );
+}
+
+class _PdfViewerDialog extends StatefulWidget {
+  final String url;
+  const _PdfViewerDialog({required this.url});
+
+  @override
+  State<_PdfViewerDialog> createState() => _PdfViewerDialogState();
+}
+
+class _PdfViewerDialogState extends State<_PdfViewerDialog> {
+  late final PdfControllerPinch _pdfController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pdfController = PdfControllerPinch(
+      document: _loadPdfFromUrl(widget.url),
+    );
+  }
+
+  Future<PdfDocument> _loadPdfFromUrl(String url) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      return PdfDocument.openData(response.bodyBytes);
+    }
+    throw Exception('Failed to load PDF: ${response.statusCode}');
+  }
+
+  @override
+  void dispose() {
+    _pdfController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(children: [
+
+        // ── PDF viewer ───────────────────────────────────────────────
+        PdfViewPinch(
+          controller: _pdfController,
+          onDocumentError: (error) {
+            debugPrint('PDF load error: $error');
+          },
+          builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
+            options: const DefaultBuilderOptions(
+              loaderSwitchDuration: Duration(milliseconds: 400),
+            ),
+            documentLoaderBuilder: (_) => const Center(
+              child: CircularProgressIndicator(color: WerlogColors.teal),
+            ),
+            pageLoaderBuilder: (_) => const Center(
+              child: CircularProgressIndicator(color: WerlogColors.teal),
+            ),
+            errorBuilder: (_, error) => Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.error_outline_rounded,
+                    color: Colors.white54, size: 48),
+                const SizedBox(height: 12),
+                Text('Failed to load PDF',
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontFamily: 'DMSans',
+                        fontSize: 13)),
+              ]),
+            ),
+          ),
+        ),
+
+        // ── Top bar: page counter + close ────────────────────────────
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 8,
+          left: 0, right: 0,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Page counter
+                PdfPageNumber(
+                  controller: _pdfController,
+                  builder: (_, loadingState, page, pagesCount) => Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      loadingState == PdfLoadingState.success
+                          ? '$page / $pagesCount'
+                          : 'Loading...',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 12,
+                          fontFamily: 'DMSans', fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ),
+                // Close button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
 }
 
 // Full-screen image viewer
@@ -1462,9 +1627,17 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
                         _invoiceNoCtrl, 'Invoice No.', Icons.receipt_outlined),
                     _field(_invoiceDateCtrl, 'Invoice Date',
                         Icons.calendar_today_outlined,
+                        hint: 'DD/MM/YYYY',
+                        isDate: true),            // ← add this
+                    _field(_expiryDateCtrl, 'Expiry Date',
+                        Icons.event_outlined,
+                        hint: 'DD/MM/YYYY',
+                        isDate: true),            // ← add this
+                    /*_field(_invoiceDateCtrl, 'Invoice Date',
+                        Icons.calendar_today_outlined,
                         hint: 'DD/MM/YYYY'),
                     _field(_expiryDateCtrl, 'Expiry Date', Icons.event_outlined,
-                        hint: 'DD/MM/YYYY'),
+                        hint: 'DD/MM/YYYY'),*/
 
                     const SizedBox(height: 6),
 
@@ -1917,6 +2090,130 @@ class _UpdateWarrantySheetState extends State<_UpdateWarrantySheet> {
 
   // ── Text field helper ──────────────────────────────────────────────
   Widget _field(
+      TextEditingController ctrl,
+      String label,
+      IconData icon, {
+        String? hint,
+        bool required = false,
+        bool isPriceDisplay = false,
+        bool isDate = false,                          // ← NEW
+        TextInputType keyboardType = TextInputType.text,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextFormField(
+        controller: ctrl,
+        keyboardType: isDate ? TextInputType.none : keyboardType,  // ← blocks keyboard for date
+        readOnly: isDate,                                           // ← prevents manual typing
+        onTap: isDate ? () => _pickDate(ctrl) : null,              // ← opens calendar on tap
+        style: WerlogTextStyles.txTitle.copyWith(fontSize: 13),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon: isPriceDisplay
+              ? Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                GeneralFunctions.currencySymbol,
+                style: WerlogTextStyles.txTitle.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          )
+              : Icon(
+            icon,
+            size: 16,
+            color: WerlogColors.textTertiary,
+          ),
+          prefixIconConstraints: isPriceDisplay
+              ? const BoxConstraints(minWidth: 45, minHeight: 45)
+              : null,
+          labelStyle: WerlogTextStyles.caption
+              .copyWith(color: WerlogColors.textSecondary),
+          hintStyle: WerlogTextStyles.captionSmall,
+          filled: true,
+          fillColor: WerlogColors.surface,
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: WerlogColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+            const BorderSide(color: WerlogColors.border, width: 0.8),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+            const BorderSide(color: WerlogColors.teal, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+            const BorderSide(color: WerlogColors.coral, width: 1),
+          ),
+        ),
+        validator: required
+            ? (v) =>
+        (v == null || v.trim().isEmpty) ? '$label is required' : null
+            : null,
+      ),
+    );
+  }
+
+  /// Opens date picker and sets the controller value in DD/MM/YYYY format
+  Future<void> _pickDate(TextEditingController ctrl) async {
+    // Parse existing value to pre-select it in the picker
+    DateTime initialDate = DateTime.now();
+    try {
+      if (ctrl.text.isNotEmpty) {
+        final parts = ctrl.text.split('/');
+        if (parts.length == 3) {
+          initialDate = DateTime(
+            int.parse(parts[2]),
+            int.parse(parts[1]),
+            int.parse(parts[0]),
+          );
+        }
+      }
+    } catch (_) {}
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: WerlogColors.teal,           // header + selected day
+            onPrimary: Colors.white,              // text on selected
+            onSurface: WerlogColors.textPrimary,  // calendar day text
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: WerlogColors.teal,
+            ),
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null) {
+      final day   = picked.day.toString().padLeft(2, '0');
+      final month = picked.month.toString().padLeft(2, '0');
+      final year  = picked.year.toString();
+      ctrl.text = '$day/$month/$year';
+    }
+  }
+  Widget _field_old(
     TextEditingController ctrl,
     String label,
     IconData icon, {

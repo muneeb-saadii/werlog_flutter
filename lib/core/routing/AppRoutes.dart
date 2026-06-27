@@ -9,7 +9,7 @@ import '../../ui/screens/screen_04_ocr_flow.dart';
 import '../../ui/screens/screen_05_invoice_detail.dart';
 import '../../ui/screens/screen_06_dashboard.dart';
 import '../../ui/screens/screen_06_list_reports_profile.dart';
-import '../../ui/tset/screens/camera_screen.dart';
+import '../../ui/tset/screens/camera_screen_new.dart';
 import '../models/app_models.dart';
 import '../models/app_models_extended.dart' hide CameraViewData;
 

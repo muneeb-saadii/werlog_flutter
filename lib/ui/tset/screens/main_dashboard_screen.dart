@@ -6,23 +6,25 @@ import 'package:flutter/material.dart';
 import '../../../core/api/api_service.dart';
 import '../../../core/api/endpoints.dart';
 import '../../../core/models/app_models.dart';
-import '../../../core/models/app_models_extended.dart' hide CameraViewData;
+import '../../../core/models/app_models_extended.dart' hide CameraViewData, InvoiceLineItem;
 import '../../../core/routing/AppRoutes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
 import '../../../core/utils/shared_pref_helper.dart';
 import '../../screens/profile_segment/checkout_webview_screen.dart';
+import '../../screens/profile_segment/currency_screen.dart';
 import '../../screens/profile_segment/subscription_usage_screen.dart' hide SubscriptionPlan;
 import '../../screens/screen_03_subscription.dart';
-import 'camera_screen.dart';
+import 'camera_screen_new.dart';
 import '../../screens/profile_segment/notifications_screen.dart';
 import '../../screens/ocr_processing_screen.dart' hide WerlogTextStyles, WerlogColors, WerlogGradients;
 import '../../screens/screen_04_ocr_flow.dart';
 import '../../screens/screen_06_list_reports_profile.dart';
 import '../../../core/widgets/plan_restriction_dialog.dart';
 import 'expense_new/expense_dashboard_screen.dart';
+import 'expense_new/fresh/expense_data.dart';
 import 'warranty_dashboard_screen.dart';
-import 'expenses_tax_screen.dart';
+import 'package:wellness/ui/tset/screens/expense_new/fresh/expense_detail_screen.dart';
 
 // ─────────────────────────────────────────
 //  DATA MODELS — replace with API response
@@ -160,6 +162,9 @@ class MainDashboardData {
   static double businessPercent = 0.0;
   static double personalPercent = 0.0;
   static String businessExpenses = '';
+
+  // Recent Invoices
+  static List<Map<String, dynamic>> recentInvoices = [];
 }
 
 class MainDashboardScreen extends StatefulWidget {
@@ -177,6 +182,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       GeneralFunctions.getCurrencySymbol();
+      refreshData();
       loadDashboardData();
     });
   }
@@ -203,9 +209,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     const SizedBox(height: 14),
                     _buildAiInsightsSection(context),
                     const SizedBox(height: 14),
-                    _buildAlertsSection(context),
-                    const SizedBox(height: 14),
+                    if (MainDashboardData.topCategories.isNotEmpty) ...[
+                      _buildAlertsSection(context),
+                      const SizedBox(height: 14),
+                    ],
                     _buildSpendingSnapshot(context),
+                    const SizedBox(height: 14),
+                    _buildRecentInvoices(context),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -360,7 +370,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 _breakdownRow('GST/HST to Claim', MainDashboardData.gstHstToClaim),
                 const SizedBox(height: 6),
                 _breakdownRow('Tax Deductions', MainDashboardData.taxDeductions),
-                const SizedBox(height: 10),
+                /*const SizedBox(height: 10),
                 GestureDetector(
                   onTap: () {},
                   child: Row(
@@ -372,7 +382,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           color: WerlogColors.teal, size: 14),
                     ],
                   ),
-                ),
+                ),*/
               ],
             ),
           ],
@@ -477,7 +487,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           ),
                           Text('Total',
                               style:
-                                  WerlogTextStyles.caption.copyWith(fontSize: 8)),
+                              WerlogTextStyles.caption.copyWith(fontSize: 8)),
                         ],
                       ),
                     ],
@@ -503,31 +513,31 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
             const SizedBox(height: 12),
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              decoration: BoxDecoration(
-                color: WerlogColors.tealSurface,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      'Manage Warranties',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: WerlogTextStyles.link.copyWith(fontSize: 12),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  color: WerlogColors.tealSurface,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Manage Warranties',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: WerlogTextStyles.link.copyWith(fontSize: 12),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: WerlogColors.teal,
-                    size: 14,
-                  ),
-                ],
-              )
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: WerlogColors.teal,
+                      size: 14,
+                    ),
+                  ],
+                )
             ),
           ],
         ),
@@ -562,8 +572,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-              // builder: (_) => const ExpenseDashboardScreen())),
-              // builder: (_) => const ExpensesTaxScreen())),
+            // builder: (_) => const ExpenseDashboardScreen())),
+            // builder: (_) => const ExpensesTaxScreen())),
               builder: (_) => const ExpenseDashboardScreen())),
       child: Container(
         decoration: BoxDecoration(
@@ -620,13 +630,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 Icons.receipt_long_outlined, 'Total Expenses', MainDashboardData.totalExpenses),
             const SizedBox(height: 8),
             _expensesRow(
-                Icons.receipt_outlined, 'GST/HST Paid', MainDashboardData.gstHstPaid),
+                Icons.receipt_outlined, 'Business Expenses', MainDashboardData.gstHstPaid),
             const SizedBox(height: 8),
             _expensesRow(
-                Icons.percent, 'Eligible Deductions', MainDashboardData.eligibleDeductions),
-            const SizedBox(height: 8),
+                Icons.person/*percent*/, 'Personal Expenses', MainDashboardData.eligibleDeductions),
+            /*const SizedBox(height: 8),
             _expensesRow(
-                Icons.description_outlined, 'Documents', '${MainDashboardData.documents}'),
+                Icons.description_outlined, 'Documents', '${MainDashboardData.documents}'),*/
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -638,7 +648,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('View Tax Records',
+                  Text('View Expenses',
                       style: WerlogTextStyles.link.copyWith(fontSize: 12)),
                   const SizedBox(width: 4),
                   const Icon(Icons.chevron_right,
@@ -659,7 +669,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         const SizedBox(width: 6),
         Expanded(
             child:
-                Text(label, style: WerlogTextStyles.caption)),
+            Text(label, style: WerlogTextStyles.caption)),
         Text(value,
             style: WerlogTextStyles.txTitle.copyWith(fontSize: 12)),
       ],
@@ -764,8 +774,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final iconData = insight['icon'] == 'sparkle'
         ? Icons.auto_awesome
         : insight['icon'] == 'building'
-            ? Icons.home_work_outlined
-            : Icons.directions_car_outlined;
+        ? Icons.home_work_outlined
+        : Icons.directions_car_outlined;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -851,10 +861,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final iconData = alert['icon'] == 'warning'
         ? Icons.warning_amber_rounded
         : alert['icon'] == 'document'
-            ? Icons.description_outlined
-            : alert['icon'] == 'upload'
-                ? Icons.cloud_upload_outlined
-                : Icons.receipt_outlined;
+        ? Icons.description_outlined
+        : alert['icon'] == 'upload'
+        ? Icons.cloud_upload_outlined
+        : Icons.receipt_outlined;
 
     return Container(
       width: 148,
@@ -1133,17 +1143,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             children: [
               _navItem(Icons.home_rounded, 'Home', true, () {}),
               _navItem(Icons.verified_user_outlined, 'Warranty', false,
-                  () => callWarrantyDashboardScreen()),
+                      () => callWarrantyDashboardScreen()),
               _navScanButton(context),
               _navItem(Icons.attach_money, 'Expenses', false,
-                  () => Navigator.push(context, MaterialPageRoute(
+                      () => Navigator.push(context, MaterialPageRoute(
                     builder: (_) => const ExpenseDashboardScreen(),
                   ))),
               /*_navItem(Icons.attach_money, 'Expenses', false,
                   () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => const ExpensesTaxScreen()))),*/
               _navItem(Icons.person_outline, 'Profile', false,
-                  () {
+                      () {
                     final userData = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
                     final user = userData?['meResponse'];
                     final email = user?['email'] ?? '';
@@ -1155,7 +1165,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     print("profile user data: $user");
                     Navigator.push(context,
                         MaterialPageRoute(builder: (_) => ProfileScreen(data: ProfileData(
-                          fullName: name, email: email, planLabel: plan, initials: profAbb
+                            fullName: name, email: email, planLabel: plan, initials: profAbb
                         ),)));
                   }),
             ],
@@ -1174,14 +1184,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         children: [
           Icon(icon,
               color:
-                  active ? WerlogColors.teal : WerlogColors.textTertiary,
+              active ? WerlogColors.teal : WerlogColors.textTertiary,
               size: 22),
           const SizedBox(height: 3),
           Text(
             label,
             style: WerlogTextStyles.tabLabel.copyWith(
               color:
-                  active ? WerlogColors.teal : WerlogColors.textTertiary,
+              active ? WerlogColors.teal : WerlogColors.textTertiary,
             ),
           ),
         ],
@@ -1538,6 +1548,57 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
+  Future<void> refreshData() async {
+
+    try {
+
+      final response = await ApiService.callRefreshTokenApi();
+      final responseData = response['data'];
+
+      print("_doRefresh::REFRESH-RESPONSE: "+responseData.toString());
+      // Persist the new session data locally
+      await SharedPrefHelper.saveObject(
+        SharedPrefHelper.loginData,
+        responseData,
+      );
+      await SharedPrefHelper.saveString(
+        SharedPrefHelper.accessToken,
+        responseData['accessToken'],
+      );
+
+      final String? serverCurrency = responseData['currency']?.toString();
+      print("::handleAuthResponse currency from server => $serverCurrency");
+
+      if (serverCurrency != null && serverCurrency.isNotEmpty) {
+        // Server provided a currency — find it in the fixed list and save
+        final match = GeneralFunctions.kCurrencies.firstWhere(
+              (c) => c.code.toUpperCase() == serverCurrency.toUpperCase(),
+          orElse: () => const CurrencyItem(
+              id: 'usd', code: 'USD', symbol: '\$',
+              name: 'US Dollar', country: 'United States', region: 'Americas'),
+        );
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyId,     match.id);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyCode,   match.code);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyName,   match.name);
+        GeneralFunctions.currencySymbol = '${match.symbol} ';
+        print("::handleAuthResponse currency set => ${match.code} ${match.symbol}");
+      } else {
+        // Server returned null — keep existing saved currency or default $
+        print("::handleAuthResponse currency is null — keeping existing or \$ default");
+      }
+
+    } catch (e) {
+
+      print('ERROR => $e');
+
+      GeneralFunctions.showError(
+        context,
+        "Process interrupted. Please try again!",
+      );
+    }
+  }
+
   Future<void> loadDashboardData() async {
 
     try {
@@ -1718,6 +1779,33 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           MainDashboardData.businessExpenses =
           '${GeneralFunctions.currencySymbol}${(split['businessAmount'] ?? 0).toString()}';
 
+          // =========================================================
+          // RECENT INVOICES
+          // =========================================================
+
+          MainDashboardData.recentInvoices =
+              (data['recentInvoices'] as List<dynamic>? ?? [])
+                  .map<Map<String, dynamic>>((item) => {
+                'invoiceId':       item['invoiceId']?.toString() ?? '',
+                'vendorName':      item['vendorName']?.toString() ?? '',
+                'invoiceDate':     item['invoiceDate']?.toString() ?? '',
+                'totalAmount':     (item['totalAmount'] as num?)?.toDouble() ?? 0.0,
+                'currency':        item['currency']?.toString() ?? '',
+                'subcategoryName': item['subcategoryName']?.toString() ?? '',
+                'thumbnailUrl':    item['thumbnailUrl']?.toString() ?? '',
+                'needsReview':     item['needsReview'] == true,
+                'autoCategorized': item['autoCategorized'] == true,
+                'imageUrls':       (item['imageUrls'] as List<dynamic>? ?? [])
+                    .map((e) => e.toString()).toList(),
+                'items':           (item['items'] as List<dynamic>? ?? [])
+                    .map<Map<String, dynamic>>((i) => {
+                  'description': i['description']?.toString() ?? '',
+                  'quantity':    (i['quantity'] as num?)?.toInt() ?? 1,
+                  'unitPrice':   (i['unitPrice'] as num?)?.toDouble() ?? 0.0,
+                  'amount':      (i['amount'] as num?)?.toDouble() ?? 0.0,
+                }).toList(),
+              }).toList();
+
         });
 
       } else {
@@ -1783,6 +1871,60 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         "Process interrupted. Please try again!",
       );
     }
+  }
+
+  // ── Recent Expense Invoices ───────────────────────────────────────────────
+  Widget _buildRecentInvoices(BuildContext context) {
+    final invoices = MainDashboardData.recentInvoices;
+    if (invoices.isEmpty) return const SizedBox.shrink();
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+      // ── Section heading ─────────────────────────────────────────────────
+      Row(children: [
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(
+            color: WerlogColors.tealSurface,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.receipt_long_rounded,
+              size: 14, color: WerlogColors.teal),
+        ),
+        const SizedBox(width: 8),
+        const Text('Recent Expense Invoices',
+            style: WerlogTextStyles.sectionTitle),
+        // const Spacer(),
+        const SizedBox(width: 4),
+        GestureDetector(
+          onTap: () {
+            // Navigate to full expense list
+          },
+          child: Text('(${invoices.length})',
+              style: WerlogTextStyles.link.copyWith(fontSize: 12)),
+        ),
+      ]),
+
+      const SizedBox(height: 10),
+
+      // ── Invoice list ────────────────────────────────────────────────────
+      ...invoices.map((inv) => _RecentInvoiceCard(
+        invoice: inv,
+        onTap: () => _openInvoiceDetail(context, inv),
+      )).toList(),
+    ]);
+  }
+
+  void _openInvoiceDetail(BuildContext context, Map<String, dynamic> inv) {
+    // InvoiceItem.fromJson handles all field parsing including imageUrls and items
+    final item = InvoiceItem.fromJson(inv);
+
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => ExpenseDetailScreen(
+        item:      item,
+        imageUrls: item.imageUrls,   // already parsed inside fromJson
+      ),
+    ));
   }
 
   void callWarrantyDashboardScreen() {
@@ -1930,14 +2072,260 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Recent Invoice Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RecentInvoiceCard extends StatelessWidget {
+  final Map<String, dynamic> invoice;
+  final VoidCallback onTap;
+
+  const _RecentInvoiceCard({
+    required this.invoice,
+    required this.onTap,
+  });
+
+  String get _formattedDate {
+    final raw = invoice['invoiceDate']?.toString() ?? '';
+    try {
+      final dt = DateTime.parse(raw);
+      const m = ['Jan','Feb','Mar','Apr','May','Jun',
+        'Jul','Aug','Sep','Oct','Nov','Dec'];
+      return '${m[dt.month - 1]} ${dt.day}, ${dt.year}';
+    } catch (_) { return raw; }
+  }
+
+  String get _formattedAmount {
+    final currency = invoice['currency']?.toString() ?? '';
+    final amount   = (invoice['totalAmount'] as num?)?.toDouble() ?? 0.0;
+    return '$currency ${amount.toStringAsFixed(2)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbnailUrl   = invoice['thumbnailUrl']?.toString() ?? '';
+    final vendorName     = invoice['vendorName']?.toString() ?? '';
+    final subcategory    = invoice['subcategoryName']?.toString() ?? '';
+    final needsReview    = invoice['needsReview'] == true;
+    final autoCategorized= invoice['autoCategorized'] == true;
+    final items          = invoice['items'] as List<dynamic>? ?? [];
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: WerlogColors.border, width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6, offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+            // ── Thumbnail ──────────────────────────────────────────────────
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(
+                color: WerlogColors.tealLightSurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: WerlogColors.border, width: 0.8),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: thumbnailUrl.isNotEmpty
+                  ? Image.network(
+                ApiService.baseImgUrl + thumbnailUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (_, child, progress) =>
+                progress == null
+                    ? child
+                    : const Center(
+                  child: SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: WerlogColors.teal),
+                  ),
+                ),
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.receipt_rounded,
+                      color: WerlogColors.teal, size: 22),
+                ),
+              )
+                  : const Center(
+                child: Icon(Icons.receipt_rounded,
+                    color: WerlogColors.teal, size: 22),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // ── Main content ───────────────────────────────────────────────
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                // Vendor + amount
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(vendorName,
+                          style: WerlogTextStyles.txTitle.copyWith(fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_formattedAmount,
+                        style: WerlogTextStyles.bodySmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: WerlogColors.teal,
+                            fontSize: 12)),
+                  ],
+                ),
+
+                const SizedBox(height: 4),
+
+                // Date + subcategory
+                Row(children: [
+                  const Icon(Icons.calendar_today_rounded,
+                      size: 10, color: WerlogColors.textTertiary),
+                  const SizedBox(width: 4),
+                  Text(_formattedDate, style: WerlogTextStyles.captionSmall),
+                  const SizedBox(width: 8),
+                  Container(
+                      width: 3, height: 3,
+                      decoration: const BoxDecoration(
+                          color: WerlogColors.textTertiary, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(subcategory,
+                        style: WerlogTextStyles.captionSmall,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ]),
+
+                const SizedBox(height: 6),
+
+                // Line items preview (up to 2)
+                ...items.take(2).map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Row(children: [
+                    Container(
+                      width: 4, height: 4,
+                      margin: const EdgeInsets.only(right: 6, top: 1),
+                      decoration: BoxDecoration(
+                        color: WerlogColors.teal.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        item['description']?.toString() ?? '',
+                        style: WerlogTextStyles.captionSmall.copyWith(
+                            color: WerlogColors.textSecondary),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '${invoice['currency'] ?? ''} ${(item['amount'] as num?)?.toStringAsFixed(0) ?? '0'}',
+                      style: WerlogTextStyles.captionSmall.copyWith(
+                          color: WerlogColors.textSecondary),
+                    ),
+                  ]),
+                )),
+
+                if (items.length > 2) ...[
+                  const SizedBox(height: 2),
+                  Text('+${items.length - 2} more items',
+                      style: WerlogTextStyles.captionSmall
+                          .copyWith(color: WerlogColors.teal)),
+                ],
+
+                const SizedBox(height: 6),
+
+                // Badges
+                Row(children: [
+                  if (autoCategorized)
+                    _Badge(
+                      label: 'Auto-categorized',
+                      bg: WerlogColors.tealSurface,
+                      color: WerlogColors.teal,
+                      icon: Icons.auto_awesome_rounded,
+                    ),
+                  if (autoCategorized && needsReview)
+                    const SizedBox(width: 6),
+                  if (needsReview)
+                    _Badge(
+                      label: 'Needs review',
+                      bg: WerlogColors.amberSurface,
+                      color: WerlogColors.amber,
+                      icon: Icons.warning_amber_rounded,
+                    ),
+                ]),
+              ],
+            )),
+
+            // ── Chevron ────────────────────────────────────────────────────
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Icon(Icons.chevron_right_rounded,
+                  color: WerlogColors.textTertiary, size: 18),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Small badge widget ────────────────────────────────────────────────────────
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color bg;
+  final Color color;
+  final IconData icon;
+
+  const _Badge({
+    required this.label,
+    required this.bg,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+          color: bg, borderRadius: BorderRadius.circular(6)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 9, color: color),
+        const SizedBox(width: 3),
+        Text(label,
+            style: TextStyle(
+              fontFamily: 'DMSans', fontSize: 9,
+              fontWeight: FontWeight.w500, color: color,
+            )),
+      ]),
+    );
+  }
+}
+
 // ── Custom painters ───────────────────────
 class _DonutPainter extends CustomPainter {
   final int active, expiringSoon, expired, claimed;
   _DonutPainter(
       {required this.active,
-      required this.expiringSoon,
-      required this.expired,
-      required this.claimed});
+        required this.expiringSoon,
+        required this.expired,
+        required this.claimed});
 
   @override
   void paint(Canvas canvas, Size size) {

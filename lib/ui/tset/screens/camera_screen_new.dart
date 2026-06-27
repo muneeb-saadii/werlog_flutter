@@ -325,22 +325,53 @@ class _NewCameraScreenState extends State<NewCameraScreen>
     }
   }
 
-  // ── gallery / PDF source prompt ──────────────────────────────────────────────
+  // ── document scanner (camera option) ─────────────────────────────────────────
+  // Opens CunningDocumentScanner directly — no built-in camera needed.
+  // The scanner handles auto edge detection and the user confirms the crop.
+  Future<void> _scanWithCamera() async {
+    if (_selectedPdf != null) {
+      _showConflictSnackbar('Remove the PDF first before capturing images.');
+      return;
+    }
+    try {
+      final List<String>? pictures =
+          await CunningDocumentScanner.getPictures(
+        noOfPages: 10,               // allow up to 10 pages per session
+        isGalleryImportAllowed: false,
+      );
+      if (pictures == null || pictures.isEmpty) return;
+      if (mounted) {
+        setState(() {
+          for (final p in pictures) {
+            _images.add(CapturedImage(file: File(p)));
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Document scanner error: $e');
+    }
+  }
 
-  /// Shows a bottom sheet letting the user choose: photos OR PDF.
-  /// Enforces the mutual-exclusivity rule before opening either picker.
+  // ── 3-option source selection (replaces old bottom sheet) ────────────────────
+  /// Shows a full-screen modern source picker with 3 options:
+  /// Camera (document scanner), Gallery, PDF.
   Future<void> _showMediaSourceSheet(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MediaSourceSheet(
+      isScrollControlled: true,
+      builder: (_) => _SourceSelectionSheet(
         hasPdf:    _selectedPdf != null,
         hasImages: _images.isNotEmpty,
-        onPickImages: () {
+        onCamera: () {
+          Navigator.pop(context);
+          _scanWithCamera();
+        },
+        onGallery: () {
           Navigator.pop(context);
           _pickFromGallery();
         },
-        onPickPdf: () {
+        onPdf: () {
           Navigator.pop(context);
           _pickPdf();
         },
@@ -351,10 +382,8 @@ class _NewCameraScreenState extends State<NewCameraScreen>
   // ── gallery (images only) ────────────────────────────────────────────────────
 
   Future<void> _pickFromGallery() async {
-    // Block if a PDF is already selected
     if (_selectedPdf != null) {
-      _showConflictSnackbar(
-          'Remove the PDF first before adding images.');
+      _showConflictSnackbar('Remove the PDF first before adding images.');
       return;
     }
 
@@ -372,31 +401,44 @@ class _NewCameraScreenState extends State<NewCameraScreen>
     );
     if (picked.isEmpty) return;
 
-// ── AUTO DOCUMENT CROP for each picked image ──────────────────────────────
-// Open the confirm/adjust cropper for each image before adding it.
+    // ── Open ImageCropper directly for each picked image ──────────────────
+    // No camera scanner — just crop frame with adjust options.
     for (final x in picked) {
       final rawFile = File(x.path);
-      final cropped = await _openDocumentCropperOnCaptured(rawFile);
-      if (cropped != null && mounted) {
-        setState(() {
-          _images.add(CapturedImage(
-            file: rawFile,
-            cropped: cropped.path != rawFile.path ? cropped : null,
-          ));
-        });
-      }
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: rawFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle:              'Crop Document',
+            toolbarColor:              const Color(0xFF0D2427),
+            toolbarWidgetColor:        Colors.white,
+            activeControlsWidgetColor: const Color(0xFFE8A838),
+            backgroundColor:           const Color(0xFF0D2427),
+            statusBarColor:            const Color(0xFF0D2427),
+            initAspectRatio:           CropAspectRatioPreset.original,
+            lockAspectRatio:           false,
+            hideBottomControls:        false,
+            showCropGrid:              true,
+          ),
+          IOSUiSettings(
+            title:                   'Crop Document',
+            doneButtonTitle:         'Use',
+            cancelButtonTitle:       'Cancel',
+            minimumAspectRatio:      0.5,
+            resetAspectRatioEnabled: true,
+          ),
+        ],
+      );
+
+      if (!mounted) return;
+      final resultFile = cropped != null ? File(cropped.path) : rawFile;
+      setState(() {
+        _images.add(CapturedImage(
+          file:    rawFile,
+          cropped: cropped != null ? resultFile : null,
+        ));
+      });
     }
-// ─────────────────────────────────────────────────────────────────────────
-    /*final picked = await _picker.pickMultiImage(
-      imageQuality: 90,
-      requestFullMetadata: false,
-    );
-    if (picked.isEmpty) return;
-    setState(() {
-      for (final x in picked) {
-        _images.add(CapturedImage(file: File(x.path)));
-      }
-    });*/
   }
 
   // ── PDF picker ───────────────────────────────────────────────────────────────
@@ -579,24 +621,19 @@ class _NewCameraScreenState extends State<NewCameraScreen>
             onClose: widget.onClose,
             isPermanent: true,
           ),
-        _PermState.granted => _CameraBody(
-            data: widget.data ?? CameraViewData(),
-            controller: _controller,
-            isCamReady: _isCamReady,
-            flashMode: _flashMode,
-            images: _images,
-            isCapturing: _isCapturing,
-            selectedPdf: _selectedPdf,
+        _PermState.granted => _SelectionBody(
+            data:          widget.data ?? CameraViewData(),
+            images:        _images,
+            selectedPdf:   _selectedPdf,
             selectedPdfName: _selectedPdfName,
-            onClose: widget.onClose,
-            onCapture: _capture,
-            onGallery: (ctx) => _showMediaSourceSheet(ctx),
-            onToggleFlash: _toggleFlash,
-            onSwitchCamera: _cameras.length > 1 ? _switchCamera : null,
-            onCrop: _cropImage,
-            onRemove: _removeImage,
-            onRemovePdf: _clearPdf,
-            onProceed: (_images.isNotEmpty || _selectedPdf != null) && !_proceeded
+            onClose:       widget.onClose,
+            onCamera:      _scanWithCamera,
+            onGallery:     _pickFromGallery,
+            onPdf:         _pickPdf,
+            onCrop:        _cropImage,
+            onRemove:      _removeImage,
+            onRemovePdf:   _clearPdf,
+            onProceed:     (_images.isNotEmpty || _selectedPdf != null) && !_proceeded
                 ? _proceed
                 : null,
           ),
@@ -1575,6 +1612,431 @@ class _CircleButton extends StatelessWidget {
       alignment: Alignment.center,
       child: child,
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Selection body — shown instead of camera preview as the default state
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SelectionBody extends StatelessWidget {
+  final CameraViewData data;
+  final List<CapturedImage> images;
+  final File? selectedPdf;
+  final String? selectedPdfName;
+  final VoidCallback? onClose;
+  final VoidCallback onCamera;
+  final VoidCallback onGallery;
+  final VoidCallback onPdf;
+  final void Function(int) onCrop;
+  final void Function(int) onRemove;
+  final VoidCallback? onRemovePdf;
+  final VoidCallback? onProceed;
+
+  const _SelectionBody({
+    required this.data,
+    required this.images,
+    this.selectedPdf,
+    this.selectedPdfName,
+    this.onClose,
+    required this.onCamera,
+    required this.onGallery,
+    required this.onPdf,
+    required this.onCrop,
+    required this.onRemove,
+    this.onRemovePdf,
+    this.onProceed,
+  });
+
+  bool get _hasContent => images.isNotEmpty || selectedPdf != null;
+  bool get _isWarranty => data.scanType == ScanType.warranty;
+
+  @override
+  Widget build(BuildContext context) {
+    final top    = MediaQuery.of(context).padding.top;
+    final bottom = MediaQuery.of(context).padding.bottom;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A1E21),
+      body: Column(children: [
+
+        // ── Top bar ──────────────────────────────────────────────────────────
+        Container(
+          color: const Color(0xFF0A1E21),
+          padding: EdgeInsets.fromLTRB(16, top + 8, 16, 10),
+          child: Row(children: [
+            GestureDetector(
+              onTap: onClose,
+              child: _CircleButton(
+                child: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+            const Spacer(),
+            // Scan type badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A3A3F),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: const Color(0xFFE8A838).withOpacity(0.3), width: 0.8),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(
+                  _isWarranty ? Icons.verified_outlined : Icons.receipt_long_outlined,
+                  color: const Color(0xFFE8A838), size: 13,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  _isWarranty ? 'Warranty Scan' : 'Expense Scan',
+                  style: const TextStyle(
+                    color: Color(0xFFE8A838),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'DMSans',
+                  ),
+                ),
+              ]),
+            ),
+            const Spacer(),
+            const SizedBox(width: 36), // balance close button
+          ]),
+        ),
+
+        // ── Main content ─────────────────────────────────────────────────────
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(children: [
+
+              const SizedBox(height: 24),
+
+              // ── Hero area ─────────────────────────────────────────────────
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF1A3A3F),
+                      const Color(0xFF0D2427),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: Colors.white.withOpacity(0.06), width: 0.8),
+                ),
+                child: Column(children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8A838).withOpacity(0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: const Color(0xFFE8A838).withOpacity(0.3),
+                          width: 1.2),
+                    ),
+                    child: const Icon(Icons.document_scanner_outlined,
+                        color: Color(0xFFE8A838), size: 28),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Scan Your Document',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'DMSans',
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    data.hintText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.45),
+                      fontSize: 12,
+                      fontFamily: 'DMSans',
+                      height: 1.5,
+                    ),
+                  ),
+                ]),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── 3 option tiles ────────────────────────────────────────────
+              _OptionTile(
+                icon: Icons.document_scanner_rounded,
+                iconBg: const Color(0xFF1A3A3F),
+                iconColor: const Color(0xFFE8A838),
+                title: 'Scan with Camera',
+                subtitle: 'Auto document edge detection',
+                badge: 'Recommended',
+                badgeColor: const Color(0xFFE8A838),
+                enabled: selectedPdf == null,
+                lockedReason: selectedPdf != null ? 'Remove PDF first' : null,
+                onTap: onCamera,
+                isCamera: true,
+              ),
+
+              const SizedBox(height: 10),
+
+              _OptionTile(
+                icon: Icons.photo_library_rounded,
+                iconBg: const Color(0xFF1A2A40),
+                iconColor: const Color(0xFF5DCAA5),
+                title: 'Pick from Gallery',
+                subtitle: 'Select one or multiple images',
+                enabled: selectedPdf == null,
+                lockedReason: selectedPdf != null ? 'Remove PDF first' : null,
+                onTap: onGallery,
+                isGallery: true,
+              ),
+
+              const SizedBox(height: 10),
+
+              _OptionTile(
+                icon: Icons.picture_as_pdf_rounded,
+                iconBg: const Color(0xFF2A1A1A),
+                iconColor: const Color(0xFFD85A30),
+                title: 'Upload PDF',
+                subtitle: 'Single PDF, multi-page supported',
+                enabled: images.isEmpty,
+                lockedReason: images.isNotEmpty ? 'Remove images first' : null,
+                onTap: onPdf,
+                isPdf: true,
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Thumbnails / PDF chip ──────────────────────────────────────
+              if (selectedPdf != null)
+                _PdfChip(
+                  name: selectedPdfName ?? 'document.pdf',
+                  onRemove: onRemovePdf,
+                )
+              else if (images.isNotEmpty)
+                _ThumbnailStrip(
+                  images: images,
+                  onCrop: onCrop,
+                  onRemove: onRemove,
+                ),
+
+              if (_hasContent) const SizedBox(height: 16),
+            ]),
+          ),
+        ),
+
+        // ── Proceed button ───────────────────────────────────────────────────
+        if (_hasContent)
+          Container(
+            color: const Color(0xFF0A1E21),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: GestureDetector(
+                onTap: onProceed,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE8A838), Color(0xFFBA7517)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        selectedPdf != null
+                            ? Icons.picture_as_pdf_rounded
+                            : Icons.check_circle_outline_rounded,
+                        color: const Color(0xFF0A1E21),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        selectedPdf != null
+                            ? 'Proceed with PDF'
+                            : 'Proceed  (${images.length} image${images.length == 1 ? '' : 's'})',
+                        style: const TextStyle(
+                          color: Color(0xFF0A1E21),
+                          fontFamily: 'DMSans',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Option tile — one of the 3 source options
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final String? badge;
+  final Color? badgeColor;
+  final bool enabled;
+  final String? lockedReason;
+  final VoidCallback onTap;
+  final bool isCamera;
+  final bool isGallery;
+  final bool isPdf;
+
+  const _OptionTile({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    this.badge,
+    this.badgeColor,
+    required this.enabled,
+    this.lockedReason,
+    required this.onTap,
+    this.isCamera  = false,
+    this.isGallery = false,
+    this.isPdf     = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedOpacity(
+        opacity: enabled ? 1.0 : 0.4,
+        duration: const Duration(milliseconds: 200),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111F22),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: enabled
+                  ? iconColor.withOpacity(0.2)
+                  : Colors.white.withOpacity(0.06),
+              width: 0.8,
+            ),
+          ),
+          child: Row(children: [
+            // Icon box
+            Container(
+              width: 46, height: 46,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            // Text
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Text(title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'DMSans',
+                      )),
+                  if (badge != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: badgeColor!.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(badge!,
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'DMSans',
+                          )),
+                    ),
+                  ],
+                ]),
+                const SizedBox(height: 3),
+                Text(
+                  enabled ? subtitle : (lockedReason ?? subtitle),
+                  style: TextStyle(
+                    color: enabled
+                        ? Colors.white.withOpacity(0.4)
+                        : const Color(0xFFD85A30).withOpacity(0.7),
+                    fontSize: 11,
+                    fontFamily: 'DMSans',
+                  ),
+                ),
+              ],
+            )),
+            // Chevron
+            Icon(
+              enabled
+                  ? Icons.arrow_forward_ios_rounded
+                  : Icons.lock_outline_rounded,
+              color: enabled
+                  ? iconColor.withOpacity(0.6)
+                  : Colors.white.withOpacity(0.2),
+              size: 14,
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Source selection sheet — maps tap to correct action
+//  (Camera → scanner, Gallery → picker, PDF → file picker)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SourceSelectionSheet extends StatelessWidget {
+  final bool hasPdf;
+  final bool hasImages;
+  final VoidCallback onCamera;
+  final VoidCallback onGallery;
+  final VoidCallback onPdf;
+
+  const _SourceSelectionSheet({
+    required this.hasPdf,
+    required this.hasImages,
+    required this.onCamera,
+    required this.onGallery,
+    required this.onPdf,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // This sheet is shown when user taps any option tile in _SelectionBody.
+    // It routes to the correct handler based on which tile was tapped.
+    // The actual routing happens in _showMediaSourceSheet in the state.
+    return const SizedBox.shrink(); // placeholder — routing done in state
   }
 }
 

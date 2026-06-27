@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../ui/screens/profile_segment/currency_screen.dart';
 import '../api/api_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/general_functions.dart';
 import '../utils/shared_pref_helper.dart';
 
 // ════════════════════════════════════════════════════════════════════
@@ -155,6 +157,28 @@ class _SessionRefreshScreenState extends State<SessionRefreshScreen>
         SharedPrefHelper.accessToken,
         responseData['accessToken'],
       );
+
+      final String? serverCurrency = responseData['currency']?.toString();
+      print("::handleAuthResponse currency from server => $serverCurrency");
+
+      if (serverCurrency != null && serverCurrency.isNotEmpty) {
+        // Server provided a currency — find it in the fixed list and save
+        final match = GeneralFunctions.kCurrencies.firstWhere(
+              (c) => c.code.toUpperCase() == serverCurrency.toUpperCase(),
+          orElse: () => const CurrencyItem(
+              id: 'usd', code: 'USD', symbol: '\$',
+              name: 'US Dollar', country: 'United States', region: 'Americas'),
+        );
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyId,     match.id);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyCode,   match.code);
+        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyName,   match.name);
+        GeneralFunctions.currencySymbol = '${match.symbol} ';
+        print("::handleAuthResponse currency set => ${match.code} ${match.symbol}");
+      } else {
+        // Server returned null — keep existing saved currency or default $
+        print("::handleAuthResponse currency is null — keeping existing or \$ default");
+      }
 
       if (!mounted) return;
 
@@ -444,13 +468,13 @@ class _SessionRefreshScreenState extends State<SessionRefreshScreen>
       ),
       const SizedBox(height: 32),
       // Retry button
-      _WerlogButton(
+      /*_WerlogButton(
         label: 'Try Again',
         icon: Icons.refresh_rounded,
         onTap: _doRefresh,
         primary: true,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 12),*/
       // Sign out button
       _WerlogButton(
         label: 'Sign Out',

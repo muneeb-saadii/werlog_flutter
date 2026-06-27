@@ -284,7 +284,7 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
   }
 
   Widget _buildExpenseInfoCard(BuildContext context) {
-    final rows = [
+    /*final rows = [
       // {'label': 'Expense Type', 'value': widget.item.vendorName},
       {'label': 'Provider',      'value': widget.item.vendorName},
       // {'label': 'Duration',      'value': widget.item.invoiceDate},
@@ -292,6 +292,14 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
       // {'label': 'End Date',      'value': widget.item.invoiceDate},
       {'label': 'Claim Support', 'value': widget.item.needsReview.toString()},
       {'label': 'Website',       'value': widget.item.websiteUrl, 'isLink': 'true'},
+    ];*/
+    final rows = [
+      {'label': 'Provider',      'value': widget.item.vendorName},
+      {'label': 'Start Date',    'value': widget.item.invoiceDate},
+      {'label': 'Claim Support', 'value': widget.item.needsReview.toString()},
+      // Only include website row when value is non-null and non-empty
+      /*if (widget.item.websiteUrl != null && widget.item.websiteUrl!.isNotEmpty)
+        {'label': 'Website', 'value': widget.item.websiteUrl!, 'isLink': 'true'},*/
     ];
 
     return Container(
@@ -1115,7 +1123,7 @@ class _UpdateExpenseSheetState extends State<_UpdateExpenseSheet> {
                   // _field(_serialCtrl,      'Serial No.',    Icons.numbers_outlined),
                   _field(_invoiceNoCtrl,   'Invoice No.',   Icons.receipt_outlined),
                   _field(_invoiceDateCtrl, 'Invoice Date',  Icons.calendar_today_outlined,
-                      hint: 'DD/MM/YYYY'),
+                      hint: 'DD/MM/YYYY', isDate: true),
                   /*_field(_expiryDateCtrl,  'Expiry Date',   Icons.event_outlined,
                       hint: 'DD/MM/YYYY'),*/
 
@@ -1281,6 +1289,7 @@ class _UpdateExpenseSheetState extends State<_UpdateExpenseSheet> {
             flex: 3,
             child: _field(item.unitPriceCtrl, 'Unit Price',
                 Icons.attach_money_rounded,
+                isPriceDisplay: true,
                 keyboardType: TextInputType.number),
           ),
           const SizedBox(width: 8),
@@ -1297,18 +1306,97 @@ class _UpdateExpenseSheetState extends State<_UpdateExpenseSheet> {
 
   // ── Text field helper ──────────────────────────────────────────────
   Widget _field(
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    String? hint,
-    bool required = false,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
+      TextEditingController ctrl,
+      String label,
+      IconData icon, {
+        String? hint,
+        bool required = false,
+        bool isDate = false,
+        bool isPriceDisplay = false,        // ← ADD
+        TextInputType keyboardType = TextInputType.text,
+      }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextFormField(
         controller: ctrl,
-        keyboardType: keyboardType,
+        keyboardType: isDate ? TextInputType.none : keyboardType,
+        readOnly: isDate,
+        onTap: isDate ? () => _pickDate(ctrl) : null,
+        style: WerlogTextStyles.txTitle.copyWith(fontSize: 13),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          // ── prefix: currency symbol text OR icon ──────────────────
+          prefixIcon: isPriceDisplay
+              ? Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                GeneralFunctions.currencySymbol.trim(),
+                style: WerlogTextStyles.txTitle.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: WerlogColors.textSecondary,
+                ),
+              ),
+            ),
+          )
+              : Icon(icon, size: 16, color: WerlogColors.textTertiary),
+          prefixIconConstraints: isPriceDisplay
+              ? const BoxConstraints(minWidth: 40, minHeight: 40)
+              : null,
+          labelStyle: WerlogTextStyles.caption
+              .copyWith(color: WerlogColors.textSecondary),
+          hintStyle: WerlogTextStyles.captionSmall,
+          filled: true,
+          fillColor: WerlogColors.surface,
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: WerlogColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+            const BorderSide(color: WerlogColors.border, width: 0.8),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+            const BorderSide(color: WerlogColors.teal, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+            const BorderSide(color: WerlogColors.coral, width: 1),
+          ),
+        ),
+        validator: required
+            ? (v) => (v == null || v.trim().isEmpty)
+            ? '$label is required'
+            : null
+            : null,
+      ),
+    );
+  }
+  Widget _field_(
+      TextEditingController ctrl,
+      String label,
+      IconData icon, {
+        String? hint,
+        bool required = false,
+        bool isDate = false,
+        TextInputType keyboardType = TextInputType.text,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextFormField(
+        controller: ctrl,
+        keyboardType: isDate ? TextInputType.none : keyboardType,
+        readOnly: isDate,
+        onTap: isDate ? () => _pickDate(ctrl) : null,
         style: WerlogTextStyles.txTitle.copyWith(fontSize: 13),
         decoration: InputDecoration(
           labelText: label,
@@ -1320,7 +1408,7 @@ class _UpdateExpenseSheetState extends State<_UpdateExpenseSheet> {
           filled: true,
           fillColor: WerlogColors.surface,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: WerlogColors.border),
@@ -1328,25 +1416,70 @@ class _UpdateExpenseSheetState extends State<_UpdateExpenseSheet> {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: WerlogColors.border, width: 0.8),
+            const BorderSide(color: WerlogColors.border, width: 0.8),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: WerlogColors.teal, width: 1.5),
+            const BorderSide(color: WerlogColors.teal, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: WerlogColors.coral, width: 1),
+            const BorderSide(color: WerlogColors.coral, width: 1),
           ),
         ),
         validator: required
             ? (v) => (v == null || v.trim().isEmpty)
-                ? '$label is required'
-                : null
+            ? '$label is required'
+            : null
             : null,
       ),
     );
+  }
+
+  Future<void> _pickDate(TextEditingController ctrl) async {
+    // Parse existing value to pre-select it
+    DateTime initialDate = DateTime.now();
+    try {
+      if (ctrl.text.isNotEmpty) {
+        final parts = ctrl.text.split('/');
+        if (parts.length == 3) {
+          initialDate = DateTime(
+            int.parse(parts[2]),
+            int.parse(parts[1]),
+            int.parse(parts[0]),
+          );
+        }
+      }
+    } catch (_) {}
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),     // ← past dates only
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary:   WerlogColors.teal,
+            onPrimary: Colors.white,
+            onSurface: WerlogColors.textPrimary,
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+                foregroundColor: WerlogColors.teal),
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null) {
+      ctrl.text =
+      '${picked.day.toString().padLeft(2, '0')}/'
+          '${picked.month.toString().padLeft(2, '0')}/'
+          '${picked.year}';
+    }
   }
 }

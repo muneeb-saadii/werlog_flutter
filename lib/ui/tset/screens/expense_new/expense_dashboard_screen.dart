@@ -24,6 +24,7 @@ class ExpenseDashboardScreen extends StatefulWidget {
 class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
 
   String selectedYear = DateTime.now().year.toString();
+  String selectedType = 'PERSONAL'; // 'PERSONAL' | 'BUSINESS'
   List<String> years = List.generate(
     6, (index) => (DateTime.now().year - index).toString(),
   );
@@ -46,6 +47,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
         child: Column(children: [
           _TopBar(
             selectedYear: selectedYear,
+            selectedType: selectedType,
             years: years,
             onYearChanged: (year) {
               setState(() {
@@ -53,7 +55,11 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
                 ExpenseData.currentYear = year;
               });
               print("Selected Year => $selectedYear");
-              // call api here if needed
+              getExpenseDashboardData();
+            },
+            onTypeChanged: (type) {
+              setState(() => selectedType = type);
+              print("Selected Type => $selectedType");
               getExpenseDashboardData();
             },
           ),
@@ -69,7 +75,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
                   const SizedBox(height: 18),
                   _buildYearSummarySection(),
                   const SizedBox(height: 18),
-                  _CategoriesSection(selectedYear: selectedYear),
+                  _CategoriesSection(selectedYear: selectedYear, selType: selectedType),
                   const SizedBox(height: 18),
                   /*_AiInsightsSection(),
                   const SizedBox(height: 24),*/
@@ -153,6 +159,10 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
       final response = await ApiService.get(
         context,
         "${Endpoints.EXPENSE_DASHBOARD_DETAILS}$selectedYear",
+        queryParams: {
+          'type': selectedType,
+          'year': selectedYear,
+        },
       );
 
       print('\nSUCCE => $response');
@@ -360,6 +370,10 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
       final response = await ApiService.get(
         context,
         Endpoints.EXPENSE_TAX_YEARS,
+        queryParams: {
+          'type': selectedType,
+          'year': selectedYear,
+        },
       );
 
       print('\nSUCCESS => $response');
@@ -461,74 +475,208 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
   static IconData? _mapApiIcon(String? key) {
     if (key == null) return null;
     switch (key.toLowerCase().trim()) {
-      case 'monitor':
-      case 'electronics':
-      case 'tv':
-        return Icons.monitor;
 
-      case 'kitchen':
-      case 'home_appliances':
-      case 'appliances':
-        return Icons.kitchen;
+      case 'home_work_rounded':
+      case 'home_work':
+        return Icons.home_work_rounded;
 
-      case 'smartphone':
-      case 'mobile':
-      case 'phone':
-        return Icons.smartphone;
-
-      case 'chair':
-      case 'furniture':
-        return Icons.chair;
-
+      case 'directions_car_rounded':
       case 'directions_car':
       case 'car':
-      case 'vehicle':
+      case 'automotive':
       case 'vehicles':
-        return Icons.directions_car;
+        return Icons.directions_car_rounded;
 
-      case 'pedal_bike':
-      case 'bike':
-      case 'bikes':
-        return Icons.pedal_bike;
+      case 'monitor_rounded':
+      case 'monitor':
+      case 'electronics':
+      case 'computers_laptops':
+        return Icons.monitor_rounded;
 
-      case 'soup_kitchen':
-      case 'kitchen_appliances':
-        return Icons.soup_kitchen;
+      case 'campaign_rounded':
+      case 'campaign':
+        return Icons.campaign_rounded;
 
-      case 'handyman':
-      case 'tools':
-      case 'tool':
-        return Icons.handyman;
+      case 'gavel_rounded':
+      case 'gavel':
+        return Icons.gavel_rounded;
 
+      case 'business_center_rounded':
+      case 'business_center':
+        return Icons.business_center_rounded;
+
+      case 'restaurant_rounded':
+      case 'restaurant':
+        return Icons.restaurant_rounded;
+
+      case 'school_rounded':
+      case 'school':
+        return Icons.school_rounded;
+
+      case 'health_and_safety_rounded':
+      case 'health_and_safety':
+        return Icons.health_and_safety_rounded;
+
+      case 'fastfood_rounded':
+      case 'fastfood':
+        return Icons.fastfood_rounded;
+
+      case 'commute_rounded':
+      case 'commute':
+        return Icons.commute_rounded;
+
+      case 'bolt_rounded':
+      case 'bolt':
+        return Icons.bolt_rounded;
+
+      case 'inventory_2_rounded':
+      case 'inventory_2':
+        return Icons.inventory_2_rounded;
+
+      case 'medical_services_rounded':
+      case 'medical_services':
+      case 'medical':
+        return Icons.medical_services_rounded;
+
+      case 'flight_rounded':
+      case 'flight':
+        return Icons.flight_rounded;
+
+      case 'movie_rounded':
+      case 'movie':
+        return Icons.movie_rounded;
+
+      case 'shopping_bag_rounded':
+      case 'shopping_bag':
+        return Icons.shopping_bag_rounded;
+
+      case 'receipt_long_rounded':
+      case 'receipt_long':
+        return Icons.receipt_long_rounded;
+
+      case 'shield_rounded':
+      case 'shield':
+        return Icons.shield_rounded;
+
+      case 'account_balance_rounded':
+      case 'account_balance':
+        return Icons.account_balance_rounded;
+
+      case 'business_rounded':
+      case 'business':
+        return Icons.business_rounded;
+
+      case 'home_rounded':
+      case 'home':
+        return Icons.home_rounded;
+
+      case 'subscriptions_rounded':
+      case 'subscriptions':
+        return Icons.subscriptions_rounded;
+
+      case 'local_gas_station_rounded':
+      case 'local_gas_station':
+        return Icons.local_gas_station_rounded;
+
+      case 'storefront_rounded':
+      case 'storefront':
+        return Icons.storefront_rounded;
+
+      case 'phone_rounded':
+      case 'phone':
+      case 'smartphone':
+      case 'mobile':
+        return Icons.phone_rounded;
+
+      case 'balance_rounded':
+      case 'balance':
+        return Icons.balance_rounded;
+
+      case 'payments_rounded':
+      case 'payments':
+        return Icons.payments_rounded;
+
+      case 'construction_rounded':
+      case 'construction':
+        return Icons.construction_rounded;
+
+      case 'agriculture_rounded':
+      case 'agriculture':
+        return Icons.agriculture_rounded;
+
+      case 'pets_rounded':
+      case 'pets':
+        return Icons.pets_rounded;
+
+      case 'volunteer_activism_rounded':
+      case 'volunteer_activism':
+        return Icons.volunteer_activism_rounded;
+
+      case 'category_rounded':
       case 'category':
       case 'other':
-      case 'other_warranty':
-        return Icons.category_outlined;
+      case 'miscellaneous':
+        return Icons.category_rounded;
 
+      case 'kitchen_rounded':
+      case 'kitchen':
+      case 'appliances':
+        return Icons.kitchen_rounded;
+
+      case 'chair_rounded':
+      case 'chair':
+      case 'furniture':
+        return Icons.chair_rounded;
+
+      case 'handyman_rounded':
+      case 'handyman':
+      case 'tools':
+      case 'power_tools':
+        return Icons.handyman_rounded;
+
+      case 'watch_rounded':
       case 'watch':
-        return Icons.watch;
+      case 'wearables':
+        return Icons.watch_rounded;
+
+      case 'sports_esports_rounded':
+      case 'sports_esports':
+      case 'gaming':
+        return Icons.sports_esports_rounded;
+
+      case 'router_rounded':
+      case 'router':
+      case 'networking':
+        return Icons.router_rounded;
+
+      case 'photo_camera_rounded':
+      case 'photo_camera':
+      case 'camera':
+        return Icons.photo_camera_rounded;
+
+      case 'soup_kitchen_rounded':
+      case 'soup_kitchen':
+        return Icons.soup_kitchen_rounded;
+
+    // ── Legacy fallbacks ─────────────────────────────────────────────
+      case 'tv':
+      case 'television':
+        return Icons.tv_rounded;
 
       case 'computer':
       case 'laptop':
-        return Icons.computer;
+        return Icons.computer_rounded;
 
-      case 'camera':
-        return Icons.camera_alt_outlined;
-
-      case 'games':
-      case 'gaming':
-        return Icons.sports_esports_outlined;
-
-      case 'speaker':
-      case 'audio':
-        return Icons.speaker_outlined;
+      case 'pedal_bike':
+      case 'bike':
+        return Icons.pedal_bike_rounded;
 
       case 'ac':
-      case 'air_conditioner':
-        return Icons.ac_unit_outlined;
+      case 'ac_unit':
+        return Icons.ac_unit_rounded;
 
       default:
-        return null; // unknown key → use static fallback
+        return null;
     }
   }
 }
@@ -576,84 +724,154 @@ class _SummaryDivider extends StatelessWidget {
 
 // ── Top bar ───────────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
-
   final String selectedYear;
+  final String selectedType;
   final List<String> years;
   final Function(String year) onYearChanged;
+  final Function(String type) onTypeChanged;
 
   const _TopBar({
     required this.selectedYear,
+    required this.selectedType,
     required this.years,
     required this.onYearChanged,
+    required this.onTypeChanged,
   });
-
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: WerlogColors.surface,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Row(
-        children: [
+      child: Column(children: [
 
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).pop();
-            },
-            child: Icon(
-              Icons.arrow_back,
-              size: 22,
-              color: WerlogColors.textPrimary,
+        // ── Main bar: back + title + year picker ────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(children: [
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: const Icon(Icons.arrow_back,
+                  size: 22, color: WerlogColors.textPrimary),
             ),
-          ),
-
-          const Expanded(
-            child: Text(
-              'Expenses & Tax',
-              textAlign: TextAlign.center,
-              style: WerlogTextStyles.pageTitle,
+            const Expanded(
+              child: Text(
+                'Expenses & Tax',
+                textAlign: TextAlign.center,
+                style: WerlogTextStyles.pageTitle,
+              ),
             ),
-          ),
+            Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: WerlogColors.tealSurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: WerlogColors.border),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedYear,
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                      color: WerlogColors.textPrimary, size: 18),
+                  dropdownColor: WerlogColors.surface,
+                  style: WerlogTextStyles.body.copyWith(
+                      color: WerlogColors.textPrimary, fontSize: 13),
+                  items: years.map((year) => DropdownMenuItem<String>(
+                      value: year, child: Text(year))).toList(),
+                  onChanged: (value) {
+                    if (value != null) onYearChanged(value);
+                  },
+                ),
+              ),
+            ),
+          ]),
+        ),
 
-          Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+        // ── Type toggle: Personal | Business ───────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Container(
+            height: 40,
             decoration: BoxDecoration(
-              color: WerlogColors.tealSurface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: WerlogColors.border,
-              ),
+              color: WerlogColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: WerlogColors.borderLight, width: 0.8),
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedYear,
-                icon: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: WerlogColors.textPrimary,
-                  size: 18,
-                ),
-                dropdownColor: WerlogColors.surface,
-                style: WerlogTextStyles.body.copyWith(
-                  color: WerlogColors.textPrimary,
-                  fontSize: 13,
-                ),
-                items: years.map((year) {
-                  return DropdownMenuItem<String>(
-                    value: year,
-                    child: Text(year),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    onYearChanged(value);
-                  }
-                },
+            padding: const EdgeInsets.all(3),
+            child: Row(children: [
+              _TypeTab(
+                label: 'Personal',
+                icon: Icons.person_outline_rounded,
+                selected: selectedType == 'PERSONAL',
+                onTap: () => onTypeChanged('PERSONAL'),
               ),
-            ),
+              _TypeTab(
+                label: 'Business',
+                icon: Icons.business_center_outlined,
+                selected: selectedType == 'BUSINESS',
+                onTap: () => onTypeChanged('BUSINESS'),
+              ),
+            ]),
           ),
+        ),
 
-        ],
+        // ── Bottom border ───────────────────────────────────────────
+        Container(height: 0.5, color: WerlogColors.border),
+      ]),
+    );
+  }
+}
+
+class _TypeTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TypeTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? WerlogColors.teal : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: selected
+                ? [BoxShadow(
+                color: WerlogColors.teal.withOpacity(0.2),
+                blurRadius: 6, offset: const Offset(0, 2))]
+                : null,
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(
+              icon,
+              size: 14,
+              color: selected ? Colors.white : WerlogColors.textTertiary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 12,
+                fontWeight:
+                selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? Colors.white : WerlogColors.textTertiary,
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -860,8 +1078,10 @@ class _LegendRow extends StatelessWidget {
 // ── Categories section ────────────────────────────────────────────────
 class _CategoriesSection extends StatelessWidget {
   final String selectedYear;
+  final String selType;
   const _CategoriesSection({
     required this.selectedYear,
+    required this.selType,
   });
 
   @override
@@ -888,7 +1108,7 @@ class _CategoriesSection extends StatelessWidget {
             childAspectRatio: 1.05,
           ),
           itemCount: cats.length,
-          itemBuilder: (_, i) => _CategoryTile(cat: cats[i], selectedYear: selectedYear),
+          itemBuilder: (_, i) => _CategoryTile(cat: cats[i], selectedYear: selectedYear, selType: selType,),
         ),
       ]),
     );
@@ -898,8 +1118,9 @@ class _CategoriesSection extends StatelessWidget {
 class _CategoryTile extends StatelessWidget {
   final ExpenseCategory cat;
   final String selectedYear;
+  final String selType;
 
-  const _CategoryTile({required this.cat, required this.selectedYear});
+  const _CategoryTile({required this.cat, required this.selectedYear, required this.selType});
 
   String _fmt(double v) =>
       '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
@@ -914,6 +1135,7 @@ class _CategoryTile extends StatelessWidget {
             category: cat,
             catId: cat.id,
             selectedYear: selectedYear,
+            selectedType: selType,
           ),
         ),
       ),

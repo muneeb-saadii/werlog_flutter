@@ -190,7 +190,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Endpoints.UPDATE_USER_PROFILE,
         _pickedImage!,
         'file',
-        extraFields: {'currency': 'USD'},
+        // extraFields: {'currency': 'USD'},
       );
 
       final result = response['result'] == "1";

@@ -10,7 +10,7 @@ class TaxReadySummaryScreen extends StatelessWidget {
 
   // ── Data variables — replace with API response ──────────────────────
   // Year for this summary
-  static const int _year = 2025;
+  static const int _year = 2026;
   static const double _totalExpenses     = 28540;
   static const double _totalDeductible   = 8620;
   static const double _gstHstClaimable   = 2930;
@@ -40,10 +40,10 @@ class TaxReadySummaryScreen extends StatelessWidget {
                 _buildRecordsChecklist(context),
                 const SizedBox(height: 18),
                 _buildExportSection(context),
-                const SizedBox(height: 18),
+                /*const SizedBox(height: 18),
                 _buildAddMissingBtn(context),
                 const SizedBox(height: 10),
-                _buildAuditTrailBtn(context),
+                _buildAuditTrailBtn(context),*/
                 const SizedBox(height: 30),
               ]),
             ),

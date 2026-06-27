@@ -17,12 +17,14 @@ class ExpenseCategoryDetailScreen extends StatefulWidget {
   final ExpenseCategory category;
   final String catId;        // UUID passed from calling screen
   final String selectedYear;    // e.g. 2026
+  final String selectedType;
 
   const ExpenseCategoryDetailScreen({
     super.key,
     required this.category,
     required this.catId,
     required this.selectedYear,
+    required this.selectedType,
   });
 
   @override
@@ -645,6 +647,10 @@ class _ExpenseCategoryDetailScreenState
       final response = await ApiService.get(
         context,
         '${Endpoints.EXPENSE_CATEGORY_DETAILS}${widget.catId}?year=${widget.selectedYear}',
+        queryParams: {
+          'type': widget.selectedType,
+          'year': widget.selectedYear,
+        }
       );
 
       debugPrint('\nSUCCESS => $response');

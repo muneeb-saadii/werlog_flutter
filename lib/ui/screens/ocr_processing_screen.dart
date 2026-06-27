@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:wellness/core/utils/general_functions.dart';
+import 'package:wellness/ui/screens/profile_segment/currency_screen.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/api/endpoints.dart';
 import '../../core/models/app_models_extended.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/shared_pref_helper.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA MODELS  (keep your existing ones — these mirror what your code uses)
@@ -51,9 +53,9 @@ class OcrProcessingDataNew {
     switch (t) {
       case ScanType.warranty: return 'Extracting warranty data…';
       case ScanType.expense:  return 'Reading invoice…';
-      // case ScanType.invoice:  return 'Reading invoice…';
-      // case ScanType.receipt:  return 'Processing receipt…';
-      // case ScanType.manual:   return 'Scanning manual…';
+    // case ScanType.invoice:  return 'Reading invoice…';
+    // case ScanType.receipt:  return 'Processing receipt…';
+    // case ScanType.manual:   return 'Scanning manual…';
     }
   }
 
@@ -64,6 +66,7 @@ class OcrProcessingDataNew {
 
 class OcrJobResult {
   final String jobId;
+  final String? invoiceId;
   final String status;
   final String engine;
   final int durationMs;
@@ -79,6 +82,7 @@ class OcrJobResult {
     required this.engine,
     required this.durationMs,
     required this.attemptCount,
+    this.invoiceId,
     this.startedAt,
     this.completedAt,
     required this.completedSteps,
@@ -87,6 +91,7 @@ class OcrJobResult {
 
   factory OcrJobResult.fromJson(Map<String, dynamic> json) => OcrJobResult(
     jobId: json['jobId'] ?? '',
+    invoiceId: json['invoiceId'] ?? '',
     status: json['status'] ?? '',
     engine: json['engine'] ?? '',
     durationMs: json['durationMs'] ?? 0,
@@ -427,9 +432,9 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
     try {
       // ── Replace with your actual call: ────────────────────────────────
       final response = await ApiService.get(
-        context,
-        "${Endpoints.SCANNED_OCR_JOB_DETAILS}${_data.processData['jobId']}",
-        showLoader: false
+          context,
+          "${Endpoints.SCANNED_OCR_JOB_DETAILS}${_data.processData['jobId']}",
+          showLoader: false
       );
       // ── Mock for wiring / preview: ────────────────────────────────────
       /*await Future.delayed(const Duration(milliseconds: 900));
@@ -475,6 +480,50 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
           _jobResult = result;
           _isLoadingResult = false;
         });
+
+        /*try {
+          var amt = result.extracted.totalAmountFormatted ?? "QAR 0";
+
+          // Extract currency code and amount from string like "QAR 519.00"
+          final parts = amt.trim().split(RegExp(r'\s+'));
+
+          String? detectedCurrencyCode;
+          String? numericAmount;
+
+          if (parts.length >= 2) {
+            // Format: "QAR 519.00" → code=QAR, amount=519.00
+            detectedCurrencyCode = parts[0].toUpperCase();
+            numericAmount        = parts[1];
+          } else if (parts.length == 1) {
+            // Format: "519.00" → no currency code in string
+            numericAmount = parts[0];
+          }
+
+          print("detectedCurrencyCode => $detectedCurrencyCode");
+          print("numericAmount        => $numericAmount");
+
+          if (detectedCurrencyCode != null) {
+            final match = GeneralFunctions.kCurrencies.firstWhere(
+                  (c) => c.code.toUpperCase() == detectedCurrencyCode!.toUpperCase(),
+              orElse: () => const CurrencyItem(
+                  id: 'usd', code: 'USD', symbol: '\$',
+                  name: 'US Dollar', country: 'United States', region: 'Americas'),
+            );
+            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyId,     match.id);
+            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
+            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyCode,   match.code);
+            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyName,   match.name);
+            GeneralFunctions.currencySymbol = '${match.code*//*symbol*//*} ';
+            print("matched currency => ${match.code} ${match.symbol}");
+            // Optionally update saved currency:
+            // await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
+            // GeneralFunctions.currencySymbol = '${match.symbol} ';
+          }
+
+        } catch(e) {
+          print(e);
+        }*/
+
         // Open result sheet
         if (mounted) _showResultSheet(result);
       } else {
@@ -493,15 +542,16 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
   }
 
   void _showResultSheet(OcrJobResult result) {
+    final rootContext = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _OcrResultSheet(
-        result: result,
+        result:   result,
+        scanType: _data.scanType,
+        rootContext: rootContext,
         onDone: () {
-          // Pop the sheet + all screens back to dashboard
-          // Navigator.of(context).pop();
           GeneralFunctions.resetAppState();
         },
       ),
@@ -548,60 +598,62 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: WerlogColors.background,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: _isComplete
-              ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              WerlogColors.background,
-              WerlogColors.tealLightSurface,
-              WerlogColors.background,
-            ],
-          )
-              : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              WerlogColors.background,
-              WerlogColors.tealLightSurface,
-              WerlogColors.background,
-            ],
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: _isComplete
+                ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                WerlogColors.background,
+                WerlogColors.tealLightSurface,
+                WerlogColors.background,
+              ],
+            )
+                : LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                WerlogColors.background,
+                WerlogColors.tealLightSurface,
+                WerlogColors.background,
+              ],
+            ),
+          ),
+          // child: SafeArea(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              transitionBuilder: (child, anim) =>
+                  FadeTransition(opacity: anim, child: child),
+              child: _isComplete
+                  ? _SuccessView(
+                key: const ValueKey('success'),
+                data: _data,
+                checkCircleCtrl: _checkCircleCtrl,
+                checkMarkCtrl: _checkMarkCtrl,
+                burstCtrl: _burstCtrl,
+                fadeCtrl: _successFadeCtrl,
+                isLoading: _isLoadingResult,
+                onViewData: _getOcrJobDetails,
+              )
+                  : _ProcessingView(
+                key: const ValueKey('processing'),
+                data: _data,
+                ring1: _ring1,
+                ring2: _ring2,
+                scanAnim: _scanAnim,
+                pulseAnim: _pulseAnim,
+                countdownLabel: _countdownLabel,
+                countdownProgress: _countdownProgress,
+                stepStatus: _stepStatus,
+                stepDurations: _stepDurations,
+                onBack: widget.onBack,
+              ),
+            ),
           ),
         ),
-        child: SafeArea(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            transitionBuilder: (child, anim) =>
-                FadeTransition(opacity: anim, child: child),
-            child: _isComplete
-                ? _SuccessView(
-                    key: const ValueKey('success'),
-                    data: _data,
-                    checkCircleCtrl: _checkCircleCtrl,
-                    checkMarkCtrl: _checkMarkCtrl,
-                    burstCtrl: _burstCtrl,
-                    fadeCtrl: _successFadeCtrl,
-                    isLoading: _isLoadingResult,
-                    onViewData: _getOcrJobDetails,
-                  )
-                : _ProcessingView(
-                    key: const ValueKey('processing'),
-                    data: _data,
-                    ring1: _ring1,
-                    ring2: _ring2,
-                    scanAnim: _scanAnim,
-                    pulseAnim: _pulseAnim,
-                    countdownLabel: _countdownLabel,
-                    countdownProgress: _countdownProgress,
-                    stepStatus: _stepStatus,
-                    stepDurations: _stepDurations,
-                    onBack: widget.onBack,
-                  ),
-          ),
-        ),
-      ),
+      // ),
     );
   }
 }
@@ -1273,9 +1325,9 @@ class _SuccessView extends StatelessWidget {
     switch (t) {
       case ScanType.warranty: return 'invoice';
       case ScanType.expense:  return 'receipt';
-      // case ScanType.invoice:  return 'invoice';
-      // case ScanType.receipt:  return 'receipt';
-      // case ScanType.manual:   return 'manual';
+    // case ScanType.invoice:  return 'invoice';
+    // case ScanType.receipt:  return 'receipt';
+    // case ScanType.manual:   return 'manual';
     }
   }
 }
@@ -1366,8 +1418,8 @@ class _SuccessCheckPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SuccessCheckPainter old) =>
       old.circleProgress != circleProgress ||
-      old.markProgress != markProgress ||
-      old.burstProgress != burstProgress;
+          old.markProgress != markProgress ||
+          old.burstProgress != burstProgress;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1479,172 +1531,438 @@ class _WerlogButton extends StatelessWidget {
 // OCR RESULT BOTTOM SHEET
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _OcrResultSheet extends StatelessWidget {
+class _OcrResultSheet extends StatefulWidget {
   final OcrJobResult result;
   final VoidCallback onDone;
+  final ScanType scanType;
+  final BuildContext rootContext;
 
-  const _OcrResultSheet({required this.result, required this.onDone});
+  const _OcrResultSheet({
+    required this.result,
+    required this.onDone,
+    required this.scanType,
+    required this.rootContext,
+  });
+
+  @override
+  State<_OcrResultSheet> createState() => _OcrResultSheetState();
+}
+
+class _OcrResultSheetState extends State<_OcrResultSheet> {
+  // ── Expense type toggle — only relevant for expense scan ──────────────────
+  // 'PERSONAL' | 'BUSINESS'
+  String _expenseType = 'PERSONAL';
+  bool _isSavingType  = false;
+  bool _typeSaved     = false;
+
+  bool get _isExpense => widget.scanType == ScanType.expense;
+
+  Future<void> _saveExpenseType() async {
+    setState(() => _isSavingType = true);
+    try {
+      final jobId = widget.result.invoiceId;
+      final response = await ApiService.post(
+        context,
+        Endpoints.UPDATE_EXPENSE_TYPE,
+        body: {
+          'invoiceId':       jobId,
+          'type': _expenseType,   // 'PERSONAL' | 'BUSINESS'
+        },
+        // {"invoiceId":"dd6cff6d-2f46-47db-abdd-acbbf2c76c7b","type":"PERSONAL"}
+        showLoader: false,
+      );
+
+      final ok = response != null && response['result'] == '1';
+      if (ok) {
+        if (mounted) {
+          setState(() => _typeSaved = true);
+          GeneralFunctions.showSuccess(widget.rootContext,
+              'Marked as ${_expenseType == 'PERSONAL' ? 'Personal' : 'Business'} expense');
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+              response?['message']?.toString() ?? 'Update failed.',
+              style: const TextStyle(fontFamily: 'DMSans', fontSize: 13),
+            ),
+            backgroundColor: WerlogColors.coral,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            margin:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Something went wrong.',
+              style: TextStyle(fontFamily: 'DMSans', fontSize: 13)),
+          backgroundColor: WerlogColors.coral,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingType = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final ext = result.extracted;
-    final totalMs = result.durationMs;
+    final ext     = widget.result.extracted;
+    final totalMs = widget.result.durationMs;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.88,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
+      minChildSize:     0.5,
+      maxChildSize:     0.95,
       builder: (_, scrollCtrl) => Container(
         decoration: const BoxDecoration(
           color: WerlogColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Column(
-          children: [
-            // ── Drag handle ──
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 4),
-              child: Container(
-                width: 36,
-                height: 4,
+        child: Column(children: [
+
+          // ── Drag handle ──────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: WerlogColors.border,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+
+          // ── Header ───────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: Row(children: [
+              Container(
+                width: 36, height: 36,
                 decoration: BoxDecoration(
-                    color: WerlogColors.border,
-                    borderRadius: BorderRadius.circular(2)),
+                    color: WerlogColors.tealSurface,
+                    borderRadius: BorderRadius.circular(10)),
+                alignment: Alignment.center,
+                child: const Icon(Icons.description_outlined,
+                    color: WerlogColors.teal, size: 18),
               ),
-            ),
-
-            // ── Header ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                        color: WerlogColors.tealSurface,
-                        borderRadius: BorderRadius.circular(10)),
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.description_outlined,
-                        color: WerlogColors.teal, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Extracted Details',
-                            style: WerlogTextStyles.sectionTitle
-                                .copyWith(fontSize: 15)),
-                        const SizedBox(height: 1),
-                        Text(
-                            'Processed in ${(totalMs / 1000).toStringAsFixed(1)}s · ${result.engine}',
-                            style: WerlogTextStyles.caption),
-                      ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Extracted Details',
+                        style: WerlogTextStyles.sectionTitle
+                            .copyWith(fontSize: 15)),
+                    const SizedBox(height: 1),
+                    Text(
+                      'Processed in ${(totalMs / 1000).toStringAsFixed(1)}s · ${widget.result.engine}',
+                      style: WerlogTextStyles.caption,
                     ),
-                  ),
-                  // Confidence badge
-                  _ConfidenceBadge(label: ext.confidenceLabel),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Divider(color: WerlogColors.border, height: 1, thickness: 0.5),
+              _ConfidenceBadge(label: ext.confidenceLabel),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          Divider(color: WerlogColors.border, height: 1, thickness: 0.5),
 
-            // ── Scrollable body ──
-            Expanded(
-              child: ListView(
-                controller: scrollCtrl,
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                children: [
-                  // Needs-review banner
-                  if (ext.needsReview)
-                    _ReviewBanner(),
+          // ── Scrollable body ───────────────────────────────────────────────
+          Expanded(
+            child: ListView(
+              controller: scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              children: [
 
-                  if (ext.needsReview) const SizedBox(height: 14),
-
-                  // ── Extracted fields card ──
-                  _SectionCard(
-                    title: 'Document Info',
-                    icon: Icons.receipt_long_outlined,
-                    children: [
-                      _FieldRow(
-                          label: 'Vendor',
-                          value: ext.vendorName,
-                          placeholder: 'Not detected'),
-                      _FieldRow(
-                          label: 'Total Amount',
-                          value: ext.totalAmountFormatted,
-                          placeholder: 'Not detected',
-                          valueColor: ext.totalAmountFormatted != null
-                              ? WerlogColors.teal
-                              : null),
-                      _FieldRow(
-                          label: 'Invoice Date',
-                          value: ext.invoiceDateFormatted,
-                          placeholder: 'Not detected'),
-                      _FieldRow(
-                          label: 'Category',
-                          value: ext.autoCategoryName,
-                          placeholder: 'Uncategorized'),
-                      _FieldRow(
-                          label: 'Line Items',
-                          value: '${ext.lineItemCount}',
-                          isLast: true),
-                    ],
+                // ── Expense type toggle — EXPENSE only ─────────────────────
+                if (_isExpense) ...[
+                  _ExpenseTypeToggle(
+                    selected:    _expenseType,
+                    isSaving:    _isSavingType,
+                    typeSaved:    _typeSaved,
+                    onChanged:   (v) => setState(() => _expenseType = v),
+                    onSave:      _saveExpenseType,
                   ),
                   const SizedBox(height: 14),
+                ],
 
-                  // ── Line items preview ──
-                  if (ext.lineItemsPreview.isNotEmpty)
-                    _SectionCard(
-                      title: 'Line Items Preview',
-                      icon: Icons.list_alt_outlined,
-                      children: [
-                        ...ext.lineItemsPreview
-                            .asMap()
-                            .entries
-                            .map((e) => _LineItemRow(
-                          item: e.value,
-                          isLast:
-                          e.key == ext.lineItemsPreview.length - 1,
-                        )),
-                      ],
-                    ),
-                  if (ext.lineItemsPreview.isNotEmpty) const SizedBox(height: 14),
+                // Needs-review banner
+                if (ext.needsReview) _ReviewBanner(),
+                if (ext.needsReview) const SizedBox(height: 14),
 
-                  // ── Processing steps ──
+                // ── Extracted fields card ──────────────────────────────────
+                _SectionCard(
+                  title: 'Document Info',
+                  icon: Icons.receipt_long_outlined,
+                  children: [
+                    _FieldRow(
+                        label: 'Vendor',
+                        value: ext.vendorName,
+                        placeholder: 'Not detected'),
+                    _FieldRow(
+                        label: 'Total Amount',
+                        value: ext.totalAmountFormatted,
+                        placeholder: 'Not detected',
+                        valueColor: ext.totalAmountFormatted != null
+                            ? WerlogColors.teal
+                            : null),
+                    _FieldRow(
+                        label: 'Invoice Date',
+                        value: ext.invoiceDateFormatted,
+                        placeholder: 'Not detected'),
+                    _FieldRow(
+                        label: 'Category',
+                        value: ext.autoCategoryName,
+                        placeholder: 'Uncategorized'),
+                    _FieldRow(
+                        label: 'Line Items',
+                        value: '${ext.lineItemCount}',
+                        isLast: true),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // ── Line items preview ─────────────────────────────────────
+                if (ext.lineItemsPreview.isNotEmpty)
                   _SectionCard(
-                    title: 'Processing Pipeline',
-                    icon: Icons.bolt_outlined,
+                    title: 'Line Items Preview',
+                    icon: Icons.list_alt_outlined,
                     children: [
-                      ...result.completedSteps.asMap().entries.map((e) =>
-                          _PipelineStepRow(
-                            step: e.value,
-                            isLast:
-                            e.key == result.completedSteps.length - 1,
+                      ...ext.lineItemsPreview.asMap().entries.map((e) =>
+                          _LineItemRow(
+                            item: e.value,
+                            isLast: e.key == ext.lineItemsPreview.length - 1,
                           )),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                if (ext.lineItemsPreview.isNotEmpty) const SizedBox(height: 14),
 
-                  // ── Done button ──
-                  GestureDetector(
-                    onTap: onDone,
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                          color: WerlogColors.teal,
-                          borderRadius: BorderRadius.circular(13)),
-                      alignment: Alignment.center,
-                      child: Text('Done — Back to Dashboard',
-                          style: WerlogTextStyles.button),
+                // ── Processing steps ───────────────────────────────────────
+                _SectionCard(
+                  title: 'Processing Pipeline',
+                  icon: Icons.bolt_outlined,
+                  children: [
+                    ...widget.result.completedSteps.asMap().entries.map(
+                          (e) => _PipelineStepRow(
+                        step: e.value,
+                        isLast: e.key == widget.result.completedSteps.length - 1,
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // ── Done button ────────────────────────────────────────────
+                GestureDetector(
+                  onTap: () {
+                    // ── Guard: expense scan must have saved type first ─────────────
+                    if (_isExpense && !_typeSaved) {
+                      GeneralFunctions.showError(widget.rootContext,
+                          "Please select and save the expense type (Personal or Business) before continuing.");
+                      return;
+                    }
+                    widget.onDone();
+                  },
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                        color: WerlogColors.teal,
+                        borderRadius: BorderRadius.circular(13)),
+                    alignment: Alignment.center,
+                    child: Text('Done — Back to Dashboard',
+                        style: WerlogTextStyles.button),
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPENSE TYPE TOGGLE  (shown only for ScanType.expense)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ExpenseTypeToggle extends StatelessWidget {
+  final String selected;       // 'PERSONAL' | 'BUSINESS'
+  final bool isSaving;
+  final bool typeSaved;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onSave;
+
+  const _ExpenseTypeToggle({
+    required this.selected,
+    required this.isSaving,
+    required this.typeSaved,
+    required this.onChanged,
+    required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: WerlogColors.surface,
+        border: Border.all(color: WerlogColors.border),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // ── Section label ─────────────────────────────────────────────────
+        Row(children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              color: WerlogColors.tealSurface,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.tune_rounded,
+                size: 14, color: WerlogColors.teal),
+          ),
+          const SizedBox(width: 9),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Expense Type',
+                style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 13)),
+            Text('Is this a personal or business expense?',
+                style: WerlogTextStyles.caption),
+          ]),
+        ]),
+
+        const SizedBox(height: 12),
+
+        // ── Toggle pills ──────────────────────────────────────────────────
+        Container(
+          height: 44,
+          decoration: BoxDecoration(
+            color: WerlogColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(3),
+          child: Row(children: [
+            _TypePill(
+              label:    'Personal',
+              icon:     Icons.person_outline_rounded,
+              selected: selected == 'PERSONAL',
+              color:    WerlogColors.blue,
+              colorBg:  WerlogColors.blueSurface,
+              onTap:    () => onChanged('PERSONAL'),
+            ),
+            const SizedBox(width: 3),
+            _TypePill(
+              label:    'Business',
+              icon:     Icons.business_center_outlined,
+              selected: selected == 'BUSINESS',
+              color:    WerlogColors.teal,
+              colorBg:  WerlogColors.tealSurface,
+              onTap:    () => onChanged('BUSINESS'),
+            ),
+          ]),
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Save button ───────────────────────────────────────────────────
+        Visibility(
+          visible: !typeSaved,
+          child: SizedBox(
+            width: double.infinity,
+            child: GestureDetector(
+              onTap: isSaving ? null : onSave,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isSaving
+                      ? WerlogColors.teal.withOpacity(0.5)
+                      : WerlogColors.teal,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                alignment: Alignment.center,
+                child: isSaving
+                    ? const SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
+                )
+                    : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle_outline_rounded,
+                        color: Colors.white, size: 15),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Save as ${selected == 'PERSONAL' ? 'Personal' : 'Business'}',
+                      style: WerlogTextStyles.button.copyWith(fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── Single pill inside the toggle ─────────────────────────────────────────────
+class _TypePill extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final Color color;
+  final Color colorBg;
+  final VoidCallback onTap;
+
+  const _TypePill({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.color,
+    required this.colorBg,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: selected ? colorBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: selected ? color.withOpacity(0.3) : Colors.transparent,
+              width: 0.8,
+            ),
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon,
+                size: 14,
+                color: selected ? color : WerlogColors.textTertiary),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'DMSans',
+                fontSize: 12,
+                fontWeight:
+                selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? color : WerlogColors.textTertiary,
+              ),
+            ),
+          ]),
         ),
       ),
     );
@@ -1906,9 +2224,3 @@ class _PipelineStepRow extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Expose WerlogColors.amberDark for use in this file
-// (already defined in your theme — this reference just confirms it exists)
-// ─────────────────────────────────────────────────────────────────────────────
-// WerlogColors.amberDark = Color(0xFF854F0B)  ✓
