@@ -69,16 +69,20 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _HeroKpiCard(),
+                  /*if (selectedType == 'BUSINESS') ...[
+                    _HeroKpiCard(),                                              // hide on PERSONAL
+                    const SizedBox(height: 18),
+                  ],*/
+                  /*_ExpenseSummaryCard(),
+                  const SizedBox(height: 18),*/
+                  _buildYearSummarySection(isPersonal: selectedType == 'PERSONAL'), // always shown, green
                   const SizedBox(height: 18),
-                  _ExpenseSummaryCard(),
-                  const SizedBox(height: 18),
-                  _buildYearSummarySection(),
-                  const SizedBox(height: 18),
+                  if (selectedType == 'BUSINESS') ...[
+                    _ExpenseSummaryCard(showPersonal: false),                   // hide Personal entry
+                    const SizedBox(height: 18),
+                  ],
                   _CategoriesSection(selectedYear: selectedYear, selType: selectedType),
                   const SizedBox(height: 18),
-                  /*_AiInsightsSection(),
-                  const SizedBox(height: 24),*/
                 ],
               ),
             ),
@@ -93,7 +97,212 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
       '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
 
   // ── Year summary (6 KPI boxes) ───────────────────────────────────────
-  Widget _buildYearSummarySection() {
+  Widget _buildYearSummarySection({bool isPersonal = false}) {
+    if (ExpenseData.taxYears.isEmpty) return const SizedBox();
+    final yr = ExpenseData.taxYears.first;
+
+    // Green card for both modes — Personal gets extra categories count cell
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF1D9E75),
+              const Color(0xFF0F6B50),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1D9E75).withOpacity(0.3),
+              blurRadius: 12, offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text(
+              '${ExpenseData.currentYear} Summary',
+              style: WerlogTextStyles.sectionTitle.copyWith(color: Colors.white),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isPersonal ? 'Personal' : 'Business',
+                style: const TextStyle(
+                  fontFamily: 'DMSans', fontSize: 10,
+                  fontWeight: FontWeight.w500, color: Colors.white,
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+
+          // ── Row 1 ──────────────────────────────────────────────────────────────
+          if (isPersonal) ...[
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left cell — takes remaining space
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                      Text('Total Expenses',
+                          style: WerlogTextStyles.captionSmall.copyWith(
+                              color: Colors.white.withOpacity(0.65))),
+                      const SizedBox(height: 4),
+                      Text(_fmt(/*yr*/ExpenseData.totalExpenses),
+                          style: WerlogTextStyles.amountLarge.copyWith(
+                              fontSize: 15, color: Colors.white)),
+                    ]),
+                  ),
+                  // Fixed vertical divider — always perfectly centered
+                  VerticalDivider(
+                    width: 1, thickness: 0.5,
+                    color: Colors.white.withOpacity(0.25),
+                  ),
+                  // Right cell — equal width, content centered under heading
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                      Text('Documents',
+                          style: WerlogTextStyles.captionSmall.copyWith(
+                              color: Colors.white.withOpacity(0.65))),
+                      const SizedBox(height: 4),
+                      Text('${yr.documents}',
+                          style: WerlogTextStyles.txTitle.copyWith(
+                              fontSize: 14, color: Colors.white)),
+                    ]),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Row(children: [
+              _SummaryKpiCell(
+                label: 'Total Expenses',
+                value: _fmt(/*yr*/ExpenseData.totalExpenses),
+                textColor: Colors.white,
+                labelColor: Colors.white.withOpacity(0.65),
+              ),
+              _SummaryDividerLight(),
+              _SummaryKpiCell(
+                label: 'Est. Deduction',
+                value: _fmt(/*yr*/ExpenseData.estDeduction),
+                textColor: Colors.white,
+                labelColor: Colors.white.withOpacity(0.65),
+              ),
+              _SummaryDividerLight(),
+
+              _SummaryKpiCell(
+                label: 'GST/HST Paid',
+                value: _fmt(/*yr*/ExpenseData.gstHstClaimable),
+                textColor: Colors.white,
+                labelColor: Colors.white.withOpacity(0.65),
+              ),
+            ]),
+          ],
+
+          const SizedBox(height: 14),
+          Divider(height: 1, color: Colors.white.withOpacity(0.2)),
+          const SizedBox(height: 14),
+
+// ── Row 2 ──────────────────────────────────────────────────────────────
+          if (isPersonal) ...[
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                      Text('Missing Receipts',
+                          style: WerlogTextStyles.captionSmall.copyWith(
+                              color: Colors.white.withOpacity(0.65))),
+                      const SizedBox(height: 4),
+                      Text('${yr.missingReceipts}',
+                          style: WerlogTextStyles.txTitle.copyWith(
+                              fontSize: 14,
+                              color: yr.missingReceipts > 0
+                                  ? const Color(0xFFFFD580)
+                                  : Colors.white)),
+                    ]),
+                  ),
+                  VerticalDivider(
+                    width: 1, thickness: 0.5,
+                    color: Colors.white.withOpacity(0.25),
+                  ),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                      Text('Audit Readiness',
+                          style: WerlogTextStyles.captionSmall.copyWith(
+                              color: Colors.white.withOpacity(0.65))),
+                      const SizedBox(height: 4),
+                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.verified_outlined,
+                            color: Colors.white, size: 15),
+                        const SizedBox(width: 4),
+                        Text('${yr.auditReadinessPct}%',
+                            style: const TextStyle(
+                              fontFamily: 'DMSans', fontSize: 14,
+                              fontWeight: FontWeight.w600, color: Colors.white,
+                            )),
+                      ]),
+                    ]),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Row(children: [
+              _SummaryKpiCell(
+                label: 'Missing Receipts',
+                value: '${yr.missingReceipts}',
+                small: true,
+                textColor: yr.missingReceipts > 0
+                    ? const Color(0xFFFFD580)
+                    : Colors.white,
+                labelColor: Colors.white.withOpacity(0.65),
+              ),
+              _SummaryDividerLight(),
+              _SummaryKpiCell(
+                label: 'Documents',
+                value: '${yr.documents}',
+                small: true,
+                textColor: Colors.white,
+                labelColor: Colors.white.withOpacity(0.65),
+              ),
+              _SummaryDividerLight(),
+              _SummaryKpiCell(
+                label: 'Audit Readiness',
+                value: '',
+                small: true,
+                textColor: Colors.white,
+                labelColor: Colors.white.withOpacity(0.65),
+                customWidget: Row(children: [
+                  const Icon(Icons.verified_outlined,
+                      color: Colors.white, size: 15),
+                  const SizedBox(width: 4),
+                  Text('${yr.auditReadinessPct}%',
+                      style: const TextStyle(
+                        fontFamily: 'DMSans', fontSize: 14,
+                        fontWeight: FontWeight.w600, color: Colors.white,
+                      )),
+                ]),
+              ),
+            ]),
+          ],
+        ]),
+      ),
+    );
+  }
+  /*Widget _buildYearSummarySection() {
     if (ExpenseData.taxYears.isEmpty) {
       return const SizedBox();
     }
@@ -107,11 +316,11 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('${ExpenseData.currentYear} Summary', style: WerlogTextStyles.sectionTitle),
-            /*GestureDetector(
-              onTap: () => *//*Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen()))*//*{},
-              child: const Text('Year Report', style: WerlogTextStyles.sectionTitle*//*link*//*),
-            ),*/
+            *//*GestureDetector(
+              onTap: () => *//**//*Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen()))*//**//*{},
+              child: const Text('Year Report', style: WerlogTextStyles.sectionTitle*//**//*link*//**//*),
+            ),*//*
           ]),
           const SizedBox(height: 14),
           // Row 1
@@ -148,7 +357,7 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
         ]),
       ),
     );
-  }
+  }*/
 
 
 
@@ -186,13 +395,13 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
           // =========================================================
 
           ExpenseData.totalExpenses =
-              (totalExpenseAndTax['totalexpense'] ?? 0).toDouble();
+              (totalExpenseAndTax['totalExpense'] ?? 0).toDouble();
 
           ExpenseData.estDeduction =
-              (totalExpenseAndTax['totalIncomeTax'] ?? 0).toDouble();
+              (totalExpenseAndTax['deductibleAmount'] ?? 0).toDouble();
 
           ExpenseData.gstHstClaimable =
-              (totalExpenseAndTax['totalHstTax'] ?? 0).toDouble();
+              (totalExpenseAndTax['gstHstClaimable'] ?? 0).toDouble();
 
           ExpenseData.taxRefundForecast =
               (totalExpenseAndTax['forcastReturn'] ?? 0).toDouble();
@@ -202,19 +411,34 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
           // =========================================================
 
           ExpenseData.deductibleAmt = double.tryParse(
-            summaryExpense['totalIncomeTax']
+            summaryExpense['deductible']['amount']
+                ?.toString()
+                .replaceAll('%', '') ?? '0',
+          ) ?? 0;
+          ExpenseData.deductibleAmtPercent = double.tryParse(
+            summaryExpense['deductible']['percent']
                 ?.toString()
                 .replaceAll('%', '') ?? '0',
           ) ?? 0;
 
           ExpenseData.gstPaidAmt = double.tryParse(
-            summaryExpense['totalHstTax']
+            summaryExpense['gstHstPaid']['amount']
+                ?.toString()
+                .replaceAll('%', '') ?? '0',
+          ) ?? 0;
+          ExpenseData.gstPaidAmtPercent = double.tryParse(
+            summaryExpense['gstHstPaid']['percent']
                 ?.toString()
                 .replaceAll('%', '') ?? '0',
           ) ?? 0;
 
           ExpenseData.nonDeductibleAmt = double.tryParse(
-            summaryExpense['nonDeductable']
+            summaryExpense['nonDeductible']['amount']
+                ?.toString()
+                .replaceAll('%', '') ?? '0',
+          ) ?? 0;
+          ExpenseData.nonDeductibleAmtPercent = double.tryParse(
+            summaryExpense['nonDeductible']['percent']
                 ?.toString()
                 .replaceAll('%', '') ?? '0',
           ) ?? 0;
@@ -686,6 +910,40 @@ class _SummaryKpiCell extends StatelessWidget {
   final String label, value;
   final bool small;
   final Color? valueColor;
+  final Color? textColor;     // ← ADD
+  final Color? labelColor;    // ← ADD
+  final Widget? customWidget;
+
+  const _SummaryKpiCell({
+    required this.label, required this.value,
+    this.small = false,
+    this.valueColor,
+    this.textColor,            // ← ADD
+    this.labelColor,           // ← ADD
+    this.customWidget,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label,
+            style: WerlogTextStyles.captionSmall.copyWith(
+                color: labelColor)),  // ← use labelColor
+        const SizedBox(height: 4),
+        customWidget ?? Text(value,
+            style: (small
+                ? WerlogTextStyles.txTitle.copyWith(fontSize: 14)
+                : WerlogTextStyles.amountLarge.copyWith(fontSize: 15))
+                .copyWith(color: valueColor ?? textColor)),  // ← use textColor
+      ]),
+    );
+  }
+}
+/*class _SummaryKpiCell extends StatelessWidget {
+  final String label, value;
+  final bool small;
+  final Color? valueColor;
   final Widget? customWidget;
   const _SummaryKpiCell({
     required this.label, required this.value,
@@ -710,6 +968,15 @@ class _SummaryKpiCell extends StatelessWidget {
       ]),
     );
   }
+}*/
+
+class _SummaryDividerLight extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 0.5, height: 36,
+    margin: const EdgeInsets.symmetric(horizontal: 12),
+    color: Colors.white.withOpacity(0.25),
+  );
 }
 
 class _SummaryDivider extends StatelessWidget {
@@ -986,11 +1253,20 @@ class _KpiDivider extends StatelessWidget {
 
 // ── Expense Summary card (donut + legend) ────────────────────────────
 class _ExpenseSummaryCard extends StatelessWidget {
-  String _fmt(double v) =>
-      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+  final bool showPersonal;
+  const _ExpenseSummaryCard({this.showPersonal = true});
 
-  String _pct(double part) =>
+  String _fmt_(double v) =>
+      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
+String _fmt(double v) =>
+      '${GeneralFunctions.currencySymbol}${v}';
+
+  String _pct_(double part) =>
       '(${(part / ExpenseData.totalExpenses * 100).toStringAsFixed(0)}%)';
+  String _pct(double part) {
+    if (ExpenseData.totalExpenses == 0 || part == 0) return '(0%)';
+    return '(${(part / ExpenseData.totalExpenses * 100).toStringAsFixed(0)}%)';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1021,7 +1297,7 @@ class _ExpenseSummaryCard extends StatelessWidget {
                     _Seg(ExpenseData.deductibleAmt,    WerlogColors.teal),
                     _Seg(ExpenseData.gstPaidAmt,       WerlogColors.blue),
                     _Seg(ExpenseData.nonDeductibleAmt, WerlogColors.orange),
-                    _Seg(ExpenseData.personalAmt,      WerlogColors.coral),
+                    if (showPersonal) _Seg(ExpenseData.personalAmt,      WerlogColors.coral),
                   ]),
                 ),
                 Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1032,20 +1308,23 @@ class _ExpenseSummaryCard extends StatelessWidget {
                 ]),
               ]),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 12),
             // Legend
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _LegendRow(color: WerlogColors.teal,   label: 'Deductible',
-                  amount: _fmt(ExpenseData.deductibleAmt),   pct: _pct(ExpenseData.deductibleAmt)),
+                  amount: _fmt(ExpenseData.deductibleAmt),   pct: "${ExpenseData.deductibleAmtPercent}%"/*_pct(ExpenseData.deductibleAmt)*/),
               const SizedBox(height: 10),
               _LegendRow(color: WerlogColors.blue,   label: 'GST/HST Paid',
-                  amount: _fmt(ExpenseData.gstPaidAmt),      pct: _pct(ExpenseData.gstPaidAmt)),
+                  amount: _fmt(ExpenseData.gstPaidAmt),      pct: "${ExpenseData.gstPaidAmtPercent}%"/*_pct(ExpenseData.gstPaidAmt)*/),
               const SizedBox(height: 10),
               _LegendRow(color: WerlogColors.orange, label: 'Non-deductible',
-                  amount: _fmt(ExpenseData.nonDeductibleAmt),pct: _pct(ExpenseData.nonDeductibleAmt)),
-              const SizedBox(height: 10),
-              _LegendRow(color: WerlogColors.coral,  label: 'Personal',
-                  amount: _fmt(ExpenseData.personalAmt),     pct: _pct(ExpenseData.personalAmt)),
+                  amount: _fmt(ExpenseData.nonDeductibleAmt),pct: "${ExpenseData.nonDeductibleAmtPercent}%"/*_pct(ExpenseData.nonDeductibleAmt)*/),
+              if (showPersonal) ...[                                       // ← ADD
+                const SizedBox(height: 10),
+                _LegendRow(color: WerlogColors.coral, label: 'Personal',
+                    amount: _fmt(ExpenseData.personalAmt),
+                    pct: _pct(ExpenseData.personalAmt)),
+              ],
             ])),
           ]),
         ]),

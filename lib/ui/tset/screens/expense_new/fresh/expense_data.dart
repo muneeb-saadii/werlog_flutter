@@ -418,6 +418,10 @@ class ExpenseData {
   static double gstHstClaimable = 0;
   static double taxRefundForecast = 0;
 
+  static double deductibleAmtPercent = 0;
+  static double gstPaidAmtPercent = 0;
+  static double nonDeductibleAmtPercent = 0;
+
   static double deductibleAmt = 0;
   static double gstPaidAmt = 0;
   static double nonDeductibleAmt = 0;
