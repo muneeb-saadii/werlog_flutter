@@ -28,6 +28,7 @@ class SharedPrefHelper {
   static const String loginRememberData = 'login_user_data_for_remember_me';
   static const String accessToken = 'access_token';
   static const String refreshToken = 'refresh_token';
+  static const String disclaimerAcknowledged = 'disclaimer_acknowledged';
 
   //currency selection fields:
   static const String selectedCurrencyId     = 'selected_currency_id';

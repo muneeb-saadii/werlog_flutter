@@ -184,6 +184,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       GeneralFunctions.getCurrencySymbol();
       refreshData();
       loadDashboardData();
+
+      _showDisclaimerIfNeeded();
     });
   }
 
@@ -2066,6 +2068,101 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> _showDisclaimerIfNeeded() async {
+    final acknowledged = await SharedPrefHelper.getBool(
+        SharedPrefHelper.disclaimerAcknowledged, defaultValue: false) ?? false;
+    if (acknowledged || !mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: WerlogColors.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+
+              // Icon
+              Container(
+                width: 52, height: 52,
+                decoration: BoxDecoration(
+                  color: WerlogColors.tealSurface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.info_outline_rounded,
+                    color: WerlogColors.teal, size: 26),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Title
+              const Text(
+                'Before You Begin',
+                style: TextStyle(
+                  fontFamily: 'DMSans', fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: WerlogColors.textPrimary,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Body
+              const Text(
+                'Werlog helps you organise receipts, invoices, and warranties in one place.\n\n'
+                    'All tax estimates, deduction figures, and financial summaries shown in the app '
+                    'are for informational purposes only. Werlog does not provide tax, legal, or '
+                    'accounting advice.\n\n'
+                    'For personalised guidance please consult a qualified professional.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'DMSans', fontSize: 13,
+                  color: WerlogColors.textSecondary,
+                  height: 1.6,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+              const Divider(color: WerlogColors.borderLight),
+              const SizedBox(height: 12),
+
+              // Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await SharedPrefHelper.saveBool(
+                        SharedPrefHelper.disclaimerAcknowledged, true);
+                    if (mounted) Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: WerlogColors.teal,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: const Text('I Understand',
+                      style: TextStyle(
+                        fontFamily: 'DMSans', fontSize: 14,
+                        fontWeight: FontWeight.w500, color: Colors.white,
+                      )),
+                ),
+              ),
+            ]),
+          ),
         ),
       ),
     );
