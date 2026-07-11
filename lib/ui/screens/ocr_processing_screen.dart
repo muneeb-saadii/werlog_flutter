@@ -9,6 +9,7 @@ import '../../core/api/endpoints.dart';
 import '../../core/models/app_models_extended.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/shared_pref_helper.dart';
+import 'disclaimer/disclaimer_widget.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA MODELS  (keep your existing ones — these mirror what your code uses)
@@ -622,37 +623,37 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
             ),
           ),
           // child: SafeArea(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              transitionBuilder: (child, anim) =>
-                  FadeTransition(opacity: anim, child: child),
-              child: _isComplete
-                  ? _SuccessView(
-                key: const ValueKey('success'),
-                data: _data,
-                checkCircleCtrl: _checkCircleCtrl,
-                checkMarkCtrl: _checkMarkCtrl,
-                burstCtrl: _burstCtrl,
-                fadeCtrl: _successFadeCtrl,
-                isLoading: _isLoadingResult,
-                onViewData: _getOcrJobDetails,
-              )
-                  : _ProcessingView(
-                key: const ValueKey('processing'),
-                data: _data,
-                ring1: _ring1,
-                ring2: _ring2,
-                scanAnim: _scanAnim,
-                pulseAnim: _pulseAnim,
-                countdownLabel: _countdownLabel,
-                countdownProgress: _countdownProgress,
-                stepStatus: _stepStatus,
-                stepDurations: _stepDurations,
-                onBack: widget.onBack,
-              ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            transitionBuilder: (child, anim) =>
+                FadeTransition(opacity: anim, child: child),
+            child: _isComplete
+                ? _SuccessView(
+              key: const ValueKey('success'),
+              data: _data,
+              checkCircleCtrl: _checkCircleCtrl,
+              checkMarkCtrl: _checkMarkCtrl,
+              burstCtrl: _burstCtrl,
+              fadeCtrl: _successFadeCtrl,
+              isLoading: _isLoadingResult,
+              onViewData: _getOcrJobDetails,
+            )
+                : _ProcessingView(
+              key: const ValueKey('processing'),
+              data: _data,
+              ring1: _ring1,
+              ring2: _ring2,
+              scanAnim: _scanAnim,
+              pulseAnim: _pulseAnim,
+              countdownLabel: _countdownLabel,
+              countdownProgress: _countdownProgress,
+              stepStatus: _stepStatus,
+              stepDurations: _stepDurations,
+              onBack: widget.onBack,
             ),
           ),
         ),
+      ),
       // ),
     );
   }
@@ -1665,9 +1666,18 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
                   ],
                 ),
               ),
+
               _ConfidenceBadge(label: ext.confidenceLabel),
             ]),
           ),
+
+          // ── Low confidence disclaimer caption ─────────────────────────────
+          // if (ext.confidenceLabel.toUpperCase() == 'LOW')
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: DisclaimerWidget.weakScanCaption(context),
+            ),
+
           const SizedBox(height: 12),
           Divider(color: WerlogColors.border, height: 1, thickness: 0.5),
 

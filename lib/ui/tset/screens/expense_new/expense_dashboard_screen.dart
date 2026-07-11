@@ -6,6 +6,7 @@ import '../../../../core/api/endpoints.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/general_functions.dart';
 import '../../../../core/utils/shared_pref_helper.dart';
+import '../../../screens/disclaimer/disclaimer_widget.dart';
 import 'fresh/expense_data.dart';
 import 'fresh/expense_category_detail_screen.dart';
 import 'tax_years_screen.dart';
@@ -206,6 +207,8 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
                 value: _fmt(/*yr*/ExpenseData.gstHstClaimable),
                 textColor: Colors.white,
                 labelColor: Colors.white.withOpacity(0.65),
+                showInfoIcon: true,
+                rootContext: context,
               ),
             ]),
           ],
@@ -329,7 +332,8 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
             _SummaryDivider(),
             _SummaryKpiCell(label: 'Est. Deduction', value: _fmt(yr.estDeduction)),
             _SummaryDivider(),
-            _SummaryKpiCell(label: 'GST/HST Paid', value: _fmt(yr.gstPaid)),
+            _SummaryKpiCell(label: 'GST/HST Paid', value: _fmt(yr.gstPaid),
+                showInfoIcon: true, rootContext: context),
           ]),
           const SizedBox(height: 14),
           Divider(height: 1, color: WerlogColors.borderLight),
@@ -910,32 +914,64 @@ class _SummaryKpiCell extends StatelessWidget {
   final String label, value;
   final bool small;
   final Color? valueColor;
-  final Color? textColor;     // ← ADD
-  final Color? labelColor;    // ← ADD
+  final Color? textColor;
+  final Color? labelColor;
   final Widget? customWidget;
+  final bool showInfoIcon;
+  final BuildContext? rootContext;
 
   const _SummaryKpiCell({
     required this.label, required this.value,
     this.small = false,
     this.valueColor,
-    this.textColor,            // ← ADD
-    this.labelColor,           // ← ADD
+    this.textColor,
+    this.labelColor,
     this.customWidget,
+    this.showInfoIcon = false,
+    this.rootContext,
   });
 
   @override
   Widget build(BuildContext context) {
+    final ctx = rootContext ?? context;
     return Expanded(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: WerlogTextStyles.captionSmall.copyWith(
-                color: labelColor)),  // ← use labelColor
+        // ── Label row — Flexible prevents overflow when info icon added ──
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: WerlogTextStyles.captionSmall.copyWith(
+                    color: labelColor),
+              ),
+            ),
+            if (showInfoIcon) ...[
+              const SizedBox(width: 2),
+              GestureDetector(
+                onTap: () => DisclaimerWidget.show(
+                    ctx, type: DisclaimerType.taxEstimate),
+                child: Icon(
+                  Icons.info_outline_rounded,
+                  size: 12,
+                  color: (labelColor ?? WerlogColors.textTertiary)
+                      .withOpacity(0.8),
+                ),
+              ),
+            ],
+          ],
+        ),
         const SizedBox(height: 4),
-        customWidget ?? Text(value,
-            style: (small
-                ? WerlogTextStyles.txTitle.copyWith(fontSize: 14)
-                : WerlogTextStyles.amountLarge.copyWith(fontSize: 15))
-                .copyWith(color: valueColor ?? textColor)),  // ← use textColor
+        customWidget ?? Text(
+          value,
+          style: (small
+              ? WerlogTextStyles.txTitle.copyWith(fontSize: 14)
+              : WerlogTextStyles.amountLarge.copyWith(fontSize: 15))
+              .copyWith(color: valueColor ?? textColor),
+        ),
       ]),
     );
   }
@@ -1258,7 +1294,7 @@ class _ExpenseSummaryCard extends StatelessWidget {
 
   String _fmt_(double v) =>
       '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
-String _fmt(double v) =>
+  String _fmt(double v) =>
       '${GeneralFunctions.currencySymbol}${v}';
 
   String _pct_(double part) =>
@@ -1315,7 +1351,8 @@ String _fmt(double v) =>
                   amount: _fmt(ExpenseData.deductibleAmt),   pct: "${ExpenseData.deductibleAmtPercent}%"/*_pct(ExpenseData.deductibleAmt)*/),
               const SizedBox(height: 10),
               _LegendRow(color: WerlogColors.blue,   label: 'GST/HST Paid',
-                  amount: _fmt(ExpenseData.gstPaidAmt),      pct: "${ExpenseData.gstPaidAmtPercent}%"/*_pct(ExpenseData.gstPaidAmt)*/),
+                  amount: _fmt(ExpenseData.gstPaidAmt),      pct: "${ExpenseData.gstPaidAmtPercent}%"/*_pct(ExpenseData.gstPaidAmt)*/,
+                  showInfoIcon: true,),
               const SizedBox(height: 10),
               _LegendRow(color: WerlogColors.orange, label: 'Non-deductible',
                   amount: _fmt(ExpenseData.nonDeductibleAmt),pct: "${ExpenseData.nonDeductibleAmtPercent}%"/*_pct(ExpenseData.nonDeductibleAmt)*/),
@@ -1333,10 +1370,19 @@ String _fmt(double v) =>
   }
 }
 
+
 class _LegendRow extends StatelessWidget {
   final Color color;
   final String label, amount, pct;
-  const _LegendRow({required this.color, required this.label, required this.amount, required this.pct});
+  final bool showInfoIcon;            // ← ADD
+
+  const _LegendRow({
+    required this.color,
+    required this.label,
+    required this.amount,
+    required this.pct,
+    this.showInfoIcon = false,        // ← ADD
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1344,7 +1390,27 @@ class _LegendRow extends StatelessWidget {
       Container(width: 9, height: 9,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
       const SizedBox(width: 8),
-      Expanded(child: Text(label, style: WerlogTextStyles.captionSmall)),
+      // Label + icon take remaining space, amount/pct stay pinned right
+      Expanded(
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: WerlogTextStyles.captionSmall),
+          ),
+          if (showInfoIcon) ...[
+            const SizedBox(width: 2),
+            GestureDetector(
+              onTap: () => DisclaimerWidget.show(
+                  context, type: DisclaimerType.taxEstimate),
+              child: const Icon(Icons.info_outline_rounded,
+                  size: 12, color: WerlogColors.textTertiary),
+            ),
+          ],
+        ]),
+      ),
+      // Amount and pct always pinned to the right
       Text(amount, style: const TextStyle(
           fontFamily: 'DMSans', fontSize: 11, fontWeight: FontWeight.w600,
           color: WerlogColors.textPrimary)),

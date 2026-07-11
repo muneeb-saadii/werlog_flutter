@@ -168,11 +168,11 @@ class _TaxYearsScreenState extends State<TaxYearsScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('${yr.year} Summary', style: WerlogTextStyles.sectionTitle),
-            /*GestureDetector(
+            GestureDetector(
               onTap: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen())),
               child: const Text('Download Year Report', style: WerlogTextStyles.link),
-            ),*/
+            ),
           ]),
           const SizedBox(height: 14),
           // Row 1

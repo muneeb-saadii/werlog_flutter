@@ -11,6 +11,7 @@ import '../../../core/routing/AppRoutes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/general_functions.dart';
 import '../../../core/utils/shared_pref_helper.dart';
+import '../../screens/disclaimer/disclaimer_widget.dart';
 import '../../screens/profile_segment/checkout_webview_screen.dart';
 import '../../screens/profile_segment/currency_screen.dart';
 import '../../screens/profile_segment/subscription_usage_screen.dart' hide SubscriptionPlan;
@@ -180,12 +181,19 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       GeneralFunctions.getCurrencySymbol();
       refreshData();
-      loadDashboardData();
 
-      _showDisclaimerIfNeeded();
+      // ── Show disclaimer first, THEN load data ─────────────────────
+      await DisclaimerWidget.show(
+        context,
+        type: DisclaimerType.onboarding,
+        onAcknowledged: () {},
+      );
+
+      // Only starts after disclaimer is dismissed (or skipped if already seen)
+      if (mounted) loadDashboardData();
     });
   }
 

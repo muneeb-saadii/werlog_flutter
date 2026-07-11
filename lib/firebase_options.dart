@@ -4,22 +4,12 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       throw UnsupportedError(
         'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
+            'you can reconfigure this by running the FlutterFire CLI again.',
       );
     }
     switch (defaultTargetPlatform) {
@@ -30,17 +20,17 @@ class DefaultFirebaseOptions {
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+              'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+              'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
+              'you can reconfigure this by running the FlutterFire CLI again.',
         );
       default:
         throw UnsupportedError(
@@ -50,19 +40,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB9BOitQ3cs1xZ4F8rKDJ_YRzlv2Qz10dM',
-    appId: '1:4260918967:android:59f9ae9510b8d6f88d3f32',
-    messagingSenderId: '4260918967',
-    projectId: 'aurawellnessclubs-app',
-    storageBucket: 'aurawellnessclubs-app.firebasestorage.app',
+    apiKey:            'AIzaSyCSch9upZP9qYVj8ZSrQm8mRDtZWs7_AOw',
+    appId:             '1:418130924506:android:cf4cfe9e5e041d23a726e3',
+    messagingSenderId: '418130924506',
+    projectId:         'werlog-c52b7',
+    storageBucket:     'werlog-c52b7.firebasestorage.app',
   );
 
+  // ── iOS placeholder — add your iOS app in Firebase Console
+  // and replace these values with your real google-services iOS plist values
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyClTUJCn1hptxEvPEpEgIw_70fLLY7TrSo',
-    appId: '1:4260918967:ios:d7b0a5e5e747206e8d3f32',
-    messagingSenderId: '4260918967',
-    projectId: 'aurawellnessclubs-app',
-    storageBucket: 'aurawellnessclubs-app.firebasestorage.app',
-    iosBundleId: 'com.app.wellness.wellness',
+    apiKey:            'AIzaSyCSch9upZP9qYVj8ZSrQm8mRDtZWs7_AOw',
+    appId:             '1:418130924506:ios:REPLACE_WITH_IOS_APP_ID',
+    messagingSenderId: '418130924506',
+    projectId:         'werlog-c52b7',
+    storageBucket:     'werlog-c52b7.firebasestorage.app',
+    iosBundleId:       'com.app.werlog',
   );
 }
