@@ -251,6 +251,12 @@ class _NewCameraScreenState extends State<NewCameraScreen>
               lockAspectRatio:            false,
               hideBottomControls:         false,
               showCropGrid:               true,
+              aspectRatioPresets: [      // ← ADD THIS to all 4 calls
+                CropAspectRatioPreset.original,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.ratio16x9,
+              ],
             ),
             IOSUiSettings(
               title:               'Crop Document',
@@ -287,6 +293,12 @@ class _NewCameraScreenState extends State<NewCameraScreen>
           lockAspectRatio: false,
           hideBottomControls: false,
           showCropGrid: true,
+          aspectRatioPresets: [      // ← ADD THIS to all 4 calls
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
         IOSUiSettings(
           title: 'Confirm Document',
@@ -419,6 +431,12 @@ class _NewCameraScreenState extends State<NewCameraScreen>
             lockAspectRatio:           false,
             hideBottomControls:        false,
             showCropGrid:              true,
+            aspectRatioPresets: [      // ← ADD THIS to all 4 calls
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
           ),
           IOSUiSettings(
             title:                   'Crop Document',
@@ -519,6 +537,12 @@ class _NewCameraScreenState extends State<NewCameraScreen>
           initAspectRatio: CropAspectRatioPreset.original,
           lockAspectRatio: false,
           hideBottomControls: false,
+          aspectRatioPresets: [      // ← ADD THIS to all 4 calls
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
         ),
         IOSUiSettings(
           title: 'Crop Image',

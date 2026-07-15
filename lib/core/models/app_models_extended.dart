@@ -127,7 +127,7 @@ class WarrantyBadgeData {
 /// OCR confidence chip data
 class OcrConfidenceData {
   int confidencePct;   // 0–100
-  String engineLabel;  // e.g. "GPT-4"
+  String engineLabel;  // e.g. "AI"
   int lineItemCount;
   String statusNote;   // e.g. "Tap any field to edit"
 

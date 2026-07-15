@@ -115,7 +115,7 @@ class _OcrEnginesScreenState extends State<OcrEnginesScreen> {
             {
               "engine": "GPT4",
               "displayName": "Advanced AI",
-              "description": "GPT-4 vision. Extracts line items, taxes, and warranty fields.",
+              "description": "AI vision. Extracts line items, taxes, and warranty fields.",
               "avgDurationSeconds": 15,
               "supportsLineItems": true,
               "supportsWarrantyFields": true,

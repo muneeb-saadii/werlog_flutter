@@ -1787,6 +1787,7 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
                         style: WerlogTextStyles.button),
                   ),
                 ),
+                const SizedBox(height: 24),
               ],
             ),
           ),

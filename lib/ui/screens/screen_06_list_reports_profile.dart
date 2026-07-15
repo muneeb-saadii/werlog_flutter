@@ -1197,9 +1197,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     else if(secIndex == 1 && rIndex == 1){
       ProfileNavigation.openPlanUsage(context);
-    }else if(secIndex == 2 && rIndex == 1){
-      ProfileNavigation.openNotifications(context);
     }else if(secIndex == 2 && rIndex == 0){
+      ProfileNavigation.openNotifications(context);
+    }else if(secIndex == 2 && rIndex == 1){
       ProfileNavigation.openOcrEngines(context);
     }else if(secIndex == 3 && rIndex == 0){
       ProfileNavigation.openFaq(context);

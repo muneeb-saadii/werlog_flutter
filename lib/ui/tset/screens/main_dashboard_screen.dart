@@ -24,6 +24,7 @@ import '../../screens/screen_06_list_reports_profile.dart';
 import '../../../core/widgets/plan_restriction_dialog.dart';
 import 'expense_new/expense_dashboard_screen.dart';
 import 'expense_new/fresh/expense_data.dart';
+import 'expense_new/tax_ready_summary_screen.dart';
 import 'warranty_dashboard_screen.dart';
 import 'package:wellness/ui/tset/screens/expense_new/fresh/expense_detail_screen.dart';
 
@@ -371,7 +372,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 14),
             ),
             // Right: breakdown
-            Column(
+            /*Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Breakdown  ⓘ',
@@ -380,20 +381,72 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 _breakdownRow('GST/HST to Claim', MainDashboardData.gstHstToClaim),
                 const SizedBox(height: 6),
                 _breakdownRow('Tax Deductions', MainDashboardData.taxDeductions),
-                /*const SizedBox(height: 10),
+                const SizedBox(height: 10),
                 GestureDetector(
                   onTap: () {},
-                  child: Row(
-                    children: [
-                      Text('View Full Summary',
-                          style: WerlogTextStyles.link.copyWith(fontSize: 11)),
-                      const SizedBox(width: 2),
-                      const Icon(Icons.chevron_right,
-                          color: WerlogColors.teal, size: 14),
-                    ],
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: WerlogColors.teal,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('View Expense Reports',
+                            style: WerlogTextStyles.link.copyWith(
+                                fontSize: 12, color: WerlogColors.tealSurface)),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right,
+                            color: WerlogColors.tealSurface, size: 14),
+                      ],
+                    ),
                   ),
-                ),*/
+                ),
               ],
+            ),*/
+
+            // Right: breakdown
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                  onTap: () => DisclaimerWidget.show(context, type: DisclaimerType.taxEstimate),
+                    child: Text('Breakdown  ⓘ',
+                        style: WerlogTextStyles.balanceSub.copyWith(fontSize: 10)),
+                  ),
+                  const SizedBox(height: 10),
+                  _breakdownRow('GST/HST to Claim', MainDashboardData.gstHstToClaim),
+                  const SizedBox(height: 6),
+                  _breakdownRow('Tax Deductions', MainDashboardData.taxDeductions),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen())),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 5),
+                      decoration: BoxDecoration(
+                        color: WerlogColors.teal,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('View Expense Reports',
+                              style: WerlogTextStyles.link.copyWith(
+                                  fontSize: 12, color: WerlogColors.tealSurface)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.chevron_right,
+                              color: WerlogColors.tealSurface, size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -531,6 +584,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Flexible(
                       child: Text(

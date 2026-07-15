@@ -15,4 +15,18 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <style name="UCropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">#FF0D2427</item>
+        <item name="android:navigationBarColor">#FF0D2427</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+        <item name="android:fitsSystemWindows">true</item>
+        <item name="colorPrimary">#FF0D2427</item>
+        <item name="colorPrimaryDark">#FF0D2427</item>
+        <item name="colorAccent">#FFE8A838</item>
+    </style>
 </resources>

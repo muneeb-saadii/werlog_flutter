@@ -37,7 +37,7 @@ class UserProfile {
         email: json['email'] ?? '',
         fullName: json['fullName'] ?? '',
         avatarUrl: json['avatarUrl'],
-        engine: json['engine'] ?? 'GPT4',
+        engine: json['engine'] ?? 'AI',
         role: json['role'] ?? 'ROLE_USER',
         emailVerified: json['emailVerified'] ?? false,
         showAds: json['showAds'] ?? true,

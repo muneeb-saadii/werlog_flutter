@@ -25,7 +25,7 @@ class FaqScreen extends StatelessWidget {
     ),
     _FaqItem(
       q: 'How does the OCR scanning work?',
-      a: 'You photograph or upload a document, and our AI engine (powered by GPT-4 Vision or other engines depending on your plan) reads and extracts structured data from it in seconds.',
+      a: 'You photograph or upload a document, and our AI engine (powered by AI Vision or other engines depending on your plan) reads and extracts structured data from it in seconds.',
     ),
     _FaqItem(
       q: 'What document types are supported?',
@@ -457,7 +457,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     _DocSection('3. Document Data',
         'Documents you upload are processed temporarily in our cloud environment and then deleted after extraction is complete. Extracted data (vendor names, amounts, dates) is stored in your account. You can delete this at any time.'),
     _DocSection('4. AI Processing',
-        'Your documents may be processed by third-party AI services (such as OpenAI\'s GPT-4 Vision API). These services operate under strict data processing agreements and do not use your documents to train their models.'),
+        'Your documents may be processed by third-party AI services (such as OpenAI\'s AI Vision API). These services operate under strict data processing agreements and do not use your documents to train their models.'),
     _DocSection('5. Data Sharing',
         'We do not share your personal data with third parties except as necessary to provide the service, comply with law, or protect rights. We never sell data to advertisers.'),
     _DocSection('6. Data Retention',
