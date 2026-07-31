@@ -12,7 +12,20 @@
           "package_name": "com.app.werlog"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "418130924506-ahe2er34qjc8td8kfmnflb3143v673dt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.werlog",
+            "certificate_hash": "4cec3c33a3e268634736f37bd80eb2558bf5e50d"
+          }
+        },
+        {
+          "client_id": "418130924506-35ihabcs73krljapn49v93ujh9vc9kvl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCSch9upZP9qYVj8ZSrQm8mRDtZWs7_AOw"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "418130924506-35ihabcs73krljapn49v93ujh9vc9kvl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

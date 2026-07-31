@@ -64,9 +64,12 @@ dependencies:
   cunning_document_scanner: ^1.0.5
   pdf: ^3.11.1
   printing: ^5.13.1
+#  open_filex: ^4.4.0
+  open_filex: ^4.6.0
 #  edge_detection: ^1.1.0
 #  path_provider: ^2.1.4   # likely already present
 #  path: ^1.9.0
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:

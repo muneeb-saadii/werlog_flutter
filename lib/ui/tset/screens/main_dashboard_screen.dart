@@ -218,8 +218,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     const SizedBox(height: 14),
                     _buildQuickAccessRow(context),
                     const SizedBox(height: 14),
-                    _buildAiInsightsSection(context),
-                    const SizedBox(height: 14),
+                    Visibility(
+                      visible: false,
+                      maintainState: false,
+                      maintainAnimation: false,
+                      maintainSize: false,          // ← no blank gap when hidden
+                      child: _buildAiInsightsSection(context),
+                    ),
                     if (MainDashboardData.topCategories.isNotEmpty) ...[
                       _buildAlertsSection(context),
                       const SizedBox(height: 14),
@@ -413,7 +418,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                  onTap: () => DisclaimerWidget.show(context, type: DisclaimerType.taxEstimate),
+                    onTap: () => DisclaimerWidget.show(context, type: DisclaimerType.taxEstimate),
                     child: Text('Breakdown  ⓘ',
                         style: WerlogTextStyles.balanceSub.copyWith(fontSize: 10)),
                   ),
@@ -434,13 +439,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('View Expense Reports',
-                              style: WerlogTextStyles.link.copyWith(
-                                  fontSize: 12, color: WerlogColors.tealSurface)),
-                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text('View Expense Reports',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: WerlogTextStyles.link.copyWith(
+                                    fontSize: 11, color: WerlogColors.tealSurface)),
+                          ),
+                          const SizedBox(width: 2),
                           const Icon(Icons.chevron_right,
-                              color: WerlogColors.tealSurface, size: 14),
+                              color: WerlogColors.tealSurface, size: 13),
                         ],
                       ),
                     ),
@@ -470,12 +480,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   // ── Quick access row (Warranty + Expenses) ─
   Widget _buildQuickAccessRow(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _buildWarrantyCard(context)),
-        const SizedBox(width: 12),
-        Expanded(child: _buildExpensesCard(context)),
-      ],
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildWarrantyCard(context)),
+          const SizedBox(width: 12),
+          Expanded(child: _buildExpensesCard(context)),
+        ],
+      ),
     );
   }
 
@@ -511,14 +524,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   child: const Icon(Icons.verified_user_outlined,
                       color: Colors.white, size: 18),
                 ),
-                const Spacer(),
-                const Icon(Icons.chevron_right,
-                    color: WerlogColors.textTertiary, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('Warranty', style: WerlogTextStyles.sectionTitle),
+                ),
+                /*const Icon(Icons.chevron_right,
+                    color: WerlogColors.textTertiary, size: 18),*/
               ],
             ),
-            const SizedBox(height: 10),
-            Text('Warranty', style: WerlogTextStyles.sectionTitle),
-            const SizedBox(height: 2),
+            const SizedBox(height: 5),
             Text('All your product warranties in one place',
                 style: WerlogTextStyles.caption),
             const SizedBox(height: 12),
@@ -526,13 +540,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             Row(
               children: [
                 SizedBox(
-                  width: 56,
-                  height: 56,
+                  width: 66,
+                  height: 66,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       CustomPaint(
-                        size: const Size(56, 56),
+                        size: const Size(66, 66),
                         painter: _DonutPainter(
                           active: MainDashboardData.activeWarranties,
                           expiringSoon: MainDashboardData.expiringSoonWarranties,
@@ -546,11 +560,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           Text(
                             '${MainDashboardData.totalWarranties}',
                             style: WerlogTextStyles.sectionTitle
-                                .copyWith(fontSize: 14),
+                                .copyWith(fontSize: 16),
                           ),
                           Text('Total',
                               style:
-                              WerlogTextStyles.caption.copyWith(fontSize: 8)),
+                              WerlogTextStyles.caption.copyWith(fontSize: 9)),
                         ],
                       ),
                     ],
@@ -575,6 +589,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            const Spacer(),
             Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 9),
@@ -611,21 +626,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _warrantyLegendRow(Color color, String label, int count) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
           Container(
-            width: 7,
-            height: 7,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           Expanded(
             child: Text(label,
-                style: WerlogTextStyles.caption.copyWith(fontSize: 9)),
+                style: WerlogTextStyles.caption.copyWith(fontSize: 11)),
           ),
           Text('$count',
-              style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 10)),
+              style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 12)),
         ],
       ),
     );
@@ -673,21 +688,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
                 Expanded(
                   child: Text(
-                    'Expenses & Tax',
+                    'Expense',
                     style: WerlogTextStyles.link.copyWith(fontSize: 11),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
 
-                const Icon(
+                /*const Icon(
                   Icons.chevron_right,
                   color: WerlogColors.teal,
                   size: 14,
-                ),
+                ),*/
               ],
             ),
             const SizedBox(height: 6),
-            Text('Track expenses and save more on taxes',
+            Text('All your expense receipts in one place.',
                 style: WerlogTextStyles.caption),
             const SizedBox(height: 12),
             _expensesRow(
@@ -702,6 +717,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             _expensesRow(
                 Icons.description_outlined, 'Documents', '${MainDashboardData.documents}'),*/
             const SizedBox(height: 12),
+            const Spacer(),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 9),
@@ -729,13 +745,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget _expensesRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: WerlogColors.textTertiary, size: 14),
+        Icon(icon, color: WerlogColors.textTertiary, size: 13),
         const SizedBox(width: 6),
         Expanded(
-            child:
-            Text(label, style: WerlogTextStyles.caption)),
+            child: Text(label,
+                style: WerlogTextStyles.caption.copyWith(
+                    fontSize: (WerlogTextStyles.caption.fontSize ?? 11) - 1))),
         Text(value,
-            style: WerlogTextStyles.txTitle.copyWith(fontSize: 12)),
+            style: WerlogTextStyles.txTitle.copyWith(fontSize: 11)),
       ],
     );
   }
@@ -1344,7 +1361,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 if (result.isPdf) {
                   // ── PDF path: single file, empty params, fieldName 'files' ────────
                   filesToUpload = [result.pdf!];
-                  params        = {};
+                  params = {
+                    "documentType": (scanType == ScanType.expense) ? "EXPENSE" : "WARRANTY",
+                    "engine": "GPT4",
+                  };
                   fieldName     = 'files';
                 } else {
                   // ── Images path ────────────────────────────────────────────────────

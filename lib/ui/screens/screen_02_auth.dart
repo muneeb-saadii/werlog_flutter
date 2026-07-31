@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:wellness/ui/screens/profile_segment/currency_screen.dart';
 import 'package:wellness/ui/screens/screen_03_subscription.dart';
 import '../../core/api/api_service.dart';
@@ -61,6 +62,88 @@ class _SignInScreenState extends State<SignInScreen> {
   late SignInScreenData _data;
   late int _tab; // 0 = sign in, 1 = sign up
 
+  // ── Google Sign-In ────────────────────────────────────────────────
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+
+  Future<void> _handleGoogleSignIn_() async {
+    try {
+      // Sign out first to force account picker every time
+      await _googleSignIn.signOut();
+
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account == null) {
+        // User cancelled the picker
+        return;
+      }
+
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final String? idToken = auth.idToken;
+
+      if (idToken == null) {
+        if (mounted) GeneralFunctions.showError(
+            context, 'Google sign-in failed. Please try again.');
+        return;
+      }
+
+      // Send idToken to your backend
+      final response = await ApiService.post(
+        context,
+        Endpoints.GOOGLE_LOGIN,
+        body: {
+          'idToken': idToken,
+          'email':   account.email,
+          'name':    account.displayName ?? '',
+        },
+      );
+
+      handleAuthResponse(response);
+
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      if (mounted) GeneralFunctions.showError(
+          context, 'Google sign-in failed. Please try again.');
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      await _googleSignIn.signOut();
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account == null) return;
+
+      final GoogleSignInAuthentication auth = await account.authentication;
+
+      // ── TESTING: print token details, don't call backend yet ──────
+      debugPrint('✅ Google Sign-In SUCCESS');
+      debugPrint('   Email:    ${account.email}');
+      debugPrint('   Name:     ${account.displayName}');
+      debugPrint('   Photo:    ${account.photoUrl}');
+      debugPrint('   ID Token: ${auth.idToken?.substring(0, 50)}...');
+      debugPrint('   Access Token: ${auth.accessToken?.substring(0, 20)}...');
+
+      /*if (mounted) {
+        GeneralFunctions.showSuccess(
+          context,
+          'Google auth OK: ${account.email}',
+        );
+      }*/
+      // ── END TESTING ───────────────────────────────────────────────
+
+      // When backend is ready, uncomment this:
+      final response = await ApiService.post(
+        context,
+        Endpoints.GOOGLE_LOGIN,
+        body: { 'idToken': auth.idToken, 'email': account.email, 'name': account.displayName ?? '' },
+      );
+      handleAuthResponse(response);
+
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      if (mounted) GeneralFunctions.showError(
+          context, 'Google sign-in failed: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -91,13 +174,13 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> registerUser() async {
     try {
       final response = await ApiService.post(
-        context,
-        Endpoints.REGISTER_USER,
-        body: {
-          "email": _data.emailValue,
-          "password": _data.passwordValue,
-          "fullName": _data.nameValue
-        }
+          context,
+          Endpoints.REGISTER_USER,
+          body: {
+            "email": _data.emailValue,
+            "password": _data.passwordValue,
+            "fullName": _data.nameValue
+          }
       );
 
       print('\nSUCCESS => $response');
@@ -176,7 +259,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         await _tab == 0 ? loginUser() : registerUser();
                       },
                       // onSubmit: widget.onSubmit,
-                      onGoogleLogin: widget.onGoogleLogin,
+                      onGoogleLogin: _handleGoogleSignIn,
                       onAppleLogin: widget.onAppleLogin,
                       onToggleMode: widget.onToggleMode,
                     ),
@@ -370,20 +453,20 @@ class _Header extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: active
                             ? [
-                                BoxShadow(
-                                  color:
-                                      WerlogColors.textPrimary.withOpacity(0.06),
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 1),
-                                )
-                              ]
+                          BoxShadow(
+                            color:
+                            WerlogColors.textPrimary.withOpacity(0.06),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          )
+                        ]
                             : null,
                       ),
                       child: Text(
                         e.value,
                         style: WerlogTextStyles.body/*bodySmall*/.copyWith(
                           color: active
-                              // ? WerlogColors.textPrimary
+                          // ? WerlogColors.textPrimary
                               ? WerlogColors.tabActive
                               : WerlogColors.textSecondary,
                           fontWeight: FontWeight.w500,
@@ -481,28 +564,123 @@ class _Form extends StatelessWidget {
           ),
           const SizedBox(height: 40),
           const OrDivider(),
-          Row(
-            children: [
-              SocialButton(
-                // logo: _GoogleLogo(),
-                logo: const Icon(Icons.apple,
-                    color: WerlogColors.textPrimary, size: 16),
-                label: 'Google',
-                onTap: onGoogleLogin,
-              ),
-              const SizedBox(width: 10),
-              SocialButton(
-                logo: const Icon(Icons.apple,
-                    color: WerlogColors.textPrimary, size: 16),
-                label: 'Apple',
-                onTap: onAppleLogin,
-              ),
-            ],
-          ),
+          const SizedBox(height: 16),
+          // ── Google Sign-In — full width ──────────────────────────────
+          _GoogleSignInButton(onTap: onGoogleLogin),
+          // Apple hidden for now:
+          // _AppleSignInButton(onTap: onAppleLogin),
         ],
       ),
     );
   }
+}
+
+// ── Google Sign-In Button ──────────────────────────────────────
+class _GoogleSignInButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  const _GoogleSignInButton({this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: WerlogColors.border, width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Official Google logo using coloured G letters
+            _GoogleLogo(),
+            const SizedBox(width: 10),
+            Text(
+              'Continue with Google',
+              style: WerlogTextStyles.body.copyWith(
+                fontWeight: FontWeight.w500,
+                color: WerlogColors.textPrimary,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Google coloured G logo (no image asset needed) ─────────────
+class _GoogleLogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 20, height: 20,
+      child: CustomPaint(painter: _GoogleLogoPainter()),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cx = size.width / 2;
+    final double cy = size.height / 2;
+    final double r  = size.width / 2;
+
+    // Draw the 4-colour Google G using arcs
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = r * 0.35;
+    const double gap = 0.05;
+
+    // Blue — top right to bottom right
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.82),
+        -0.52, 1.57 - gap, false, paint);
+
+    // Red — top left to top right
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.82),
+        3.67, 1.62 - gap, false, paint);
+
+    // Yellow — bottom left
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.82),
+        2.09, 1.57 - gap, false, paint);
+
+    // Green — bottom right
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.82),
+        0.52 + gap * 0.5, 1.55 - gap, false, paint);
+
+    // White center fill to create the ring look
+    final fillPaint = Paint()
+      ..color = WerlogColors.surface
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), r * 0.48, fillPaint);
+
+    // Horizontal bar of the G (right side)
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.fill;
+    final barRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cx, cy - r * 0.16, r * 0.92, r * 0.32),
+      Radius.circular(r * 0.08),
+    );
+    canvas.drawRRect(barRect, barPaint);
+  }
+
+  @override
+  bool shouldRepaint(_GoogleLogoPainter oldDelegate) => false;
 }
 
 // ── Labeled text field ─────────────────────────────────────────
@@ -609,10 +787,10 @@ class _LabeledFieldState extends State<_LabeledField> {
 }
 
 // ── Google logo widget ─────────────────────────────────────────
-class _GoogleLogo extends StatelessWidget {
+class _GoogleLogo_ extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    return SizedBox(
       width: 14,
       height: 14,
       child: CustomPaint(painter: _GoogleLogoPainter()),
@@ -620,8 +798,8 @@ class _GoogleLogo extends StatelessWidget {
   }
 }
 
-class _GoogleLogoPainter extends CustomPainter {
-  const _GoogleLogoPainter();
+class _GoogleLogoPainter_ extends CustomPainter {
+  const _GoogleLogoPainter_();
   @override
   void paint(Canvas canvas, Size size) {
     final double cx = size.width / 2;
@@ -634,8 +812,8 @@ class _GoogleLogoPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = size.width * 0.28;
       canvas.drawArc(
-        Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.7),
-        startAngle, sweepAngle, false, paint);
+          Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.7),
+          startAngle, sweepAngle, false, paint);
     }
     // Simplified four-colour dots
     arc(-1.2, 1.7, const Color(0xFF4285F4));
@@ -761,7 +939,7 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
       // backgroundColor: WerlogColors.background,
       backgroundColor: Colors.transparent,
       body: Container(
-          constraints: const BoxConstraints.expand(),
+        constraints: const BoxConstraints.expand(),
         decoration: BoxDecoration(
           gradient: WerlogGradients.pageHeader(), // ✅ correct usage
         ),
@@ -873,17 +1051,17 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
                       decoration: InputDecoration(
                         counterText: '',
                         contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                        const EdgeInsets.symmetric(vertical: 12),
                         filled: true,
                         fillColor: WerlogColors.tealSurface/*surface*/,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(11),
                             borderSide:
-                                const BorderSide(color: WerlogColors.border)),
+                            const BorderSide(color: WerlogColors.border)),
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(11),
                             borderSide:
-                                const BorderSide(color: WerlogColors.border)),
+                            const BorderSide(color: WerlogColors.border)),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(11),
                             borderSide: BorderSide(
@@ -905,7 +1083,7 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
                     ? */() {
                   resendOtpCall(data.email);
                 }
-                    /*: null*/,
+                /*: null*/,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   child: Text(
@@ -951,8 +1129,8 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
 
       }else{
         GeneralFunctions.showError(
-          context,
-          response['message']
+            context,
+            response['message']
         );
       }
 

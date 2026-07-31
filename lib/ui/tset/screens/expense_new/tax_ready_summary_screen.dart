@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../../core/api/api_service.dart';
 import '../../../../core/api/endpoints.dart';
@@ -613,7 +616,7 @@ class _TaxReadySummaryScreenState extends State<TaxReadySummaryScreen> {
       setState(() => _downloading = false);
 
       if (mounted && savedFile != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        /*ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Saved: $_pdfCacheKey',
               style: const TextStyle(
                   fontFamily: 'DMSans', fontSize: 13)),
@@ -623,7 +626,8 @@ class _TaxReadySummaryScreenState extends State<TaxReadySummaryScreen> {
               borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.all(16),
           duration: const Duration(seconds: 4),
-        ));
+        ));*/
+        _showDownloadSuccessSheet(savedFile.path);
       }
     } catch (e) {
       setState(() => _downloading = false);
@@ -631,6 +635,33 @@ class _TaxReadySummaryScreenState extends State<TaxReadySummaryScreen> {
       if (mounted) GeneralFunctions.showError(
           context, 'Download failed: $e');
     }
+  }
+
+  void _showDownloadSuccessSheet(String filePath) {
+    final fileName = p.basename(filePath);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => _DownloadSuccessSheet(
+        fileName: fileName,
+        filePath: filePath,
+        onOpenFile: () async {
+          Navigator.pop(sheetContext);
+          await OpenFilex.open(filePath);
+        },
+        onShowInFolder: () async {
+          Navigator.pop(sheetContext);
+          // open_filex opens the file with the system default handler.
+          // On Android this typically surfaces "Open with..." including
+          // the Files app; on iOS OpenFilex.open on a folder isn't
+          // supported, so we open the file's containing directory
+          // via the platform file manager where available.
+          await OpenFilex.open(p.dirname(filePath));
+        },
+      ),
+    );
   }
 
   Future<File> _downloadAndroid(Uint8List bytes) async {
@@ -1012,6 +1043,8 @@ class _TaxReadySummaryScreenState extends State<TaxReadySummaryScreen> {
       ],
     ]),
   );
+
+
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -1243,3 +1276,222 @@ BoxDecoration _cardDecoration() => BoxDecoration(
   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
       blurRadius: 8, offset: const Offset(0, 2))],
 );
+
+class _DownloadSuccessSheet extends StatelessWidget {
+  final String fileName;
+  final String filePath;
+  final VoidCallback onOpenFile;
+  final VoidCallback onShowInFolder;
+
+  const _DownloadSuccessSheet({
+    required this.fileName,
+    required this.filePath,
+    required this.onOpenFile,
+    required this.onShowInFolder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        decoration: BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 24,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(
+                  color: WerlogColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            // Success icon + heading
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: WerlogColors.tealSurface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.check_circle_rounded,
+                      color: WerlogColors.teal, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Download complete',
+                          style: TextStyle(fontFamily: 'DMSans',
+                              fontSize: 16, fontWeight: FontWeight.w700,
+                              color: WerlogColors.textPrimary)),
+                      SizedBox(height: 2),
+                      Text('Saved to your device',
+                          style: TextStyle(fontFamily: 'DMSans',
+                              fontSize: 12, color: WerlogColors.textTertiary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 18),
+
+            // File info card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: WerlogColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: WerlogColors.border, width: 0.8),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: WerlogColors.coralSurface,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.picture_as_pdf_rounded,
+                        size: 17, color: WerlogColors.coral),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontFamily: 'DMSans',
+                                fontSize: 13, fontWeight: FontWeight.w600,
+                                color: WerlogColors.textPrimary)),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.folder_outlined,
+                                size: 12, color: WerlogColors.textTertiary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                Platform.isAndroid
+                                    ? 'Downloads folder'
+                                    : 'Files app › On My iPhone',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontFamily: 'DMSans',
+                                    fontSize: 11, color: WerlogColors.textTertiary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: filePath));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('File path copied'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: WerlogColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: WerlogColors.border, width: 0.8),
+                      ),
+                      child: const Icon(Icons.copy_rounded,
+                          size: 14, color: WerlogColors.textTertiary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Action buttons
+            Row(
+              children: [
+                /*Expanded(
+                  child: OutlinedButton(
+                    onPressed: onShowInFolder,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: WerlogColors.teal),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.folder_open_rounded, size: 15, color: WerlogColors.teal),
+                        SizedBox(width: 6),
+                        Text('Show in Folder', style: TextStyle(fontFamily: 'DMSans',
+                            fontSize: 13, fontWeight: FontWeight.w500,
+                            color: WerlogColors.teal)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),*/
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onOpenFile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: WerlogColors.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.open_in_new_rounded, size: 15, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('Open File', style: TextStyle(fontFamily: 'DMSans',
+                            fontSize: 13, fontWeight: FontWeight.w500,
+                            color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

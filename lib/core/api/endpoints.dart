@@ -7,6 +7,7 @@ class Endpoints {
 
   static const String REGISTER_USER = 'v1/auth/register';
   static const String LOGIN_USER = 'v1/auth/login';
+  static const String GOOGLE_LOGIN = 'v1/auth/google';
   static const String RESEND_OTP = 'v1/auth/resendOtp';
   static const String FORGET_PASSWORD = 'v1/auth/forgetPassword';
   static const String VERIFY_OTP = 'v1/auth/verifyOtp';
