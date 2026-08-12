@@ -167,6 +167,62 @@ class ApiService {
     }
   }
 
+  static Future<dynamic> post_auth(
+      BuildContext context,
+      String endpoint, {
+        String? token,
+        Map<String, dynamic>? body,
+        bool showLoader = true,
+      }) async {
+    try {
+      if (showLoader) LoadingHelper.show(context);
+
+      token ??= await SharedPrefHelper.getString(SharedPrefHelper.accessToken);
+
+      final uri = Uri.parse('$baseUrl$endpoint');
+
+      debugPrint('POST URL  => $uri');
+      debugPrint('POST BODY => ${jsonEncode(body)}');
+
+      final response = await http.post(
+        uri,
+        headers: headers(token: token),
+        body: jsonEncode(body ?? {}),
+      );
+
+      if (showLoader) LoadingHelper.hide(context);
+
+      final statusCode = response.statusCode;
+      debugPrint('STATUS CODE => $statusCode');
+      debugPrint('RESPONSE    => ${response.body}');
+
+      // ── Session expiry check — only for auth-related 401/403 ────────
+      if (statusCode == 401 || statusCode == 403) {
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          // Use server message if available, fallback only if body is unparseable
+          try {
+            final data = jsonDecode(response.body);
+            final msg  = data['message']?.toString();
+            throw Exception(msg != null && msg.isNotEmpty ? msg : 'Unauthorized access');
+          } catch (e) {
+            if (e is Exception) rethrow;
+            throw Exception('Unauthorized access');
+          }
+        }
+      }
+
+      return _handleResponse(response);
+
+    } on SocketException {
+      throw Exception('No internet connection');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception(e.toString());
+    } finally {
+      if (showLoader) LoadingHelper.hide(context);
+    }
+  }
+
 
   // =========================================================
 // 🔥 POST FORM-DATA API

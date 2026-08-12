@@ -70,6 +70,8 @@ dependencies:
 #  path_provider: ^2.1.4   # likely already present
 #  path: ^1.9.0
   google_sign_in: ^6.2.1
+  flutter_timezone: ^3.0.0
+  sim_card_info: ^1.0.1
 
 dev_dependencies:
   flutter_test:

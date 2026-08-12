@@ -1775,6 +1775,12 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
                           "Please select and save the expense type (Personal or Business) before continuing.");
                       return;
                     }
+
+                    GeneralFunctions.forceSessionRefresh(context,
+                        onComplete: () {
+                          if (mounted) setState(() {}); // optional — re-render with fresh data
+                        });
+
                     widget.onDone();
                   },
                   child: Container(

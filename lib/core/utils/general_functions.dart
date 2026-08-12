@@ -1,9 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:sim_card_info/sim_card_info.dart';
 import 'package:wellness/core/utils/shared_pref_helper.dart';
 
 import '../../ui/screens/profile_segment/currency_screen.dart';
+import '../../ui/screens/screen_02_auth.dart';
+import '../theme/session_refresh_screen.dart';
 import '../widgets/restart_widget.dart';
 
 class GeneralFunctions {
@@ -17,10 +20,61 @@ class GeneralFunctions {
     RestartWidget.restartApp();
   }
 
+  /// Forces the session refresh screen to appear from any screen.
+  /// Tokens + currency sync happen automatically inside SessionRefreshScreen.
+  /// Optional [onComplete] fires after successful refresh.
+  static Future<void> forceSessionRefresh(
+      BuildContext context, {
+        VoidCallback? onComplete,
+      }) async {
+    await Navigator.of(context, rootNavigator: true).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierDismissible: false,
+        pageBuilder: (_, __, ___) => SessionRefreshScreen(
+          onRefreshComplete: (responseData) async {
+            debugPrint('::forceSessionRefresh complete');
+            onComplete?.call();
+          },
+          onSignOut: () {
+            _navigateToSignIn(context);
+          },
+        ),
+      ),
+    );
+  }
+
+  static void _navigateToSignIn(BuildContext context) {
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => SignInScreen(
+          initialData: SignInScreenData(
+            emailValue: '',
+            passwordValue: '',
+            nameValue: '',
+            isSignIn: true,
+          ),
+        ),
+      ),
+          (route) => false,
+    );
+  }
+
 
   // =========================================================
   // 🔥 CURRENCY SYMBOL
   // =========================================================
+
+  /// Finds a CurrencyItem from the fixed list by currency code.
+  /// Returns USD as fallback if code not found.
+  static CurrencyItem currencyFromCode(String code) {
+    return kCurrencies.firstWhere(
+          (c) => c.code.toUpperCase() == code.toUpperCase(),
+      orElse: () => const CurrencyItem(
+          id: 'usd', code: 'USD', symbol: r'$',
+          name: 'US Dollar', country: 'United States', region: 'Americas'),
+    );
+  }
 
   static String currencySymbol = "USD";
   static Future<String> getCurrencySymbol_old() async {
@@ -51,41 +105,65 @@ class GeneralFunctions {
   static Future<void> initCurrencyForNewUser() async {
     print("::initCurrencyForNewUser called");
 
-    // Skip if user already has a saved currency (returning user)
-    final existing = await SharedPrefHelper.getString(
+    final existing = SharedPrefHelper.getString(
         SharedPrefHelper.selectedCurrencyId);
-    print("::initCurrencyForNewUser existing currency id => $existing");
-
-    if (existing != null && existing.isNotEmpty) {
-      print("::initCurrencyForNewUser skipping — currency already set: $existing");
+    if (existing.isNotEmpty) {
+      print("::initCurrencyForNewUser skipping — already set: $existing");
       return;
     }
 
-    // Get device locale country code e.g. "PK", "US", "GB"
-    final String localeName = Platform.localeName;
-    final String countryCode = localeName.split('_').last.toUpperCase();
-    print("::initCurrencyForNewUser localeName => $localeName");
-    print("::initCurrencyForNewUser countryCode => $countryCode");
+    String? countryCode;
 
-    // Map country code → currency code
-    final String? currencyCode = _countryToCurrency[countryCode];
-    print("::initCurrencyForNewUser mapped currencyCode => $currencyCode");
+    try {
+      final String tzName  = DateTime.now().timeZoneName.toUpperCase();
+      final int    offset  = DateTime.now().timeZoneOffset.inHours;
+      print("::initCurrencyForNewUser tzName=$tzName offset=$offset");
 
-    if (currencyCode == null) {
-      print("::initCurrencyForNewUser country not in map — keeping \$ default");
-      return;
+      // ── Resolve ambiguous abbreviations using UTC offset ─────────────
+      if (tzName == 'AST') {
+        // Arabia Standard Time  = UTC+3  → SA / QA / KW / OM
+        // Atlantic Standard Time = UTC-4 → CA
+        countryCode = (offset == 3) ? 'QA' : 'CA';
+      } else if (tzName == 'CST') {
+        // China Standard Time  = UTC+8  → CN
+        // US Central           = UTC-6  → US
+        // Mexico Central       = UTC-6  → MX (close enough → USD)
+        countryCode = (offset == 8) ? 'CN' : 'US';
+      } else if (tzName == 'BST') {
+        // British Summer Time  = UTC+1  → GB
+        // Bangladesh Std Time  = UTC+6  → BD
+        countryCode = (offset == 6) ? 'BD' : 'GB';
+      } else if (tzName == 'IST') {
+        // India Standard Time  = UTC+5.5 (330 min)
+        // Israel Standard Time = UTC+2
+        // Irish Standard Time  = UTC+1
+        final minutes = DateTime.now().timeZoneOffset.inMinutes;
+        countryCode = (minutes == 330) ? 'IN' : 'GB';
+      } else if (tzName == 'EST') {
+        // Eastern US/Canada — both USD/CAD, default US
+        countryCode = 'US';
+      } else {
+        countryCode = _timezoneAbbrevToCountry[tzName];
+      }
+
+      print("::initCurrencyForNewUser countryCode => $countryCode");
+    } catch (e) {
+      print("::initCurrencyForNewUser tz detection failed => $e");
     }
 
-    // Find matching CurrencyItem in the fixed list
+    final String currencyCode = countryCode != null
+        ? (_countryToCurrency[countryCode] ?? 'USD')
+        : 'USD';
+
+    print("::initCurrencyForNewUser final currencyCode => $currencyCode");
+
     final match = kCurrencies.firstWhere(
           (c) => c.code.toUpperCase() == currencyCode.toUpperCase(),
       orElse: () => const CurrencyItem(
-          id: 'usd', code: 'USD', symbol: '\$',
+          id: 'usd', code: 'USD', symbol: r'$',
           name: 'US Dollar', country: 'United States', region: 'Americas'),
     );
-    print("::initCurrencyForNewUser matched => id:${match.id} code:${match.code} symbol:${match.symbol} name:${match.name}");
 
-    // Save all four fields
     await SharedPrefHelper.saveString(
         SharedPrefHelper.selectedCurrencyId,     match.id);
     await SharedPrefHelper.saveString(
@@ -94,16 +172,50 @@ class GeneralFunctions {
         SharedPrefHelper.selectedCurrencyCode,   match.code);
     await SharedPrefHelper.saveString(
         SharedPrefHelper.selectedCurrencyName,   match.name);
-    print("::initCurrencyForNewUser saved to SharedPref successfully");
 
-    // Update in-memory symbol immediately
-    currencySymbol = '${match.code/*symbol*/} ';
-    print("::initCurrencyForNewUser in-memory currencySymbol updated => $currencySymbol");
+    currencySymbol = '${match.code} ';
+    print("::initCurrencyForNewUser set => ${match.code} ${match.symbol}");
   }
 
   /// Country code → ISO 4217 currency code
   /// Only countries covered by your fixed _kCurrencies list.
   /// Everything else falls through to $ default — no conflict.
+  static const Map<String, String> _timezoneAbbrevToCountry = {
+    'PKT':  'PK',   // Pakistan ✅
+    'GST':  'AE',   // UAE/Gulf ✅
+    'GMT':  'GB',   // UK
+    'CET':  'DE',   // Central Europe → EUR
+    'CEST': 'DE',
+    'EDT':  'US',
+    'CDT':  'US',
+    'MST':  'US',
+    'MDT':  'US',
+    'PST':  'US',
+    'PDT':  'US',
+    'NST':  'CA',   // Newfoundland Canada
+    'NDT':  'CA',
+    'AEST': 'AU',
+    'AEDT': 'AU',
+    'ACST': 'AU',
+    'AWST': 'AU',
+    'JST':  'JP',
+    'SGT':  'SG',
+    'MYT':  'MY',
+    'TRT':  'TR',
+    'EET':  'EG',
+    'EEST': 'EG',
+    'BRT':  'BR',
+    'BRST': 'BR',
+    'SAST': 'ZA',
+    'NZST': 'NZ',
+    'NZDT': 'NZ',
+    'PHT':  'PH',
+    'ICT':  'TH',   // Thailand / Vietnam
+    'WIB':  'ID',   // Indonesia West
+    // AST, CST, BST, IST handled above with offset logic
+  };
+
+
   static List<CurrencyItem> kCurrencies = [
     CurrencyItem(id:'usd', code:'USD', symbol:'\$',  name:'US Dollar',          country:'United States',    region:'Americas'),
     CurrencyItem(id:'eur', code:'EUR', symbol:'€',   name:'Euro',               country:'Eurozone',         region:'Europe'),
@@ -138,36 +250,16 @@ class GeneralFunctions {
   ];
 
   static const Map<String, String> _countryToCurrency = {
-    'US': 'USD', // United States
-    'GB': 'GBP', // United Kingdom
-    'PK': 'PKR', // Pakistan
-    'IN': 'INR', // India
-    'AE': 'AED', // UAE
-    'SA': 'SAR', // Saudi Arabia
-    'CA': 'CAD', // Canada
-    'AU': 'AUD', // Australia
-    'JP': 'JPY', // Japan
-    'CN': 'CNY', // China
-    'CH': 'CHF', // Switzerland
-    'SG': 'SGD', // Singapore
-    'MY': 'MYR', // Malaysia
-    'BD': 'BDT', // Bangladesh
-    'QA': 'QAR', // Qatar
-    'KW': 'KWD', // Kuwait
-    'OM': 'OMR', // Oman
-    'BR': 'BRL', // Brazil
-    'ZA': 'ZAR', // South Africa
-    'NZ': 'NZD', // New Zealand
-    'NO': 'NOK', // Norway
-    'SE': 'SEK', // Sweden
-    'DK': 'DKK', // Denmark
-    'MX': 'MXN', // Mexico
-    'PH': 'PHP', // Philippines
-    'TH': 'THB', // Thailand
-    'ID': 'IDR', // Indonesia
-    'TR': 'TRY', // Turkey
-    'EG': 'EGP', // Egypt
-    // Eurozone countries → EUR
+    'US': 'USD', 'GB': 'GBP', 'PK': 'PKR', 'IN': 'INR',
+    'AE': 'AED', 'SA': 'SAR', 'CA': 'CAD', 'AU': 'AUD',
+    'JP': 'JPY', 'CN': 'CNY', 'CH': 'CHF', 'SG': 'SGD',
+    'MY': 'MYR', 'BD': 'BDT',
+    'QA': 'QAR',   // ← Qatar explicitly
+    'KW': 'KWD',   // ← Kuwait explicitly
+    'OM': 'OMR',   // ← Oman explicitly
+    'BR': 'BRL', 'ZA': 'ZAR', 'NZ': 'NZD', 'NO': 'NOK',
+    'SE': 'SEK', 'DK': 'DKK', 'MX': 'MXN', 'PH': 'PHP',
+    'TH': 'THB', 'ID': 'IDR', 'TR': 'TRY', 'EG': 'EGP',
     'DE': 'EUR', 'FR': 'EUR', 'IT': 'EUR', 'ES': 'EUR',
     'NL': 'EUR', 'BE': 'EUR', 'AT': 'EUR', 'PT': 'EUR',
     'FI': 'EUR', 'IE': 'EUR', 'GR': 'EUR', 'LU': 'EUR',

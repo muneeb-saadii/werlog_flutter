@@ -203,7 +203,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> loginUser() async {
     try {
-      final response = await ApiService.post(
+      final response = await ApiService.post_auth(
         context,
         Endpoints.LOGIN_USER,
         body: {
@@ -217,11 +217,11 @@ class _SignInScreenState extends State<SignInScreen> {
       handleAuthResponse(response);
 
     } catch (e) {
-      print('ERROR => $e');
+      print('Auth ERROR => $e');
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
       GeneralFunctions.showError(
         context,
-        "Process interrupted. Please try again!"
-        ,
+        msg.isNotEmpty ? msg : 'Something went wrong. Please try again.',
       );
     }
   }
@@ -313,26 +313,28 @@ class _SignInScreenState extends State<SignInScreen> {
       // In handleAuthResponse, after saving tokens:
       // await GeneralFunctions.initCurrencyForNewUser();
       // In handleAuthResponse, after saving tokens:
+      // After saving tokens, before navigating:
       final String? serverCurrency = meResponse['currency']?.toString();
-      print("::handleAuthResponse currency from server => $serverCurrency");
+      debugPrint('::handleAuthResponse currency from server => $serverCurrency');
 
       if (serverCurrency != null && serverCurrency.isNotEmpty) {
-        // Server provided a currency — find it in the fixed list and save
-        final match = GeneralFunctions.kCurrencies.firstWhere(
-              (c) => c.code.toUpperCase() == serverCurrency.toUpperCase(),
-          orElse: () => const CurrencyItem(
-              id: 'usd', code: 'USD', symbol: '\$',
-              name: 'US Dollar', country: 'United States', region: 'Americas'),
-        );
-        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyId,     match.id);
-        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
-        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyCode,   match.code);
-        await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyName,   match.name);
-        GeneralFunctions.currencySymbol = '${match.code/*symbol*/} ';
-        print("::handleAuthResponse currency set => ${match.code} ${match.symbol}");
+        // ── Server provided currency — use it directly ──────────────
+        final match = GeneralFunctions.currencyFromCode(serverCurrency);
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencyId,     match.id);
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencySymbol, match.symbol);
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencyCode,   match.code);
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencyName,   match.name);
+        GeneralFunctions.currencySymbol = '${match.code} ';
+        debugPrint('::handleAuthResponse currency set => ${match.code}');
+
       } else {
-        // Server returned null — keep existing saved currency or default $
-        print("::handleAuthResponse currency is null — keeping existing or \$ default");
+        // ── Server returned null — detect from device region ─────────
+        // Only runs if no currency already saved (first login)
+        await GeneralFunctions.initCurrencyForNewUser();
       }
 
       meResponse['password'] = _data.passwordValue;

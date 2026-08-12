@@ -144,6 +144,8 @@ class MainDashboardData {
 
   // Expenses & Tax
   static String totalExpenses = '';
+  static String businessExpenses = '';
+  static String personalExpenses = '';
   static String gstHstPaid = '';
   static String eligibleDeductions = '';
   static int documents = 0;
@@ -163,7 +165,7 @@ class MainDashboardData {
 
   static double businessPercent = 0.0;
   static double personalPercent = 0.0;
-  static String businessExpenses = '';
+  // static String businessExpenses = '';
 
   // Recent Invoices
   static List<Map<String, dynamic>> recentInvoices = [];
@@ -183,20 +185,51 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      GeneralFunctions.getCurrencySymbol();
-      refreshData();
 
-      // ── Show disclaimer first, THEN load data ─────────────────────
+      // ── Step 1: Disclaimer first (blocks until user taps I Understand) ─
       await DisclaimerWidget.show(
         context,
         type: DisclaimerType.onboarding,
         onAcknowledged: () {},
       );
+      if (!mounted) return;
+
+      // ── Step 2: Session refresh (blocks until complete or failed) ──────
+      await GeneralFunctions.forceSessionRefresh(context,
+          onComplete: () {
+            if (mounted) GeneralFunctions.getCurrencySymbol();
+          });
+      if (!mounted) return;
+
+      // ── Step 3: Load dashboard data ─────────────────────────────────────
+      loadDashboardData();
+    });
+  }
+  /*@override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // GeneralFunctions.getCurrencySymbol();
+      // refreshData();
+
+      // ── Show disclaimer first, THEN load data ─────────────────────
+      await DisclaimerWidget.show(
+        context,
+        type: DisclaimerType.onboarding,
+        onAcknowledged: () {
+          GeneralFunctions.forceSessionRefresh(context,
+              onComplete: () {
+                if (mounted) setState(() {}); // optional — re-render with fresh data
+                GeneralFunctions.getCurrencySymbol();
+              });
+        },
+      );
 
       // Only starts after disclaimer is dismissed (or skipped if already seen)
       if (mounted) loadDashboardData();
     });
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -709,10 +742,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 Icons.receipt_long_outlined, 'Total Expenses', MainDashboardData.totalExpenses),
             const SizedBox(height: 8),
             _expensesRow(
-                Icons.receipt_outlined, 'Business Expenses', MainDashboardData.gstHstPaid),
+                Icons.receipt_outlined, 'Business Expenses', MainDashboardData.businessExpenses),//gstHstPaid),
             const SizedBox(height: 8),
             _expensesRow(
-                Icons.person/*percent*/, 'Personal Expenses', MainDashboardData.eligibleDeductions),
+                Icons.person/*percent*/, 'Personal Expenses', MainDashboardData.personalExpenses),//eligibleDeductions),
             /*const SizedBox(height: 8),
             _expensesRow(
                 Icons.description_outlined, 'Documents', '${MainDashboardData.documents}'),*/
@@ -1493,6 +1526,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   onBack: () {
                     Navigator.pop(context);
                     print("Back from OCR screen");
+
+                    GeneralFunctions.forceSessionRefresh(context,
+                        onComplete: () {
+                          if (mounted) setState(() {}); // optional — re-render with fresh data
+                        });
                   },
                   /* onProceed: () {}*/
                 );
@@ -1726,7 +1764,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               taxSavings['year']?.toString() ?? '';
 
           MainDashboardData.taxSavingsAmount =
-          '${GeneralFunctions.currencySymbol}${(taxSavings['estimatedSavings'] ?? 0).toString()}';
+          // '${GeneralFunctions.currencySymbol}${(taxSavings['estimatedSavings'] ?? 0).toString()}';
+          '${GeneralFunctions.currencySymbol}${(taxSavings['eligibleDeductions'] ?? 0).toString()}';
 
           MainDashboardData.taxSavingsChange =
           '${(taxSavings['vsLastYearPercent'] ?? 0).toString()}% higher than last year';
@@ -1771,6 +1810,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
           MainDashboardData.eligibleDeductions =
           '${GeneralFunctions.currencySymbol}${(expenses['eligibleDeductions'] ?? 0).toString()}';
+
+          MainDashboardData.businessExpenses =
+          '${GeneralFunctions.currencySymbol}${(expenses['totalBusinessExpense'] ?? 0).toString()}';
+
+          MainDashboardData.personalExpenses =
+          '${GeneralFunctions.currencySymbol}${(expenses['totalPersonalExpense'] ?? 0).toString()}';
 
           MainDashboardData.documents =
               expenses['documentsCount'] ?? 0;

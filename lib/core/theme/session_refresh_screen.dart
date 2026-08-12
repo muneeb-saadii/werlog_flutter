@@ -138,6 +138,92 @@ class _SessionRefreshScreenState extends State<SessionRefreshScreen>
   // ── Token refresh orchestration ────────────────────────────────────
   Future<void> _doRefresh() async {
     setState(() {
+      _state        = _RefreshState.refreshing;
+      _errorMessage = null;
+    });
+
+    try {
+      // Call the real refresh API via ApiService
+      final response     = await ApiService.callRefreshTokenApi();
+      // response may wrap data under 'data' key or return at root
+      final responseData = (response['data'] ?? response) as Map<String, dynamic>;
+
+      debugPrint('_doRefresh::REFRESH-RESPONSE: $responseData');
+
+      // ── Save tokens ───────────────────────────────────────────────
+      await SharedPrefHelper.saveObject(
+          SharedPrefHelper.loginData, responseData);
+      await SharedPrefHelper.saveString(
+          SharedPrefHelper.accessToken,
+          responseData['accessToken']?.toString() ?? '');
+      await SharedPrefHelper.saveString(              // ← was missing
+          SharedPrefHelper.refreshToken,
+          responseData['refreshToken']?.toString() ?? '');
+
+      // ── Sync currency from meResponse ─────────────────────────────
+      // Currency is nested: responseData -> meResponse -> currency
+      final meResponse   = responseData['meResponse'] as Map<String, dynamic>?;
+      final serverCurrency = meResponse?['currency']?.toString();
+
+      debugPrint('_doRefresh::currency from server => $serverCurrency');
+
+      final localCurrency = SharedPrefHelper.getString(
+          SharedPrefHelper.selectedCurrencyCode);
+
+      if (serverCurrency != null &&
+          serverCurrency.isNotEmpty &&
+          serverCurrency.toUpperCase() != localCurrency.toUpperCase()) {
+        // Currency changed — update local and restart app
+        final match = GeneralFunctions.kCurrencies.firstWhere(
+              (c) => c.code.toUpperCase() == serverCurrency.toUpperCase(),
+          orElse: () => const CurrencyItem(
+              id: 'usd', code: 'USD', symbol: r'$',
+              name: 'US Dollar', country: 'United States', region: 'Americas'),
+        );
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencyId,     match.id);
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencySymbol, match.symbol);
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencyCode,   match.code);
+        await SharedPrefHelper.saveString(
+            SharedPrefHelper.selectedCurrencyName,   match.name);
+        GeneralFunctions.currencySymbol = '${match.code} ';
+
+        debugPrint('_doRefresh::currency changed $localCurrency → ${match.code} — restarting');
+        await GeneralFunctions.resetAppState();   // restart app
+        return;                                   // no need to continue
+      } else {
+        debugPrint('_doRefresh::currency unchanged ($localCurrency) — no restart');
+      }
+
+      if (!mounted) return;
+
+      // ── Notify caller (api_service _tryRefreshSession sets success=true here)
+      await widget.onRefreshComplete(responseData);
+
+      if (!mounted) return;
+
+      setState(() => _state = _RefreshState.success);
+      _ringCtrl.stop();
+      _sandCtrl.stop();
+      await _successCtrl.forward();
+
+      await Future.delayed(const Duration(milliseconds: 900));
+      if (mounted) Navigator.of(context).pop();
+
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _state        = _RefreshState.failed;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+      _ringCtrl.stop();
+      _sandCtrl.stop();
+    }
+  }
+  Future<void> _doRefresh_() async {
+    setState(() {
       _state = _RefreshState.refreshing;
       _errorMessage = null;
     });

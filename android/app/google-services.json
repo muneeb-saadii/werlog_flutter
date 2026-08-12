@@ -14,11 +14,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "418130924506-18r09va2usohleo46menjrbnl2s4b417.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.werlog",
+            "certificate_hash": "50bd6b37cd9628bd439d4434a18406e1b0bd0feb"
+          }
+        },
+        {
           "client_id": "418130924506-ahe2er34qjc8td8kfmnflb3143v673dt.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.app.werlog",
             "certificate_hash": "4cec3c33a3e268634736f37bd80eb2558bf5e50d"
+          }
+        },
+        {
+          "client_id": "418130924506-pt3jijdcl73b14euvdjjd07ak667vbv2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.werlog",
+            "certificate_hash": "b95089722ccbc3e5771523ed82d997e49a7c8277"
           }
         },
         {
@@ -37,6 +53,13 @@
             {
               "client_id": "418130924506-35ihabcs73krljapn49v93ujh9vc9kvl.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "418130924506-24jiielscpu71u3tn3jnhfdlspgp14ff.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.app.werlog"
+              }
             }
           ]
         }
