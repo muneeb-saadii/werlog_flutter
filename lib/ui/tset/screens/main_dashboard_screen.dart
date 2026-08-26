@@ -359,138 +359,136 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left: amount
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Your Estimated Tax Savings (${MainDashboardData.taxSavingsYear})',
-                    style: WerlogTextStyles.balanceSub.copyWith(fontSize: 11),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    MainDashboardData.taxSavingsAmount,
-                    style: WerlogTextStyles.balanceAmount,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
+            Text(
+              'Your Estimated Tax Savings (${MainDashboardData.taxSavingsYear})',
+              style: WerlogTextStyles.balanceSub.copyWith(fontSize: 13),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                // Left: 30%
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        MainDashboardData.taxSavingsPositive
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward,
-                        color: WerlogColors.tealLight,
-                        size: 12,
+                      Text(
+                        MainDashboardData.taxSavingsAmount,
+                        style: WerlogTextStyles.balanceAmount.copyWith(fontSize: 22),
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          MainDashboardData.taxSavingsChange,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: WerlogTextStyles.balanceSub.copyWith(
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            MainDashboardData.taxSavingsPositive
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
                             color: WerlogColors.tealLight,
-                            fontSize: 11,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              MainDashboardData.taxSavingsChange,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: WerlogTextStyles.balanceSub.copyWith(
+                                color: WerlogColors.tealLight,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Divider
+                Container(
+                  width: 0.5,
+                  height: 80,
+                  color: Colors.white.withOpacity(0.15),
+                  margin: const EdgeInsets.only(left: 8, right: 10),
+                ),
+
+                // Right: 70%
+                Expanded(
+                  flex: 6,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: () => DisclaimerWidget.show(
+                          context,
+                          type: DisclaimerType.taxEstimate,
+                        ),
+                        child: Text(
+                          'Breakdown  ⓘ',
+                          style: WerlogTextStyles.balanceSub.copyWith(fontSize: 10),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _breakdownRow(
+                        'GST/HST to Claim',
+                        MainDashboardData.gstHstToClaim,
+                      ),
+                      const SizedBox(height: 6),
+                      _breakdownRow(
+                        'Tax Deductions',
+                        MainDashboardData.taxDeductions,
+                      ),
+                      const SizedBox(height: 16),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TaxReadySummaryScreen(),
+                          ),
+                        ),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: WerlogColors.teal,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'View Expense Reports',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: WerlogTextStyles.link.copyWith(
+                                    fontSize: 11,
+                                    color: WerlogColors.tealSurface,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: WerlogColors.tealSurface,
+                                size: 13,
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            // Divider
-            Container(
-              width: 0.5,
-              height: 80,
-              color: Colors.white.withOpacity(0.15),
-              margin: const EdgeInsets.symmetric(horizontal: 14),
-            ),
-            // Right: breakdown
-            /*Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Breakdown  ⓘ',
-                    style: WerlogTextStyles.balanceSub.copyWith(fontSize: 10)),
-                const SizedBox(height: 10),
-                _breakdownRow('GST/HST to Claim', MainDashboardData.gstHstToClaim),
-                const SizedBox(height: 6),
-                _breakdownRow('Tax Deductions', MainDashboardData.taxDeductions),
-                const SizedBox(height: 10),
-                GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    decoration: BoxDecoration(
-                      color: WerlogColors.teal,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('View Expense Reports',
-                            style: WerlogTextStyles.link.copyWith(
-                                fontSize: 12, color: WerlogColors.tealSurface)),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.chevron_right,
-                            color: WerlogColors.tealSurface, size: 14),
-                      ],
-                    ),
-                  ),
                 ),
               ],
-            ),*/
-
-            // Right: breakdown
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: () => DisclaimerWidget.show(context, type: DisclaimerType.taxEstimate),
-                    child: Text('Breakdown  ⓘ',
-                        style: WerlogTextStyles.balanceSub.copyWith(fontSize: 10)),
-                  ),
-                  const SizedBox(height: 10),
-                  _breakdownRow('GST/HST to Claim', MainDashboardData.gstHstToClaim),
-                  const SizedBox(height: 6),
-                  _breakdownRow('Tax Deductions', MainDashboardData.taxDeductions),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const TaxReadySummaryScreen())),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 5),
-                      decoration: BoxDecoration(
-                        color: WerlogColors.teal,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text('View Expense Reports',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: WerlogTextStyles.link.copyWith(
-                                    fontSize: 11, color: WerlogColors.tealSurface)),
-                          ),
-                          const SizedBox(width: 2),
-                          const Icon(Icons.chevron_right,
-                              color: WerlogColors.tealSurface, size: 13),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            )
           ],
         ),
       ),
@@ -573,13 +571,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             Row(
               children: [
                 SizedBox(
-                  width: 66,
-                  height: 66,
+                  width: 50,
+                  height: 50,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       CustomPaint(
-                        size: const Size(66, 66),
+                        size: const Size(50, 50),
                         painter: _DonutPainter(
                           active: MainDashboardData.activeWarranties,
                           expiringSoon: MainDashboardData.expiringSoonWarranties,
@@ -597,13 +595,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           ),
                           Text('Total',
                               style:
-                              WerlogTextStyles.caption.copyWith(fontSize: 9)),
+                              WerlogTextStyles.caption.copyWith(fontSize: 8)),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -785,7 +783,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 style: WerlogTextStyles.caption.copyWith(
                     fontSize: (WerlogTextStyles.caption.fontSize ?? 11) - 1))),
         Text(value,
-            style: WerlogTextStyles.txTitle.copyWith(fontSize: 11)),
+            style: WerlogTextStyles.txTitle.copyWith(fontSize: 10)),
       ],
     );
   }

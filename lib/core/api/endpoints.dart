@@ -37,4 +37,7 @@ class Endpoints {
   static const String UPDATE_USER_PROFILE = 'v1/users/updateProfile';
   static const String GET_USER_NOTIFICATIONS = 'v1/notifications'; //page=0&size=20
 
+
+  static const String BANK_MATCH = 'v1/bank/match';
+
 }

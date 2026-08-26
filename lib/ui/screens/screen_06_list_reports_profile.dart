@@ -1192,8 +1192,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ProfileNavigation.openProfile(context);
     }else if(secIndex == 0 && rIndex == 1){
       ProfileNavigation.openResetPassword(context);
-    }else if(secIndex == 0 && rIndex == 2){
+    } else if (secIndex == 0 && rIndex == 2) {
       ProfileNavigation.openCurrencySelection(context);
+    } else if (secIndex == 0 && rIndex == 3) {           // ← NEW
+      ProfileNavigation.openBankStatementMatch(context);  // ← NEW
     }
     else if(secIndex == 1 && rIndex == 1){
       ProfileNavigation.openPlanUsage(context);

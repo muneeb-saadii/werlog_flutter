@@ -507,9 +507,10 @@ class ProfileData {
 
 final List<SettingSection> _defaultSections = [
   SettingSection(header: 'ACCOUNT', rows: [
-    SettingRow(title: 'Personal info', subtitle: 'Name, phone, timezone',     iconColorKey: 'g', iconEmoji: '◯'),
-    SettingRow(title: 'Security',      subtitle: 'Reset/update password',    iconColorKey: 'g', iconEmoji: '⚿'),
-    SettingRow(title: 'Currency',      subtitle: 'Select your currency',    iconColorKey: 'g', iconEmoji: '⚿'),
+    SettingRow(title: 'Personal info',         subtitle: 'Name, phone, timezone',     iconColorKey: 'g', iconEmoji: '◯'),
+    SettingRow(title: 'Security',              subtitle: 'Reset/update password',     iconColorKey: 'g', iconEmoji: '⚿'),
+    SettingRow(title: 'Currency',              subtitle: 'Select your currency',      iconColorKey: 'g', iconEmoji: '⚿'),
+    SettingRow(title: 'Bank Statement Match',  subtitle: 'Reconcile bank transactions', iconColorKey: 't', iconEmoji: '◆'),  // ← NEW
   ]),
   SettingSection(header: 'SUBSCRIPTION', rows: [
     SettingRow(title: 'Subscription plans',       subtitle: 'Explore and upgrade plan',  iconColorKey: 't', iconEmoji: '◆'),
