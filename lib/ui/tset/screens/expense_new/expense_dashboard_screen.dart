@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:marquee/marquee.dart';
 import 'package:wellness/ui/tset/screens/expense_new/tax_ready_summary_screen.dart';
 import '../../../../core/api/api_service.dart';
 import '../../../../core/api/endpoints.dart';
@@ -563,6 +564,8 @@ class _ExpenseDashboardScreenState extends State<ExpenseDashboardScreen> {
                 iconColor: iconColor,
 
                 totalSpent: (item['expenseTotal'] ?? 0).toDouble(),
+
+                totalSpentLastYear: (item['prevYearTotal'] ?? 0).toDouble(),
 
                 deductiblePct: 0,
 
@@ -1460,12 +1463,12 @@ class _CategoriesSection extends StatelessWidget {
   }
 }
 
-class _CategoryTile extends StatelessWidget {
+class __CategoryTile extends StatelessWidget {
   final ExpenseCategory cat;
   final String selectedYear;
   final String selType;
 
-  const _CategoryTile({required this.cat, required this.selectedYear, required this.selType});
+  const __CategoryTile({required this.cat, required this.selectedYear, required this.selType});
 
   String _fmt(double v) =>
       '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')}';
@@ -1559,6 +1562,238 @@ class _CategoryTile extends StatelessWidget {
                       ? '${cat.missingCount} Missing'
                       : '0 Missing',
                   maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: WerlogTextStyles.captionSmall.copyWith(
+                    color: cat.missingCount > 0
+                        ? WerlogColors.coral
+                        : WerlogColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  final ExpenseCategory cat;
+  final String selectedYear;
+  final String selType;
+
+  const _CategoryTile({
+    required this.cat,
+    required this.selectedYear,
+    required this.selType,
+  });
+
+  String _fmt(double v) =>
+      '${GeneralFunctions.currencySymbol}${v.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+$)'),
+            (m) => '${m[1]},',
+      )}';
+
+  Widget _yearLabel(
+      BuildContext context,
+      String text, {
+        bool prominent = false,
+      }) {
+    final style = WerlogTextStyles.captionSmall.copyWith(
+      color: prominent
+          ? WerlogColors.textSecondary
+          : WerlogColors.textTertiary,
+      fontSize: 7.5,
+      fontWeight: prominent ? FontWeight.w500 : FontWeight.w400,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: text,
+            style: style,
+          ),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: double.infinity);
+
+        final isOverflowing = textPainter.width > constraints.maxWidth;
+
+        // Fits → completely static
+        if (!isOverflowing) {
+          return SizedBox(
+            height: 14,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                text,
+                maxLines: 1,
+                style: style,
+              ),
+            ),
+          );
+        }
+
+        // Only scroll when it genuinely doesn't fit
+        return SizedBox(
+          height: 14,
+          child: Marquee(
+            text: text,
+            velocity: 20,
+            blankSpace: 20,
+            pauseAfterRound: const Duration(seconds: 2),
+            startPadding: 0,
+            accelerationDuration: const Duration(milliseconds: 300),
+            decelerationDuration: const Duration(milliseconds: 300),
+            style: style,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ExpenseCategoryDetailScreen(
+            category: cat,
+            catId: cat.id,
+            selectedYear: selectedYear,
+            selectedType: selType,
+          ),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: WerlogColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: WerlogColors.border,
+            width: 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // TOP SECTION
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: cat.iconBg,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(
+                    cat.icon,
+                    color: cat.iconColor,
+                    size: 17,
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                Expanded(
+                  child: Text(
+                    cat.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: WerlogTextStyles.captionSmall.copyWith(
+                      color: WerlogColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 6),
+
+            const Spacer(),
+
+            // BOTTOM SECTION
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // THIS YEAR — prominent amount
+                Row(
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _fmt(cat.totalSpent),
+                          maxLines: 1,
+                          style: WerlogTextStyles.cardTitle.copyWith(
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: _yearLabel(
+                        context,
+                        '(This year)',
+                        prominent: true,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 1),
+
+                // LAST YEAR — less prominent
+                Row(
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _fmt(cat.totalSpentLastYear),
+                          maxLines: 1,
+                          style: WerlogTextStyles.cardTitle.copyWith(
+                            fontSize: 10,
+                            color: WerlogColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: _yearLabel(
+                        context,
+                        '(Last year)',
+                        prominent: true,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  cat.missingCount > 0
+                      ? '${cat.missingCount} Missing'
+                      : '0 Missing',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: WerlogTextStyles.captionSmall.copyWith(
                     color: cat.missingCount > 0

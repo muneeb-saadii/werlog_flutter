@@ -12,6 +12,7 @@ class ExpenseCategory {
   final Color iconBg;
   final Color iconColor;
   final double totalSpent;
+  final double totalSpentLastYear;
   final double deductiblePct;
   final double gstPaid;
   final int missingCount;
@@ -25,6 +26,7 @@ class ExpenseCategory {
     required this.iconBg,
     required this.iconColor,
     required this.totalSpent,
+    required this.totalSpentLastYear,
     required this.deductiblePct,
     required this.gstPaid,
     required this.missingCount,
@@ -443,6 +445,7 @@ class ExpenseData {
       iconBg: const Color(0xFFE8F5E9),
       iconColor: const Color(0xFF2E7D32),
       totalSpent: 0,
+      totalSpentLastYear: 0,
       deductiblePct: 0,
       gstPaid: 0,
       missingCount: 0,
