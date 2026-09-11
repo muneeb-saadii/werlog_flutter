@@ -1654,6 +1654,13 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 
+  // Add this getter inside _CategoryTile:
+  Color get _thisYearColor {
+    if (cat.totalSpent == 0) return WerlogColors.textPrimary;
+    if (cat.totalSpent < cat.totalSpentLastYear) return WerlogColors.teal;   // improved — green
+    return WerlogColors.coral;                                                 // worse — red
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1742,6 +1749,7 @@ class _CategoryTile extends StatelessWidget {
                           maxLines: 1,
                           style: WerlogTextStyles.cardTitle.copyWith(
                             fontSize: 10,
+                            color: _thisYearColor,
                           ),
                         ),
                       ),

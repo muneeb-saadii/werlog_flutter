@@ -465,7 +465,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                             children: [
                               Flexible(
                                 child: Text(
-                                  'View Expense Reports',
+                                  'Generate Expense Reports',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: WerlogTextStyles.link.copyWith(
