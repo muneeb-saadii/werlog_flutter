@@ -3,9 +3,6 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:wellness/ui/tset/dashboard.dart';
-import 'package:wellness/ui/tset/screens/main_dashboard_screen.dart';
-import 'package:wellness/ui/views/splash/splash_view.dart';
 // import 'package:wellness/ui/views/add_schdule_request/add_schedule_request.dart';
 // import 'package:wellness/ui/views/admin_side/dashboard/admin_dashboard.dart';
 // import 'package:wellness/ui/views/bottom_bar/bottom_bar.dart';
@@ -33,10 +30,10 @@ import 'package:wellness/ui/views/splash/splash_view.dart';
 // import 'package:wellness/ui/views/user/progress_tracker/log/screens/progress_track_screen.dart';
 // import 'package:wellness/ui/views/user_releated_data/edit_profile_screen.dart';
 
-import 'core/app_navigator.dart';
-import 'core/firebase-service/firebase-service.dart';
-import 'core/utils/shared_pref_helper.dart';
-import 'core/widgets/restart_widget.dart';
+import 'client/core/app_navigator.dart';
+import 'client/core/firebase-service/firebase-service.dart';
+import 'client/core/utils/shared_pref_helper.dart';
+import 'client/core/widgets/restart_widget.dart';
 import 'firebase_options.dart';
 
 void main() async {
