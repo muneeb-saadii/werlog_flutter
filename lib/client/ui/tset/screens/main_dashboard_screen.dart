@@ -2455,11 +2455,11 @@ class _RecentInvoiceCard extends StatelessWidget {
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      '${invoice['currency'] ?? ''} ${(item['amount'] as num?)?.toStringAsFixed(0) ?? '0'}',
-                      style: WerlogTextStyles.captionSmall.copyWith(
-                          color: WerlogColors.textSecondary),
-                    ),
+                    // Text(
+                    //   '${invoice['currency'] ?? ''} ${(item['amount'] as num?)?.toStringAsFixed(0) ?? '0'}',
+                    //   style: WerlogTextStyles.captionSmall.copyWith(
+                    //       color: WerlogColors.textSecondary),
+                    // ),
                   ]),
                 )),
 

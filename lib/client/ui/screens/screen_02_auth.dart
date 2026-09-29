@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:wellness/admin/admin_app.dart';
 import 'package:wellness/client/ui/screens/profile_segment/currency_screen.dart';
 import 'package:wellness/client/ui/screens/screen_03_subscription.dart';
 import '../../../admin/admin_module.dart';
@@ -373,7 +374,8 @@ class _SignInScreenState extends State<SignInScreen> {
 
         return;
       }else{
-        if(email == "muhammadmuneeb8992@gmail.com"){
+        // if(email == "muhammadmuneeb8992@gmail.com"){
+        if(AdminApp.isSuperAdmin()){
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AdminModule()),
           );

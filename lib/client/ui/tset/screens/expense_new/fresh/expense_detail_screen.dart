@@ -501,7 +501,7 @@ class _ExpenseDetailScreenState extends State<ExpenseDetailScreen> {
               Text('Total',
                   style: WerlogTextStyles.sectionTitle
                       .copyWith(fontSize: 13, color: WerlogColors.teal)),
-              Text(total.toStringAsFixed(2),
+              Text(inv.currency+" "+total.toStringAsFixed(2),
                   style: WerlogTextStyles.sectionTitle
                       .copyWith(fontSize: 14, color: WerlogColors.teal)),
             ],

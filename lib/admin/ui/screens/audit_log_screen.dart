@@ -1,64 +1,62 @@
 import 'package:flutter/material.dart';
+import '../../core/api/admin_api_service.dart';
+import '../../core/api/admin_endpoints.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
 
-// ── Models ────────────────────────────────────────────────────────────────────
+// ── Model ─────────────────────────────────────────────────────────────────────
 
-enum AuditCategory { users, plans, invoices, ocr }
-
-class AuditEntry {
+class _AuditEntry {
   final String id;
   final String action;
   final String actor;
   final String detail;
   final String timeAgo;
-  final AuditCategory category;
 
-  const AuditEntry({
+  const _AuditEntry({
     required this.id,
     required this.action,
     required this.actor,
     required this.detail,
     required this.timeAgo,
-    required this.category,
   });
+
+  factory _AuditEntry.fromJson(Map<String, dynamic> j) {
+    return _AuditEntry(
+      id:      j['id']?.toString()          ?? '',
+      action:  j['action']?.toString()      ?? '',
+      actor:   j['actorEmail']?.toString()  ?? j['actor']?.toString() ?? 'admin',
+      detail:  _buildDetail(j),
+      timeAgo: _relTime(j['createdAt']?.toString()),
+    );
+  }
+
+  static String _buildDetail(Map<String, dynamic> j) {
+    final parts = <String>[];
+    if (j['targetEmail'] != null) parts.add(j['targetEmail'].toString());
+    if (j['targetId']    != null && parts.isEmpty)
+      parts.add(j['targetId'].toString());
+    if (j['metadata']    != null) {
+      try {
+        final m = j['metadata'] as Map<String, dynamic>;
+        final v = m.values.first?.toString() ?? '';
+        if (v.isNotEmpty) parts.add(v);
+      } catch (_) {}
+    }
+    return parts.join(' · ');
+  }
+
+  static String _relTime(String? s) {
+    if (s == null) return '';
+    try {
+      final diff = DateTime.now().difference(DateTime.parse(s));
+      if (diff.inMinutes < 60)  return '${diff.inMinutes}m';
+      if (diff.inHours   < 24)  return '${diff.inHours}h';
+      return '${diff.inDays}d';
+    } catch (_) { return ''; }
+  }
 }
-
-// ── Mock data ─────────────────────────────────────────────────────────────────
-
-final _mockEntries = [
-  const AuditEntry(
-    id: '1', action: 'USER_SUSPENDED', actor: 'admin@werlog',
-    detail: 'sarah.k@mail.com', timeAgo: '2m',
-    category: AuditCategory.users,
-  ),
-  const AuditEntry(
-    id: '2', action: 'PLAN_GRANTED', actor: 'admin@werlog',
-    detail: 'PRO → David L.', timeAgo: '1h',
-    category: AuditCategory.plans,
-  ),
-  const AuditEntry(
-    id: '3', action: 'OCR_JOB_RETRIED', actor: 'admin@werlog',
-    detail: 'job #778', timeAgo: '3h',
-    category: AuditCategory.ocr,
-  ),
-  const AuditEntry(
-    id: '4', action: 'USER_IMPERSONATED', actor: 'admin@werlog',
-    detail: 'haseeb...@gmail', timeAgo: '5h',
-    category: AuditCategory.users,
-  ),
-  const AuditEntry(
-    id: '5', action: 'PLAN_UPDATED', actor: 'admin@werlog',
-    detail: 'PRO price', timeAgo: '1d',
-    category: AuditCategory.plans,
-  ),
-  const AuditEntry(
-    id: '6', action: 'INVOICE_DELETED', actor: 'admin@werlog',
-    detail: '#ARMI00801304', timeAgo: '1d',
-    category: AuditCategory.invoices,
-  ),
-];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -70,11 +68,52 @@ class AuditLogScreen extends StatefulWidget {
 }
 
 class _AuditLogScreenState extends State<AuditLogScreen> {
-  AuditCategory? _filter;
 
-  List<AuditEntry> get _filtered => _filter == null
-      ? _mockEntries
-      : _mockEntries.where((e) => e.category == _filter).toList();
+  bool              _loading = true;
+  List<_AuditEntry> _entries = [];
+  String            _filter  = '';  // '' | USER | PLAN | INVOICE
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetch());
+  }
+
+  Future<void> _fetch() async {
+    setState(() => _loading = true);
+    try {
+      final resp = await AdminApiService.get(
+        context,
+        AdminEndpoints.adminAuditLogs,
+        queryParams: {
+          if (_filter.isNotEmpty) 'targetType': _filter,
+          'page': '0', 'size': '50',
+        },
+        showLoader: false,
+      );
+      debugPrint('[AuditLog] response keys => ${resp?.keys}');
+      if (!mounted) return;
+
+      if (resp != null) {
+        final raw = resp['data'];
+        List<dynamic> list = [];
+        if (raw is List) {
+          list = raw;
+        } else if (raw is Map<String, dynamic>) {
+          list = raw['content'] as List<dynamic>? ?? [];
+        }
+        _entries = list
+            .whereType<Map<String, dynamic>>()
+            .map(_AuditEntry.fromJson)
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[AuditLog] error => $e');
+      if (mounted) AdminApiService.showError(context, 'Failed to load audit log');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,41 +122,51 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
       body: SafeArea(
         bottom: false,
         child: Column(children: [
-          _AuditHeader(),
-          _FilterChips(
-              selected: _filter,
-              onSelected: (c) => setState(() => _filter = c)),
+          _Header(),
+          _FilterRow(
+            selected: _filter,
+            onSelected: (f) { setState(() => _filter = f); _fetch(); },
+          ),
           Expanded(
-            child: _filtered.isEmpty
-                ? _EmptyState()
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                        AppMetrics.pagePadding, 8,
-                        AppMetrics.pagePadding, 40),
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.cardWhite,
-                          borderRadius:
-                              BorderRadius.circular(AppMetrics.cardRadius),
-                          boxShadow: [BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 8, offset: const Offset(0, 2))],
-                        ),
-                        child: Column(
-                          children: _filtered.asMap().entries.map((e) {
-                            final isLast = e.key == _filtered.length - 1;
-                            return Column(children: [
-                              _AuditRow(entry: e.value),
-                              if (!isLast) const Divider(
-                                  height: 1, indent: 72,
-                                  color: AppColors.divider),
-                            ]);
-                          }).toList(),
-                        ),
-                      ),
-                    ],
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(
+                color: AppColors.accentGreen))
+                : _entries.isEmpty
+                ? const _EmptyState()
+                : RefreshIndicator(
+              onRefresh: _fetch,
+              color: AppColors.accentGreen,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                    AppMetrics.pagePadding, 8,
+                    AppMetrics.pagePadding, 40),
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.cardWhite,
+                      borderRadius: BorderRadius.circular(
+                          AppMetrics.cardRadius),
+                      boxShadow: [BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      children: _entries
+                          .asMap()
+                          .entries
+                          .map((e) => Column(children: [
+                        _AuditRow(entry: e.value),
+                        if (e.key < _entries.length - 1)
+                          const Divider(height: 1,
+                              indent: 72,
+                              color: AppColors.divider),
+                      ])).toList(),
+                    ),
                   ),
+                ],
+              ),
+            ),
           ),
         ]),
       ),
@@ -125,9 +174,9 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// ── Widgets ───────────────────────────────────────────────────────────────────
 
-class _AuditHeader extends StatelessWidget {
+class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
@@ -144,26 +193,26 @@ class _AuditHeader extends StatelessWidget {
             color: AppColors.textOnDark, size: 26),
       ),
       const SizedBox(width: 8),
-      Expanded(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Audit log', style: AppTextStyles.headerTitle),
-          const SizedBox(height: 4),
-          Text('every admin action, tracked',
-              style: AppTextStyles.headerSubtitle),
-        ],
-      )),
-      _CircleAction(icon: Icons.search_rounded, onTap: () {}),
+      const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Audit log', style: AppTextStyles.headerTitle),
+        SizedBox(height: 4),
+        Text('Every admin action, tracked',
+            style: AppTextStyles.headerSubtitle),
+      ])),
+      // Container(
+      //   width: 40, height: 40,
+      //   decoration: BoxDecoration(
+      //       color: Colors.white.withOpacity(0.12), shape: BoxShape.circle),
+      //   child: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+      // ),
     ]),
   );
 }
 
-// ── Filter chips ──────────────────────────────────────────────────────────────
-
-class _FilterChips extends StatelessWidget {
-  final AuditCategory? selected;
-  final ValueChanged<AuditCategory?> onSelected;
-  const _FilterChips({required this.selected, required this.onSelected});
+class _FilterRow extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onSelected;
+  const _FilterRow({required this.selected, required this.onSelected});
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -172,17 +221,16 @@ class _FilterChips extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        _Chip(label: 'All', active: selected == null,
-            onTap: () => onSelected(null)),
-        const SizedBox(width: 8),
-        _Chip(label: 'Users', active: selected == AuditCategory.users,
-            onTap: () => onSelected(AuditCategory.users)),
-        const SizedBox(width: 8),
-        _Chip(label: 'Plans', active: selected == AuditCategory.plans,
-            onTap: () => onSelected(AuditCategory.plans)),
-        const SizedBox(width: 8),
-        _Chip(label: 'Invoices', active: selected == AuditCategory.invoices,
-            onTap: () => onSelected(AuditCategory.invoices)),
+        for (final item in [
+          ('', 'All'), ('USER', 'Users'),
+          ('PLAN', 'Plans'), ('INVOICE', 'Invoices'),
+        ])
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _Chip(label: item.$2,
+                active: selected == item.$1,
+                onTap: () => onSelected(item.$1)),
+          ),
       ],
     ),
   );
@@ -207,43 +255,26 @@ class _Chip extends StatelessWidget {
             color: active ? AppColors.darkGreen : AppColors.divider),
       ),
       child: Text(label,
-          style: TextStyle(
-              fontFamily: AppTextStyles.fontFamily,
+          style: TextStyle(fontFamily: AppTextStyles.fontFamily,
               fontSize: 13, fontWeight: FontWeight.w600,
               color: active ? Colors.white : AppColors.textSecondary)),
     ),
   );
 }
 
-// ── Audit row ─────────────────────────────────────────────────────────────────
-
 class _AuditRow extends StatelessWidget {
-  final AuditEntry entry;
+  final _AuditEntry entry;
   const _AuditRow({required this.entry});
 
-  _AuditIconCfg get _cfg {
-    switch (entry.category) {
-      case AuditCategory.users:
-        if (entry.action.contains('SUSPEND')) {
-          return _AuditIconCfg(Icons.power_settings_new_rounded,
-              const Color(0xFFFBDEDA), const Color(0xFFB94040));
-        }
-        return _AuditIconCfg(Icons.remove_red_eye_rounded,
-            AppColors.proBg, AppColors.proText);
-      case AuditCategory.plans:
-        if (entry.action.contains('GRANTED')) {
-          return _AuditIconCfg(Icons.auto_awesome_rounded,
-              AppColors.activeBg, AppColors.activeText);
-        }
-        return _AuditIconCfg(Icons.label_rounded,
-            AppColors.suspendedBg, AppColors.suspendedText);
-      case AuditCategory.ocr:
-        return _AuditIconCfg(Icons.autorenew_rounded,
-            AppColors.proBg, AppColors.proText);
-      case AuditCategory.invoices:
-        return _AuditIconCfg(Icons.delete_outline_rounded,
-            const Color(0xFFFBDEDA), const Color(0xFFB94040));
-    }
+  _IconCfg get _cfg {
+    final a = entry.action.toUpperCase();
+    if (a.contains('SUSPEND'))     return _IconCfg(Icons.power_settings_new_rounded, const Color(0xFFFBDEDA), const Color(0xFFB94040));
+    if (a.contains('IMPERSONAT')) return _IconCfg(Icons.remove_red_eye_rounded, AppColors.proBg, AppColors.proText);
+    if (a.contains('PLAN'))       return _IconCfg(Icons.auto_awesome_rounded, AppColors.activeBg, AppColors.activeText);
+    if (a.contains('RETRIED'))    return _IconCfg(Icons.autorenew_rounded, AppColors.proBg, AppColors.proText);
+    if (a.contains('DELETE') || a.contains('DELETED')) return _IconCfg(Icons.delete_outline_rounded, const Color(0xFFFBDEDA), const Color(0xFFB94040));
+    if (a.contains('UPDATE'))     return _IconCfg(Icons.label_rounded, AppColors.suspendedBg, AppColors.suspendedText);
+    return _IconCfg(Icons.history_rounded, AppColors.deletedBg, AppColors.textSecondary);
   }
 
   @override
@@ -255,23 +286,19 @@ class _AuditRow extends StatelessWidget {
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-              color: cfg.bg,
-              borderRadius: BorderRadius.circular(12)),
+              color: cfg.bg, borderRadius: BorderRadius.circular(12)),
           child: Icon(cfg.icon, color: cfg.fg, size: 20),
         ),
         const SizedBox(width: 12),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(entry.action,
-                style: AppTextStyles.nameBold.copyWith(
-                    fontSize: 13, letterSpacing: 0.3)),
-            const SizedBox(height: 3),
-            Text('${entry.actor} · ${entry.detail}',
-                style: AppTextStyles.emailSubtle,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-          ],
-        )),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(entry.action,
+              style: AppTextStyles.nameBold.copyWith(
+                  fontSize: 13, letterSpacing: 0.3)),
+          const SizedBox(height: 3),
+          Text('${entry.actor}${entry.detail.isNotEmpty ? " · ${entry.detail}" : ""}',
+              style: AppTextStyles.emailSubtle,
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+        ])),
         const SizedBox(width: 8),
         Text(entry.timeAgo,
             style: AppTextStyles.footerNote.copyWith(
@@ -281,37 +308,21 @@ class _AuditRow extends StatelessWidget {
   }
 }
 
-class _AuditIconCfg {
+class _IconCfg {
   final IconData icon;
   final Color bg, fg;
-  const _AuditIconCfg(this.icon, this.bg, this.fg);
+  const _IconCfg(this.icon, this.bg, this.fg);
 }
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
-  Widget build(BuildContext context) => Center(
+  Widget build(BuildContext context) => const Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.history_rounded, size: 52, color: AppColors.textSecondary),
-      const SizedBox(height: 12),
-      Text('No logs', style: AppTextStyles.statLabel),
+      SizedBox(height: 12),
+      Text('No audit logs', style: AppTextStyles.statLabel),
     ]),
-  );
-}
-
-class _CircleAction extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _CircleAction({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40, height: 40,
-      decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
-          shape: BoxShape.circle),
-      child: Icon(icon, color: Colors.white, size: 20),
-    ),
   );
 }

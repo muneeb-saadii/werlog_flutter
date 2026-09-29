@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:wellness/client/core/utils/general_functions.dart';
 import 'package:wellness/client/ui/screens/profile_segment/currency_screen.dart';
 
@@ -12,10 +13,8 @@ import '../../core/utils/shared_pref_helper.dart';
 import 'disclaimer/disclaimer_widget.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DATA MODELS  (keep your existing ones — these mirror what your code uses)
+// DATA MODELS
 // ─────────────────────────────────────────────────────────────────────────────
-
-// enum ScanType { warranty, invoice, receipt, manual }
 
 enum ProcessingStepStatus { done, active, pending }
 
@@ -31,7 +30,7 @@ class OcrProcessingDataNew {
   final String headlineText;
   final String subText;
   final List<ProcessingStep> steps;
-  final Map<String, dynamic> processData;     // e.g. 10
+  final Map<String, dynamic> processData;
 
   OcrProcessingDataNew({
     required this.scanType,
@@ -54,16 +53,12 @@ class OcrProcessingDataNew {
     switch (t) {
       case ScanType.warranty: return 'Extracting warranty data…';
       case ScanType.expense:  return 'Reading invoice…';
-    // case ScanType.invoice:  return 'Reading invoice…';
-    // case ScanType.receipt:  return 'Processing receipt…';
-    // case ScanType.manual:   return 'Scanning manual…';
     }
   }
 
   static String _defaultSub(ScanType t) =>
       'Hold tight while we read your document and pull out all the key details';
 }
-
 
 class OcrJobResult {
   final String jobId;
@@ -97,50 +92,31 @@ class OcrJobResult {
     engine: json['engine'] ?? '',
     durationMs: json['durationMs'] ?? 0,
     attemptCount: json['attemptCount'] ?? 1,
-    startedAt: json['startedAt'] != null
-        ? DateTime.tryParse(json['startedAt'])
-        : null,
-    completedAt: json['completedAt'] != null
-        ? DateTime.tryParse(json['completedAt'])
-        : null,
+    startedAt: json['startedAt'] != null ? DateTime.tryParse(json['startedAt']) : null,
+    completedAt: json['completedAt'] != null ? DateTime.tryParse(json['completedAt']) : null,
     completedSteps: (json['completedSteps'] as List? ?? [])
-        .map((s) => OcrCompletedStep.fromJson(s))
-        .toList(),
+        .map((s) => OcrCompletedStep.fromJson(s)).toList(),
     extracted: OcrExtracted.fromJson(json['extracted'] ?? {}),
   );
 }
 
 class OcrCompletedStep {
-  final String key;
-  final String label;
-  final String status;
+  final String key, label, status;
   final int durationMs;
-
-  OcrCompletedStep({
-    required this.key,
-    required this.label,
-    required this.status,
-    required this.durationMs,
-  });
-
+  OcrCompletedStep({required this.key, required this.label,
+    required this.status, required this.durationMs});
   factory OcrCompletedStep.fromJson(Map<String, dynamic> json) =>
       OcrCompletedStep(
-        key: json['key'] ?? '',
-        label: json['label'] ?? '',
-        status: json['status'] ?? '',
-        durationMs: json['durationMs'] ?? 0,
+        key: json['key'] ?? '', label: json['label'] ?? '',
+        status: json['status'] ?? '', durationMs: json['durationMs'] ?? 0,
       );
 }
 
 class OcrLineItem {
-  final String description;
-  final String amountFormatted;
-
+  final String description, amountFormatted;
   OcrLineItem({required this.description, required this.amountFormatted});
-
   factory OcrLineItem.fromJson(Map<String, dynamic> json) => OcrLineItem(
-    description: json['description'] ?? '',
-    amountFormatted: json['amountFormatted'] ?? '',
+    description: json['description'] ?? '', amountFormatted: json['amountFormatted'] ?? '',
   );
 }
 
@@ -149,21 +125,16 @@ class OcrExtracted {
   final String? totalAmountFormatted;
   final String? invoiceDateFormatted;
   final int lineItemCount;
-  final String confidenceLabel; // LOW | MEDIUM | HIGH
+  final String confidenceLabel;
   final bool needsReview;
   final String? autoCategoryName;
   final String? autoCategoryIcon;
   final List<OcrLineItem> lineItemsPreview;
 
   OcrExtracted({
-    this.vendorName,
-    this.totalAmountFormatted,
-    this.invoiceDateFormatted,
-    this.lineItemCount = 0,
-    required this.confidenceLabel,
-    required this.needsReview,
-    this.autoCategoryName,
-    this.autoCategoryIcon,
+    this.vendorName, this.totalAmountFormatted, this.invoiceDateFormatted,
+    this.lineItemCount = 0, required this.confidenceLabel,
+    required this.needsReview, this.autoCategoryName, this.autoCategoryIcon,
     required this.lineItemsPreview,
   });
 
@@ -177,56 +148,22 @@ class OcrExtracted {
     autoCategoryName: json['autoCategoryName'],
     autoCategoryIcon: json['autoCategoryIcon'],
     lineItemsPreview: (json['lineItemsPreview'] as List? ?? [])
-        .map((i) => OcrLineItem.fromJson(i))
-        .toList(),
+        .map((i) => OcrLineItem.fromJson(i)).toList(),
   );
+
+  /// Extracts currency code from totalAmountFormatted.
+  /// e.g. "PKR 1730.00" → "PKR", "$ 50.00" → null (symbol, not code)
+  String? get detectedCurrencyCode {
+    final raw = totalAmountFormatted?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split(RegExp(r'\s+'));
+    if (parts.length < 2) return null;
+    final candidate = parts.first;
+    // Must look like a 3-letter ISO code (all caps letters)
+    if (RegExp(r'^[A-Z]{2,4}$').hasMatch(candidate)) return candidate;
+    return null;
+  }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// THEME  (mirrors WerlogColors / WerlogTextStyles / WerlogGradients)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/*abstract class WerlogColors {
-  static const Color background    = Color(0xFF0D1117);
-  static const Color surface       = Color(0xFF111820);
-  static const Color surfaceAlt    = Color(0xFF161C24);
-  static const Color border        = Color(0xFF1E2B38);
-  static const Color teal          = Color(0xFF2EA89E);
-  static const Color tealLight     = Color(0xFF4ECDC4);
-  static const Color amber         = Color(0xFFD4930A);
-  static const Color textPrimary   = Color(0xFFC9D1D9);
-  static const Color textSecondary = Color(0xFF7D9BA8);
-  static const Color textTertiary  = Color(0xFF3D5060);
-  static const Color success       = Color(0xFF2EA89E);
-}*/
-
-/*abstract class WerlogGradients {
-  static LinearGradient processingBg() => const LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFF0D1117), Color(0xFF0A1520), Color(0xFF0D1117)],
-    stops: [0.0, 0.5, 1.0],
-  );
-  static LinearGradient successBg() => const LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF0D1117), Color(0xFF091A18), Color(0xFF0D1117)],
-    stops: [0.0, 0.5, 1.0],
-  );
-}*/
-
-/*abstract class WerlogTextStyles {
-  static const TextStyle sectionTitle = TextStyle(
-    fontSize: 16, fontWeight: FontWeight.w600,
-    color: WerlogColors.textPrimary, letterSpacing: -0.4,
-  );
-  static const TextStyle bodySmall = TextStyle(
-    fontSize: 12, color: WerlogColors.textSecondary,
-  );
-  static const TextStyle caption = TextStyle(
-    fontSize: 10, color: WerlogColors.textTertiary,
-  );
-}*/
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FAKE STATUS BAR
@@ -247,12 +184,7 @@ class OcrProcessingScreenNew extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onProceed;
 
-  const OcrProcessingScreenNew({
-    super.key,
-    this.data,
-    this.onBack,
-    this.onProceed,
-  });
+  const OcrProcessingScreenNew({super.key, this.data, this.onBack, this.onProceed});
 
   @override
   State<OcrProcessingScreenNew> createState() => _OcrProcessingScreenNewState();
@@ -261,41 +193,21 @@ class OcrProcessingScreenNew extends StatefulWidget {
 class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
     with TickerProviderStateMixin {
 
-  // ── Ring spin controllers ──────────────────────────────────────────────────
-  late final AnimationController _ring1;  // outer ring, continuous CW
-  late final AnimationController _ring2;  // inner ring, continuous CCW
+  late final AnimationController _ring1, _ring2, _scanCtrl, _pulseCtrl;
+  late final AnimationController _checkCircleCtrl, _checkMarkCtrl,
+      _burstCtrl, _successFadeCtrl;
+  late final Animation<double> _scanAnim, _pulseAnim;
 
-  // ── Scan-line (doc icon) ───────────────────────────────────────────────────
-  late final AnimationController _scanCtrl;
-  late final Animation<double> _scanAnim;
-
-  // ── Pulse for the orbit dots ───────────────────────────────────────────────
-  late final AnimationController _pulseCtrl;
-  late final Animation<double> _pulseAnim;
-
-  // ── Countdown ─────────────────────────────────────────────────────────────
-  late int _totalSeconds;
-  late int _remainingSeconds;
+  late int _totalSeconds, _remainingSeconds;
   Timer? _countdownTimer;
-
-  // ── Step state (0-3) ──────────────────────────────────────────────────────
-  // index 0 starts as "done", 1 as "active", 2-3 as "pending"
   late List<ProcessingStepStatus> _stepStatus;
   late List<String?> _stepDurations;
   late List<DateTime> _stepStartTimes;
 
-  // ── Completion ────────────────────────────────────────────────────────────
   bool _isComplete = false;
-
-  // ── Success-screen animations ─────────────────────────────────────────────
-  late final AnimationController _checkCircleCtrl;
-  late final AnimationController _checkMarkCtrl;
-  late final AnimationController _burstCtrl;
-  late final AnimationController _successFadeCtrl;
-
-  // ─────────────────────────────────────────────────────────────────────────
   bool _isLoadingResult = false;
   OcrJobResult? _jobResult;
+
   OcrProcessingDataNew get _data =>
       widget.data ?? OcrProcessingDataNew(scanType: ScanType.warranty);
 
@@ -303,55 +215,27 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
   void initState() {
     super.initState();
 
-    _totalSeconds    = int.tryParse(_data.processData['estimatedSeconds'].toString()) ?? 20;
-    _totalSeconds    += 5;
+    _totalSeconds     = (int.tryParse(_data.processData['estimatedSeconds'].toString()) ?? 20) + 5;
     _remainingSeconds = _totalSeconds;
-
-    // Seed step states from the data model
-    _stepStatus = _data.steps
-        .map((s) => s.status)
-        .toList();
+    _stepStatus    = _data.steps.map((s) => s.status).toList();
     _stepDurations = _data.steps.map((s) => s.duration).toList();
     _stepStartTimes = List.filled(_data.steps.length, DateTime.now());
 
-    // ── Ring controllers ────────────────────────────────────────────────────
-    _ring1 = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat();
+    _ring1 = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+    _ring2 = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
+    _scanCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _scanAnim = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _scanCtrl, curve: Curves.easeInOut));
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    _ring2 = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1800))
-      ..repeat();   // intentionally NOT reverse — we negate angle in painter
+    _checkCircleCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _checkMarkCtrl   = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+    _burstCtrl       = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _successFadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
 
-    // ── Scan line ──────────────────────────────────────────────────────────
-    _scanCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat(reverse: true);
-    _scanAnim = Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(parent: _scanCtrl, curve: Curves.easeInOut));
-
-    // ── Pulse ──────────────────────────────────────────────────────────────
-    _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000))
-      ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
-
-    // ── Success controllers (not started yet) ──────────────────────────────
-    _checkCircleCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _checkMarkCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 450));
-    _burstCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _successFadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-
-    // ── Start countdown ────────────────────────────────────────────────────
     _startCountdown();
   }
 
-  // ── Countdown logic ────────────────────────────────────────────────────────
   void _startCountdown() {
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
@@ -370,54 +254,32 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
 
   void _updateStepProgress() {
     final pct = 1.0 - (_remainingSeconds / _totalSeconds);
-
-    // Step milestones: 0=done from start, 1 active→done at 35%, 2 at 60%, 3 at 82%
-    if (pct >= 0.35 && _stepStatus[1] == ProcessingStepStatus.active) {
-      _completeStep(1);
-      _activateStep(2);
-    }
-    if (pct >= 0.60 && _stepStatus[2] == ProcessingStepStatus.active) {
-      _completeStep(2);
-      _activateStep(3);
-    }
+    if (pct >= 0.35 && _stepStatus[1] == ProcessingStepStatus.active) { _completeStep(1); _activateStep(2); }
+    if (pct >= 0.60 && _stepStatus[2] == ProcessingStepStatus.active) { _completeStep(2); _activateStep(3); }
   }
 
   void _activateStep(int i) {
-    if (i < _stepStatus.length) {
-      _stepStatus[i] = ProcessingStepStatus.active;
-      _stepStartTimes[i] = DateTime.now();
-    }
+    if (i < _stepStatus.length) { _stepStatus[i] = ProcessingStepStatus.active; _stepStartTimes[i] = DateTime.now(); }
   }
 
   void _completeStep(int i) {
     if (i < _stepStatus.length) {
       _stepStatus[i] = ProcessingStepStatus.done;
-      final elapsed = DateTime.now().difference(_stepStartTimes[i]);
-      _stepDurations[i] = '${(elapsed.inMilliseconds / 1000).toStringAsFixed(1)}s';
+      _stepDurations[i] = '${(DateTime.now().difference(_stepStartTimes[i]).inMilliseconds / 1000).toStringAsFixed(1)}s';
     }
   }
 
   void _completeLastStep() {
-    // Mark the remaining active/pending steps as done
     for (int i = 0; i < _stepStatus.length; i++) {
-      if (_stepStatus[i] != ProcessingStepStatus.done) {
-        _completeStep(i);
-      }
+      if (_stepStatus[i] != ProcessingStepStatus.done) _completeStep(i);
     }
   }
 
   void _triggerComplete() async {
-    // Stop processing animations
-    _ring1.stop();
-    _ring2.stop();
-    _scanCtrl.stop();
-    _pulseCtrl.stop();
-
+    _ring1.stop(); _ring2.stop(); _scanCtrl.stop(); _pulseCtrl.stop();
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     setState(() => _isComplete = true);
-
-    // Sequence: circle draw → checkmark draw → burst → fade in text
     await _checkCircleCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 80));
     await _checkMarkCtrl.forward();
@@ -426,119 +288,26 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
     _successFadeCtrl.forward();
   }
 
-
-  // ── API call ───────────────────────────────────────────────────────────
   Future<void> _getOcrJobDetails() async {
     setState(() => _isLoadingResult = true);
     try {
-      // ── Replace with your actual call: ────────────────────────────────
       final response = await ApiService.get(
           context,
-          "${Endpoints.SCANNED_OCR_JOB_DETAILS}${_data.processData['jobId']}",
-          showLoader: false
-      );
-      // ── Mock for wiring / preview: ────────────────────────────────────
-      /*await Future.delayed(const Duration(milliseconds: 900));
-      final response = {
-        "result": "1",
-        "data": {
-          "jobId": "58281bba-cd91-4931-8eb1-32021bbe0df5",
-          "status": "COMPLETED",
-          "engine": "GPT4",
-          "durationMs": 6378,
-          "attemptCount": 1,
-          "startedAt": "2026-05-13T17:28:46.908245Z",
-          "completedAt": "2026-05-13T17:28:53.286656Z",
-          "completedSteps": [
-            {"key": "uploaded",     "label": "Uploaded securely", "status": "DONE", "durationMs": 400},
-            {"key": "preprocessed", "label": "Image enhanced",    "status": "DONE", "durationMs": 900},
-            {"key": "extracted",    "label": "Text extracted",    "status": "DONE", "durationMs": 5078},
-            {"key": "parsed",       "label": "Fields parsed",     "status": "DONE", "durationMs": 200},
-            {"key": "saved",        "label": "Saved to library",  "status": "DONE", "durationMs": 100},
-          ],
-          "extracted": {
-            "vendorName": null,
-            "totalAmountFormatted": null,
-            "invoiceDateFormatted": null,
-            "lineItemCount": 0,
-            "confidenceLabel": "LOW",
-            "needsReview": true,
-            "autoCategoryName": null,
-            "autoCategoryIcon": null,
-            "lineItemsPreview": [
-              {"description": "string", "amountFormatted": "string"}
-            ],
-          }
-        }
-      };*/
-      // ─────────────────────────────────────────────────────────────────
+          '${Endpoints.SCANNED_OCR_JOB_DETAILS}${_data.processData['jobId']}',
+          showLoader: false);
 
-      final ok = response['result'] == "1";
+      final ok = response['result'] == '1';
       if (ok) {
-        final result = OcrJobResult.fromJson(
-            response['data'] as Map<String, dynamic>);
-        setState(() {
-          _jobResult = result;
-          _isLoadingResult = false;
-        });
-
-        /*try {
-          var amt = result.extracted.totalAmountFormatted ?? "QAR 0";
-
-          // Extract currency code and amount from string like "QAR 519.00"
-          final parts = amt.trim().split(RegExp(r'\s+'));
-
-          String? detectedCurrencyCode;
-          String? numericAmount;
-
-          if (parts.length >= 2) {
-            // Format: "QAR 519.00" → code=QAR, amount=519.00
-            detectedCurrencyCode = parts[0].toUpperCase();
-            numericAmount        = parts[1];
-          } else if (parts.length == 1) {
-            // Format: "519.00" → no currency code in string
-            numericAmount = parts[0];
-          }
-
-          print("detectedCurrencyCode => $detectedCurrencyCode");
-          print("numericAmount        => $numericAmount");
-
-          if (detectedCurrencyCode != null) {
-            final match = GeneralFunctions.kCurrencies.firstWhere(
-                  (c) => c.code.toUpperCase() == detectedCurrencyCode!.toUpperCase(),
-              orElse: () => const CurrencyItem(
-                  id: 'usd', code: 'USD', symbol: '\$',
-                  name: 'US Dollar', country: 'United States', region: 'Americas'),
-            );
-            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyId,     match.id);
-            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
-            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyCode,   match.code);
-            await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencyName,   match.name);
-            GeneralFunctions.currencySymbol = '${match.code*//*symbol*//*} ';
-            print("matched currency => ${match.code} ${match.symbol}");
-            // Optionally update saved currency:
-            // await SharedPrefHelper.saveString(SharedPrefHelper.selectedCurrencySymbol, match.symbol);
-            // GeneralFunctions.currencySymbol = '${match.symbol} ';
-          }
-
-        } catch(e) {
-          print(e);
-        }*/
-
-        // Open result sheet
+        final result = OcrJobResult.fromJson(response['data'] as Map<String, dynamic>);
+        setState(() { _jobResult = result; _isLoadingResult = false; });
         if (mounted) _showResultSheet(result);
       } else {
         setState(() => _isLoadingResult = false);
-        if (mounted) {
-          _showErrorSnack(
-              (response['message'] ?? 'Something went wrong').toString());
-        }
+        if (mounted) _showErrorSnack((response['message'] ?? 'Something went wrong').toString());
       }
     } catch (e) {
       setState(() => _isLoadingResult = false);
-      if (mounted) {
-        _showErrorSnack('Process interrupted. Please try again!');
-      }
+      if (mounted) _showErrorSnack('Process interrupted. Please try again!');
     }
   }
 
@@ -549,52 +318,40 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _OcrResultSheet(
-        result:   result,
+        result: result,
         scanType: _data.scanType,
         rootContext: rootContext,
-        onDone: () {
-          GeneralFunctions.resetAppState();
-        },
+        onDone: () => GeneralFunctions.resetAppState(),
       ),
     );
   }
 
   void _showErrorSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-          style: const TextStyle(fontFamily: 'DMSans', fontSize: 13)),
+      content: Text(msg, style: const TextStyle(fontFamily: 'DMSans', fontSize: 13)),
       backgroundColor: WerlogColors.coral,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ));
   }
 
-
   @override
   void dispose() {
-    _ring1.dispose();
-    _ring2.dispose();
-    _scanCtrl.dispose();
-    _pulseCtrl.dispose();
-    _checkCircleCtrl.dispose();
-    _checkMarkCtrl.dispose();
-    _burstCtrl.dispose();
-    _successFadeCtrl.dispose();
+    _ring1.dispose(); _ring2.dispose(); _scanCtrl.dispose(); _pulseCtrl.dispose();
+    _checkCircleCtrl.dispose(); _checkMarkCtrl.dispose();
+    _burstCtrl.dispose(); _successFadeCtrl.dispose();
     _countdownTimer?.cancel();
     super.dispose();
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   String get _countdownLabel {
-    final m = _remainingSeconds ~/ 60;
-    final s = _remainingSeconds % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    final m = _remainingSeconds ~/ 60, s = _remainingSeconds % 60;
+    return '${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
   }
 
   double get _countdownProgress =>
       _totalSeconds > 0 ? _remainingSeconds / _totalSeconds : 0.0;
 
-  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -602,73 +359,54 @@ class _OcrProcessingScreenNewState extends State<OcrProcessingScreenNew>
       body: SafeArea(
         child: Container(
           decoration: BoxDecoration(
-            gradient: _isComplete
-                ? LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                WerlogColors.background,
-                WerlogColors.tealLightSurface,
-                WerlogColors.background,
-              ],
-            )
-                : LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                WerlogColors.background,
-                WerlogColors.tealLightSurface,
-                WerlogColors.background,
-              ],
+            gradient: LinearGradient(
+              begin: _isComplete ? Alignment.topLeft : Alignment.topCenter,
+              end:   _isComplete ? Alignment.bottomRight : Alignment.bottomCenter,
+              colors: [WerlogColors.background, WerlogColors.tealLightSurface, WerlogColors.background],
             ),
           ),
-          // child: SafeArea(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 500),
-            transitionBuilder: (child, anim) =>
-                FadeTransition(opacity: anim, child: child),
+            transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
             child: _isComplete
                 ? _SuccessView(
               key: const ValueKey('success'),
               data: _data,
               checkCircleCtrl: _checkCircleCtrl,
-              checkMarkCtrl: _checkMarkCtrl,
-              burstCtrl: _burstCtrl,
-              fadeCtrl: _successFadeCtrl,
-              isLoading: _isLoadingResult,
-              onViewData: _getOcrJobDetails,
+              checkMarkCtrl:   _checkMarkCtrl,
+              burstCtrl:       _burstCtrl,
+              fadeCtrl:        _successFadeCtrl,
+              isLoading:       _isLoadingResult,
+              onViewData:      _getOcrJobDetails,
             )
                 : _ProcessingView(
               key: const ValueKey('processing'),
-              data: _data,
-              ring1: _ring1,
-              ring2: _ring2,
-              scanAnim: _scanAnim,
-              pulseAnim: _pulseAnim,
-              countdownLabel: _countdownLabel,
+              data:              _data,
+              ring1:             _ring1,
+              ring2:             _ring2,
+              scanAnim:          _scanAnim,
+              pulseAnim:         _pulseAnim,
+              countdownLabel:    _countdownLabel,
               countdownProgress: _countdownProgress,
-              stepStatus: _stepStatus,
-              stepDurations: _stepDurations,
-              onBack: widget.onBack,
+              stepStatus:        _stepStatus,
+              stepDurations:     _stepDurations,
+              onBack:            widget.onBack,
             ),
           ),
         ),
       ),
-      // ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROCESSING VIEW
+// PROCESSING VIEW  (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ProcessingView extends StatelessWidget {
   final OcrProcessingDataNew data;
-  final AnimationController ring1;
-  final AnimationController ring2;
-  final Animation<double> scanAnim;
-  final Animation<double> pulseAnim;
+  final AnimationController ring1, ring2;
+  final Animation<double> scanAnim, pulseAnim;
   final String countdownLabel;
   final double countdownProgress;
   final List<ProcessingStepStatus> stepStatus;
@@ -676,471 +414,219 @@ class _ProcessingView extends StatelessWidget {
   final VoidCallback? onBack;
 
   const _ProcessingView({
-    super.key,
-    required this.data,
-    required this.ring1,
-    required this.ring2,
-    required this.scanAnim,
-    required this.pulseAnim,
-    required this.countdownLabel,
-    required this.countdownProgress,
-    required this.stepStatus,
-    required this.stepDurations,
-    this.onBack,
+    super.key, required this.data, required this.ring1, required this.ring2,
+    required this.scanAnim, required this.pulseAnim, required this.countdownLabel,
+    required this.countdownProgress, required this.stepStatus,
+    required this.stepDurations, this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // const FakeStatusBar(),
-        // Back button
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-          child: GestureDetector(
-            onTap: onBack,
-            child: const Text('‹',
-                style: TextStyle(fontSize: 28, color: WerlogColors.textPrimary)),
-          ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
+        child: GestureDetector(
+          onTap: onBack,
+          child: const Text('‹', style: TextStyle(fontSize: 28, color: WerlogColors.textPrimary)),
         ),
-
-        // Central animation zone
-        Expanded(
+      ),
+      Expanded(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          _AnimatedOrbit(ring1: ring1, ring2: ring2, scanAnim: scanAnim, pulseAnim: pulseAnim),
+          const SizedBox(height: 22),
+          Text(data.headlineText, style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 15, letterSpacing: -0.3)),
+          const SizedBox(height: 5),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(data.subText, textAlign: TextAlign.center, style: WerlogTextStyles.bodySmall),
+          ),
+          const SizedBox(height: 22),
+          _CountdownWidget(label: countdownLabel, progress: countdownProgress),
+        ]),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          decoration: BoxDecoration(
+            color: WerlogColors.surface,
+            border: Border.all(color: WerlogColors.border),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _AnimatedOrbit(
-                ring1: ring1,
-                ring2: ring2,
-                scanAnim: scanAnim,
-                pulseAnim: pulseAnim,
-              ),
-              const SizedBox(height: 22),
-              Text(data.headlineText,
-                  style: WerlogTextStyles.sectionTitle
-                      .copyWith(fontSize: 15, letterSpacing: -0.3)),
-              const SizedBox(height: 5),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Text(data.subText,
-                    textAlign: TextAlign.center,
-                    style: WerlogTextStyles.bodySmall),
-              ),
-              const SizedBox(height: 22),
-              // Countdown row
-              _CountdownWidget(
-                label: countdownLabel,
-                progress: countdownProgress,
-              ),
-            ],
+            children: List.generate(data.steps.length, (i) => _StepRow(
+              label: data.steps[i].label, status: stepStatus[i], duration: stepDurations[i],
+            )),
           ),
         ),
-
-        // Steps card
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-            decoration: BoxDecoration(
-              color: WerlogColors.surface,
-              border: Border.all(color: WerlogColors.border),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: List.generate(data.steps.length, (i) => _StepRow(
-                label: data.steps[i].label,
-                status: stepStatus[i],
-                duration: stepDurations[i],
-              )),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(0, 6, 0, 16),
-          child: Text(
-            'Close anytime — we\'ll notify when ready',
-            textAlign: TextAlign.center,
-            style: WerlogTextStyles.caption.copyWith(fontSize: 9),
-          ),
-        ),
-      ],
-    );
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(0, 6, 0, 16),
+        child: Text('Close anytime — we\'ll notify when ready',
+            textAlign: TextAlign.center, style: WerlogTextStyles.caption.copyWith(fontSize: 9)),
+      ),
+    ]);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMATED ORBIT  (the spinning rings + doc + scan line + orbit dots)
+// ANIMATED ORBIT  (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AnimatedOrbit extends StatelessWidget {
-  final AnimationController ring1;
-  final AnimationController ring2;
-  final Animation<double> scanAnim;
-  final Animation<double> pulseAnim;
+  final AnimationController ring1, ring2;
+  final Animation<double> scanAnim, pulseAnim;
 
-  const _AnimatedOrbit({
-    required this.ring1,
-    required this.ring2,
-    required this.scanAnim,
-    required this.pulseAnim,
-  });
+  const _AnimatedOrbit({required this.ring1, required this.ring2,
+    required this.scanAnim, required this.pulseAnim});
 
   @override
   Widget build(BuildContext context) {
     const size = 148.0;
     return SizedBox(
       width: size, height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // ── Outer ring (teal, CW) ──
-          AnimatedBuilder(
-            animation: ring1,
-            builder: (_, __) => CustomPaint(
-              size: const Size(size, size),
-              painter: _RingArcPainter(
-                progress: ring1.value,
-                color: WerlogColors.teal,
-                radius: size / 2 - 4,
-                strokeWidth: 2.5,
-                arcFraction: 0.75,
-                dotRadius: 4.5,
-                clockwise: true,
-              ),
-            ),
-          ),
-
-          // ── Inner ring (amber, CCW) ──
-          AnimatedBuilder(
-            animation: ring2,
-            builder: (_, __) => CustomPaint(
-              size: const Size(size - 28, size - 28),
-              painter: _RingArcPainter(
-                progress: ring2.value,
-                color: WerlogColors.amber.withOpacity(0.7),
-                radius: (size - 28) / 2 - 3,
-                strokeWidth: 2.0,
-                arcFraction: 0.6,
-                dotRadius: 3.5,
-                clockwise: false,
-              ),
-            ),
-          ),
-
-          // ── Doc icon with scan line ──
-          AnimatedBuilder(
-            animation: scanAnim,
-            builder: (_, __) => _DocIconWithScan(scanProgress: scanAnim.value),
-          ),
-
-          // ── Orbit pulse dot (outer) ──
-          AnimatedBuilder(
-            animation: Listenable.merge([ring1, pulseAnim]),
-            builder: (_, __) {
-              final angle = ring1.value * 2 * math.pi - math.pi / 2;
-              final r = size / 2 - 4;
-              final cx = size / 2 + r * math.cos(angle);
-              final cy = size / 2 + r * math.sin(angle);
-              return Positioned(
-                left: cx - 5,
-                top: cy - 5,
-                child: Opacity(
-                  opacity: pulseAnim.value,
-                  child: Container(
-                    width: 10, height: 10,
-                    decoration: const BoxDecoration(
-                      color: WerlogColors.teal,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // ── Orbit pulse dot (inner, offset) ──
-          AnimatedBuilder(
-            animation: Listenable.merge([ring2, pulseAnim]),
-            builder: (_, __) {
-              // offset by 180° from ring2 direction
-              final angle = -(ring2.value * 2 * math.pi) + math.pi - math.pi / 2;
-              final r = (size - 28) / 2 - 3;
-              final cx = size / 2 + r * math.cos(angle);
-              final cy = size / 2 + r * math.sin(angle);
-              return Positioned(
-                left: cx - 4,
-                top: cy - 4,
-                child: Opacity(
-                  opacity: 1.0 - (pulseAnim.value - 0.4) / 0.6,
-                  child: Container(
-                    width: 8, height: 8,
-                    decoration: BoxDecoration(
-                      color: WerlogColors.amber.withOpacity(0.8),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+      child: Stack(alignment: Alignment.center, children: [
+        AnimatedBuilder(animation: ring1, builder: (_, __) => CustomPaint(
+          size: const Size(size, size),
+          painter: _RingArcPainter(progress: ring1.value, color: WerlogColors.teal,
+              radius: size/2-4, strokeWidth: 2.5, arcFraction: 0.75, dotRadius: 4.5, clockwise: true),
+        )),
+        AnimatedBuilder(animation: ring2, builder: (_, __) => CustomPaint(
+          size: const Size(size-28, size-28),
+          painter: _RingArcPainter(progress: ring2.value, color: WerlogColors.amber.withOpacity(0.7),
+              radius: (size-28)/2-3, strokeWidth: 2.0, arcFraction: 0.6, dotRadius: 3.5, clockwise: false),
+        )),
+        AnimatedBuilder(animation: scanAnim, builder: (_, __) => _DocIconWithScan(scanProgress: scanAnim.value)),
+        AnimatedBuilder(animation: Listenable.merge([ring1, pulseAnim]), builder: (_, __) {
+          final angle = ring1.value * 2 * math.pi - math.pi/2;
+          final r = size/2-4;
+          return Positioned(left: size/2+r*math.cos(angle)-5, top: size/2+r*math.sin(angle)-5,
+              child: Opacity(opacity: pulseAnim.value, child: Container(
+                  width: 10, height: 10, decoration: const BoxDecoration(color: WerlogColors.teal, shape: BoxShape.circle))));
+        }),
+        AnimatedBuilder(animation: Listenable.merge([ring2, pulseAnim]), builder: (_, __) {
+          final angle = -(ring2.value*2*math.pi)+math.pi-math.pi/2;
+          final r = (size-28)/2-3;
+          return Positioned(left: size/2+r*math.cos(angle)-4, top: size/2+r*math.sin(angle)-4,
+              child: Opacity(opacity: 1.0-(pulseAnim.value-0.4)/0.6, child: Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(color: WerlogColors.amber.withOpacity(0.8), shape: BoxShape.circle))));
+        }),
+      ]),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RING ARC PAINTER  — draws a partial arc + leading dot, properly rotating
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _RingArcPainter extends CustomPainter {
-  final double progress;   // 0..1
+  final double progress, radius, strokeWidth, arcFraction, dotRadius;
   final Color color;
-  final double radius;
-  final double strokeWidth;
-  final double arcFraction; // 0..1 how much of the circle is filled
-  final double dotRadius;
   final bool clockwise;
-
-  const _RingArcPainter({
-    required this.progress,
-    required this.color,
-    required this.radius,
-    required this.strokeWidth,
-    required this.arcFraction,
-    required this.dotRadius,
-    required this.clockwise,
-  });
+  const _RingArcPainter({required this.progress, required this.color,
+    required this.radius, required this.strokeWidth, required this.arcFraction,
+    required this.dotRadius, required this.clockwise});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-
-    // Track
-    final trackPaint = Paint()
-      ..color = color.withOpacity(0.12)
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(center, radius, trackPaint);
-
-    // Arc
-    final arcPaint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final baseAngle = -math.pi / 2;
-    final rotateAngle = (clockwise ? 1 : -1) * progress * 2 * math.pi;
-    final startAngle = baseAngle + rotateAngle;
-    final sweepAngle = (clockwise ? 1 : -1) * 2 * math.pi * arcFraction;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
-      false,
-      arcPaint,
-    );
-
-    // Leading dot
-    final dotAngle = startAngle + sweepAngle;
-    final dotX = center.dx + radius * math.cos(dotAngle);
-    final dotY = center.dy + radius * math.sin(dotAngle);
-    final dotPaint = Paint()..color = color;
-    canvas.drawCircle(Offset(dotX, dotY), dotRadius, dotPaint);
+    final center = Offset(size.width/2, size.height/2);
+    canvas.drawCircle(center, radius, Paint()..color=color.withOpacity(0.12)..strokeWidth=strokeWidth..style=PaintingStyle.stroke);
+    final arcPaint = Paint()..color=color..strokeWidth=strokeWidth..style=PaintingStyle.stroke..strokeCap=StrokeCap.round;
+    final base = -math.pi/2;
+    final rot  = (clockwise?1:-1)*progress*2*math.pi;
+    final start = base+rot;
+    final sweep  = (clockwise?1:-1)*2*math.pi*arcFraction;
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, arcPaint);
+    final dotAngle = start+sweep;
+    canvas.drawCircle(Offset(center.dx+radius*math.cos(dotAngle), center.dy+radius*math.sin(dotAngle)), dotRadius, Paint()..color=color);
   }
 
   @override
-  bool shouldRepaint(covariant _RingArcPainter old) =>
-      old.progress != progress;
+  bool shouldRepaint(covariant _RingArcPainter old) => old.progress != progress;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DOC ICON WITH SCAN LINE
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _DocIconWithScan extends StatelessWidget {
-  final double scanProgress; // 0..1
+  final double scanProgress;
   const _DocIconWithScan({required this.scanProgress});
 
   @override
   Widget build(BuildContext context) {
     const docW = 44.0, docH = 56.0;
-    return SizedBox(
-      width: docW, height: docH,
-      child: Stack(
-        children: [
-          Container(
-            width: docW, height: docH,
-            decoration: BoxDecoration(
-              color: WerlogColors.surface,//Alt,
-              border: Border.all(color: WerlogColors.border),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            padding: const EdgeInsets.all(5),
-            child: Column(
-              children: List.generate(5, (i) => Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Container(
-                  height: 2,
-                  decoration: BoxDecoration(
-                    color: WerlogColors.border,
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                  width: i % 2 == 0 ? double.infinity : 22,
-                ),
-              )),
-            ),
-          ),
-          // Scan line
-          Positioned(
-            top: scanProgress * (docH - 2),
-            left: 0, right: 0,
-            child: Container(
-              height: 2,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    WerlogColors.teal.withOpacity(0.6),
-                    WerlogColors.teal,
-                    WerlogColors.teal.withOpacity(0.6),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+    return SizedBox(width: docW, height: docH, child: Stack(children: [
+      Container(
+        width: docW, height: docH,
+        decoration: BoxDecoration(color: WerlogColors.surface, border: Border.all(color: WerlogColors.border), borderRadius: BorderRadius.circular(4)),
+        padding: const EdgeInsets.all(5),
+        child: Column(children: List.generate(5, (i) => Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Container(height: 2, decoration: BoxDecoration(color: WerlogColors.border, borderRadius: BorderRadius.circular(1)), width: i%2==0?double.infinity:22),
+        ))),
       ),
-    );
+      Positioned(top: scanProgress*(docH-2), left: 0, right: 0, child: Container(
+        height: 2,
+        decoration: BoxDecoration(gradient: LinearGradient(colors: [
+          Colors.transparent, WerlogColors.teal.withOpacity(0.6),
+          WerlogColors.teal, WerlogColors.teal.withOpacity(0.6), Colors.transparent,
+        ])),
+      )),
+    ]));
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COUNTDOWN WIDGET
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _CountdownWidget extends StatelessWidget {
   final String label;
-  final double progress; // 1.0 → 0.0
-
+  final double progress;
   const _CountdownWidget({required this.label, required this.progress});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 50, height: 50,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: const Size(50, 50),
-                painter: _CountdownRingPainter(progress: progress),
-              ),
-              Text(label,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: WerlogColors.teal,
-                  )),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text('estimated time remaining',
-            style: WerlogTextStyles.caption.copyWith(fontSize: 11))//TextStyle(fontSize: 11, color: WerlogColors.textTertiary)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    SizedBox(width: 50, height: 50, child: Stack(alignment: Alignment.center, children: [
+      CustomPaint(size: const Size(50,50), painter: _CountdownRingPainter(progress: progress)),
+      Text(label, style: const TextStyle(fontFamily: 'monospace', fontSize: 10, fontWeight: FontWeight.w600, color: WerlogColors.teal)),
+    ])),
+    const SizedBox(width: 10),
+    Text('estimated time remaining', style: WerlogTextStyles.caption.copyWith(fontSize: 11)),
+  ]);
 }
 
 class _CountdownRingPainter extends CustomPainter {
-  final double progress; // 1.0 full → 0.0 empty
+  final double progress;
   const _CountdownRingPainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
+    final center = Offset(size.width/2, size.height/2);
     const radius = 22.0;
-
-    // Track
-    canvas.drawCircle(center, radius,
-        Paint()
-          ..color = WerlogColors.border
-          ..strokeWidth = 3
-          ..style = PaintingStyle.stroke);
-
-    // Fill arc (drains from full to empty)
+    canvas.drawCircle(center, radius, Paint()..color=WerlogColors.border..strokeWidth=3..style=PaintingStyle.stroke);
     if (progress > 0) {
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2,
-        2 * math.pi * progress,
-        false,
-        Paint()
-          ..color = WerlogColors.teal
-          ..strokeWidth = 3
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round,
-      );
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -math.pi/2, 2*math.pi*progress, false,
+          Paint()..color=WerlogColors.teal..strokeWidth=3..style=PaintingStyle.stroke..strokeCap=StrokeCap.round);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _CountdownRingPainter old) =>
-      old.progress != progress;
+  bool shouldRepaint(covariant _CountdownRingPainter old) => old.progress != progress;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP ROW  (used in processing view)
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _StepRow extends StatelessWidget {
   final String label;
   final ProcessingStepStatus status;
   final String? duration;
-
-  const _StepRow({
-    required this.label,
-    required this.status,
-    this.duration,
-  });
+  const _StepRow({required this.label, required this.status, this.duration});
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          _StepDot(status: status),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(label,
-                style: WerlogTextStyles.bodySmall.copyWith(
-                  fontSize: 11,
-                  color: status == ProcessingStepStatus.pending
-                      ? WerlogColors.textTertiary
-                      : WerlogColors.textSecondary,
-                )),
-          ),
-          if (duration != null)
-            Text(duration!,
-                style: WerlogTextStyles.caption.copyWith(
-                  color: status == ProcessingStepStatus.done
-                      ? WerlogColors.teal
-                      : WerlogColors.textTertiary,
-                )),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(children: [
+      _StepDot(status: status),
+      const SizedBox(width: 10),
+      Expanded(child: Text(label, style: WerlogTextStyles.bodySmall.copyWith(
+        fontSize: 11,
+        color: status == ProcessingStepStatus.pending ? WerlogColors.textTertiary : WerlogColors.textSecondary,
+      ))),
+      if (duration != null)
+        Text(duration!, style: WerlogTextStyles.caption.copyWith(
+            color: status == ProcessingStepStatus.done ? WerlogColors.teal : WerlogColors.textTertiary)),
+    ]),
+  );
 }
 
 class _StepDot extends StatelessWidget {
@@ -1151,347 +637,162 @@ class _StepDot extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (status) {
       case ProcessingStepStatus.done:
-        return Container(
-          width: 16, height: 16,
-          decoration: const BoxDecoration(
-              color: WerlogColors.teal, shape: BoxShape.circle),
-          alignment: Alignment.center,
-          child: const Text('✓',
-              style: TextStyle(
-                  fontSize: 9, color: Colors.white,
-                  fontWeight: FontWeight.w700)),
-        );
+        return Container(width: 16, height: 16,
+            decoration: const BoxDecoration(color: WerlogColors.teal, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: const Text('✓', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700)));
       case ProcessingStepStatus.active:
-        return Container(
-          width: 16, height: 16,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: WerlogColors.surface,
-            border: Border.all(color: WerlogColors.teal, width: 1.5),
-          ),
-          alignment: Alignment.center,
-          child: Text('•',
-              style: TextStyle(color: WerlogColors.teal, fontSize: 10, height: 1)),
-        );
+        return Container(width: 16, height: 16,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: WerlogColors.surface, border: Border.all(color: WerlogColors.teal, width: 1.5)),
+            alignment: Alignment.center,
+            child: Text('•', style: TextStyle(color: WerlogColors.teal, fontSize: 10, height: 1)));
       case ProcessingStepStatus.pending:
-        return Container(
-          width: 16, height: 16,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: WerlogColors.surfaceAlt,
-            border: Border.all(color: WerlogColors.border),
-          ),
-          alignment: Alignment.center,
-          child: Text('○',
-              style: TextStyle(
-                  color: WerlogColors.textTertiary, fontSize: 9, height: 1)),
-        );
+        return Container(width: 16, height: 16,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: WerlogColors.surfaceAlt, border: Border.all(color: WerlogColors.border)),
+            alignment: Alignment.center,
+            child: Text('○', style: TextStyle(color: WerlogColors.textTertiary, fontSize: 9, height: 1)));
     }
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUCCESS VIEW
+// SUCCESS VIEW  (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SuccessView extends StatelessWidget {
   final OcrProcessingDataNew data;
-  final AnimationController checkCircleCtrl;
-  final AnimationController checkMarkCtrl;
-  final AnimationController burstCtrl;
-  final AnimationController fadeCtrl;
+  final AnimationController checkCircleCtrl, checkMarkCtrl, burstCtrl, fadeCtrl;
   final bool isLoading;
   final VoidCallback onViewData;
 
-
-  const _SuccessView({
-    super.key,
-    required this.data,
-    required this.checkCircleCtrl,
-    required this.checkMarkCtrl,
-    required this.burstCtrl,
-    required this.fadeCtrl,
-    required this.isLoading,
-    required this.onViewData,
-  });
+  const _SuccessView({super.key, required this.data, required this.checkCircleCtrl,
+    required this.checkMarkCtrl, required this.burstCtrl, required this.fadeCtrl,
+    required this.isLoading, required this.onViewData});
 
   @override
   Widget build(BuildContext context) {
-    final circleTween = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: checkCircleCtrl, curve: Curves.easeOut));
-    final markTween = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: checkMarkCtrl, curve: Curves.easeOut));
-    final burstTween = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: burstCtrl, curve: Curves.easeOut));
-    final fadeTween = Tween<double>(begin: 0.0, end: 1.0)
-        .animate(CurvedAnimation(parent: fadeCtrl, curve: Curves.easeOut));
-    final slideOffsetTween = Tween<Offset>(
-        begin: const Offset(0, 0.1), end: Offset.zero)
-        .animate(CurvedAnimation(parent: fadeCtrl, curve: Curves.easeOut));
+    final circleTween = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: checkCircleCtrl, curve: Curves.easeOut));
+    final markTween   = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: checkMarkCtrl, curve: Curves.easeOut));
+    final burstTween  = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: burstCtrl, curve: Curves.easeOut));
+    final fadeTween   = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: fadeCtrl, curve: Curves.easeOut));
+    final slideTween  = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(CurvedAnimation(parent: fadeCtrl, curve: Curves.easeOut));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // const FakeStatusBar(),
-        const SizedBox(height: 8),
-
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // ── Animated check circle + burst ──
-              SizedBox(
-                width: 96, height: 96,
-                child: AnimatedBuilder(
-                  animation: Listenable.merge(
-                      [checkCircleCtrl, checkMarkCtrl, burstCtrl]),
-                  builder: (_, __) => CustomPaint(
-                    painter: _SuccessCheckPainter(
-                      circleProgress: circleTween.value,
-                      markProgress: markTween.value,
-                      burstProgress: burstTween.value,
-                    ),
-                  ),
-                ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const SizedBox(height: 8),
+      Expanded(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          SizedBox(width: 96, height: 96, child: AnimatedBuilder(
+            animation: Listenable.merge([checkCircleCtrl, checkMarkCtrl, burstCtrl]),
+            builder: (_, __) => CustomPaint(painter: _SuccessCheckPainter(
+                circleProgress: circleTween.value, markProgress: markTween.value, burstProgress: burstTween.value)),
+          )),
+          const SizedBox(height: 24),
+          SlideTransition(position: slideTween, child: FadeTransition(opacity: fadeTween, child: Column(children: [
+            const Text('Scan Complete!', style: TextStyle(fontFamily: 'DMSans', fontSize: 22, fontWeight: FontWeight.w600, color: WerlogColors.textPrimary, letterSpacing: -0.5)),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 44),
+              child: Text(
+                'Your ${_scanTypeLabel(data.scanType)} details have been extracted and saved to your log.',
+                textAlign: TextAlign.center,
+                style: WerlogTextStyles.bodySmall.copyWith(fontSize: 12, height: 1.55),
               ),
-
-              const SizedBox(height: 24),
-
-              // ── Headline + subtitle ──
-              SlideTransition(
-                position: slideOffsetTween,
-                child: FadeTransition(
-                  opacity: fadeTween,
-                  child: Column(
-                    children: [
-                      const Text('Scan Complete!',
-                          style: TextStyle(
-                            fontFamily: 'DMSans',
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            color: WerlogColors.textPrimary,
-                            letterSpacing: -0.5,
-                          )),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 44),
-                        child: Text(
-                          // 'Your document has been processed.\nTap below to view the extracted details.',
-                          'Your ${_scanTypeLabel(data.scanType)} details have been extracted and saved to your log.',
-                          textAlign: TextAlign.center,
-                          style: WerlogTextStyles.bodySmall
-                              .copyWith(fontSize: 12, height: 1.55),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Quota card ──
-              if (data.processData['remainingQuota'] != null) ...[
-                const SizedBox(height: 28),
-                SlideTransition(
-                  position: slideOffsetTween,
-                  child: FadeTransition(
-                    opacity: fadeTween,
-                    child: _QuotaCard(
-                      remaining: data.processData['remainingQuota'],
-                      total: data.processData['totalQuota'] ?? data.processData['remainingQuota'],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-
-        // ── Proceed button ──
-        FadeTransition(
-          opacity: fadeTween,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
-            child: _WerlogButton(
-              label: isLoading ? 'Loading…' : 'View Extracted Data',
-              isLoading: isLoading,
-              onTap: isLoading ? null : onViewData,
             ),
-          ),
-        ),
-      ],
-    );
+          ]))),
+          if (data.processData['remainingQuota'] != null) ...[
+            const SizedBox(height: 28),
+            SlideTransition(position: slideTween, child: FadeTransition(opacity: fadeTween, child: _QuotaCard(
+              remaining: data.processData['remainingQuota'],
+              total:     data.processData['totalQuota'] ?? data.processData['remainingQuota'],
+            ))),
+          ],
+        ]),
+      ),
+      FadeTransition(opacity: fadeTween, child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
+        child: _WerlogButton(label: isLoading ? 'Loading…' : 'View Extracted Data', isLoading: isLoading, onTap: isLoading ? null : onViewData),
+      )),
+    ]);
   }
 
   String _scanTypeLabel(ScanType t) {
     switch (t) {
       case ScanType.warranty: return 'invoice';
       case ScanType.expense:  return 'receipt';
-    // case ScanType.invoice:  return 'invoice';
-    // case ScanType.receipt:  return 'receipt';
-    // case ScanType.manual:   return 'manual';
     }
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUCCESS CHECK PAINTER
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _SuccessCheckPainter extends CustomPainter {
-  final double circleProgress;
-  final double markProgress;
-  final double burstProgress;
-
-  const _SuccessCheckPainter({
-    required this.circleProgress,
-    required this.markProgress,
-    required this.burstProgress,
-  });
+  final double circleProgress, markProgress, burstProgress;
+  const _SuccessCheckPainter({required this.circleProgress, required this.markProgress, required this.burstProgress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final r = size.width / 2 - 5;
-
-    // Glow fill
-    if (circleProgress > 0) {
-      canvas.drawCircle(center, r,
-          Paint()..color = WerlogColors.teal.withOpacity(0.10 * circleProgress));
-    }
-
-    // Circle outline
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      -math.pi / 2,
-      2 * math.pi * circleProgress,
-      false,
-      Paint()
-        ..color = WerlogColors.teal
-        ..strokeWidth = 2.0
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Checkmark (path-length animation)
+    final center = Offset(size.width/2, size.height/2);
+    final r = size.width/2-5;
+    if (circleProgress > 0) canvas.drawCircle(center, r, Paint()..color=WerlogColors.teal.withOpacity(0.10*circleProgress));
+    canvas.drawArc(Rect.fromCircle(center: center, radius: r), -math.pi/2, 2*math.pi*circleProgress, false,
+        Paint()..color=WerlogColors.teal..strokeWidth=2.0..style=PaintingStyle.stroke..strokeCap=StrokeCap.round);
     if (markProgress > 0) {
       final path = Path()
-        ..moveTo(center.dx - 18, center.dy)
-        ..lineTo(center.dx - 5, center.dy + 13)
-        ..lineTo(center.dx + 18, center.dy - 13);
-
-      final pathMetrics = path.computeMetrics().first;
-      final extractPath = pathMetrics.extractPath(
-          0, pathMetrics.length * markProgress);
-
-      canvas.drawPath(
-          extractPath,
-          Paint()
-            ..color = WerlogColors.teal
-            ..strokeWidth = 3.0
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round
-            ..strokeJoin = StrokeJoin.round);
+        ..moveTo(center.dx-18, center.dy)..lineTo(center.dx-5, center.dy+13)..lineTo(center.dx+18, center.dy-13);
+      final m = path.computeMetrics().first;
+      canvas.drawPath(m.extractPath(0, m.length*markProgress),
+          Paint()..color=WerlogColors.teal..strokeWidth=3.0..style=PaintingStyle.stroke..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round);
     }
-
-    // Burst lines (8 directions, fade out)
     if (burstProgress > 0) {
-      final burstOpacity = (1.0 - burstProgress).clamp(0.0, 1.0);
-      final burstPaint = Paint()
-        ..color = WerlogColors.teal.withOpacity(burstOpacity * 0.7)
-        ..strokeWidth = 1.5
-        ..strokeCap = StrokeCap.round;
-
+      final bp = Paint()..color=WerlogColors.teal.withOpacity((1.0-burstProgress).clamp(0.0,1.0)*0.7)..strokeWidth=1.5..strokeCap=StrokeCap.round;
       for (int i = 0; i < 8; i++) {
-        final angle = i * math.pi / 4;
-        final innerR = r + 4 + burstProgress * 6;
-        final outerR = r + 10 + burstProgress * 10;
-        canvas.drawLine(
-          Offset(center.dx + innerR * math.cos(angle),
-              center.dy + innerR * math.sin(angle)),
-          Offset(center.dx + outerR * math.cos(angle),
-              center.dy + outerR * math.sin(angle)),
-          burstPaint,
-        );
+        final a = i*math.pi/4;
+        canvas.drawLine(Offset(center.dx+(r+4+burstProgress*6)*math.cos(a), center.dy+(r+4+burstProgress*6)*math.sin(a)),
+            Offset(center.dx+(r+10+burstProgress*10)*math.cos(a), center.dy+(r+10+burstProgress*10)*math.sin(a)), bp);
       }
     }
   }
 
   @override
   bool shouldRepaint(covariant _SuccessCheckPainter old) =>
-      old.circleProgress != circleProgress ||
-          old.markProgress != markProgress ||
-          old.burstProgress != burstProgress;
+      old.circleProgress != circleProgress || old.markProgress != markProgress || old.burstProgress != burstProgress;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// QUOTA CARD
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _QuotaCard extends StatelessWidget {
-  final int remaining;
-  final int total;
+  final int remaining, total;
   const _QuotaCard({required this.remaining, required this.total});
 
   @override
   Widget build(BuildContext context) {
     final fraction = total > 0 ? remaining / total : 0.0;
-    final isLow = fraction < 0.3;
-
+    final isLow    = fraction < 0.3;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         decoration: BoxDecoration(
           color: WerlogColors.surface,
-          border: Border.all(
-            color: isLow
-                ? WerlogColors.amber.withOpacity(0.5)
-                : WerlogColors.border,
-          ),
+          border: Border.all(color: isLow ? WerlogColors.amber.withOpacity(0.5) : WerlogColors.border),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Monthly quota',
-                    style: WerlogTextStyles.caption
-                        .copyWith(fontSize: 10, color: WerlogColors.textTertiary)),
-                Text('$remaining / $total scans left',
-                    style: WerlogTextStyles.caption.copyWith(
-                      fontSize: 10,
-                      color: isLow ? WerlogColors.amber : WerlogColors.teal,
-                    )),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: fraction,
-                minHeight: 5,
-                backgroundColor: WerlogColors.border,
-                color: isLow ? WerlogColors.amber : WerlogColors.teal,
-              ),
-            ),
-            if (isLow) ...[
-              const SizedBox(height: 6),
-              Text('Running low — consider upgrading your plan.',
-                  style: WerlogTextStyles.caption
-                      .copyWith(fontSize: 9, color: WerlogColors.amber)),
-            ],
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Monthly quota', style: WerlogTextStyles.caption.copyWith(fontSize: 10, color: WerlogColors.textTertiary)),
+            Text('$remaining / $total scans left', style: WerlogTextStyles.caption.copyWith(fontSize: 10, color: isLow ? WerlogColors.amber : WerlogColors.teal)),
+          ]),
+          const SizedBox(height: 8),
+          ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
+            value: fraction, minHeight: 5,
+            backgroundColor: WerlogColors.border,
+            color: isLow ? WerlogColors.amber : WerlogColors.teal,
+          )),
+          if (isLow) ...[
+            const SizedBox(height: 6),
+            Text('Running low — consider upgrading your plan.', style: WerlogTextStyles.caption.copyWith(fontSize: 9, color: WerlogColors.amber)),
           ],
-        ),
+        ]),
       ),
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// WERLOG BUTTON
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _WerlogButton extends StatelessWidget {
   final String label;
@@ -1500,33 +801,19 @@ class _WerlogButton extends StatelessWidget {
   const _WerlogButton({required this.label, this.onTap, this.isLoading = false});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 50,
-        decoration: BoxDecoration(
-          color: onTap == null
-              ? WerlogColors.teal.withOpacity(0.5)
-              : WerlogColors.teal,
-          borderRadius: BorderRadius.circular(13),
-        ),
-        alignment: Alignment.center,
-        child: isLoading
-            ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-                color: Colors.white, strokeWidth: 2))
-            : Text(label, style: WerlogTextStyles.button),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      height: 50,
+      decoration: BoxDecoration(color: onTap == null ? WerlogColors.teal.withOpacity(0.5) : WerlogColors.teal, borderRadius: BorderRadius.circular(13)),
+      alignment: Alignment.center,
+      child: isLoading
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : Text(label, style: WerlogTextStyles.button),
+    ),
+  );
 }
-
-
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OCR RESULT BOTTOM SHEET
@@ -1538,38 +825,63 @@ class _OcrResultSheet extends StatefulWidget {
   final ScanType scanType;
   final BuildContext rootContext;
 
-  const _OcrResultSheet({
-    required this.result,
-    required this.onDone,
-    required this.scanType,
-    required this.rootContext,
-  });
+  const _OcrResultSheet({required this.result, required this.onDone,
+    required this.scanType, required this.rootContext});
 
   @override
   State<_OcrResultSheet> createState() => _OcrResultSheetState();
 }
 
 class _OcrResultSheetState extends State<_OcrResultSheet> {
-  // ── Expense type toggle — only relevant for expense scan ──────────────────
-  // 'PERSONAL' | 'BUSINESS'
+
+  // ── Expense type ──────────────────────────────────────────────────────────
   String _expenseType = 'PERSONAL';
-  bool _isSavingType  = false;
-  bool _typeSaved     = false;
+  bool   _isSavingType = false;
+  bool   _typeSaved    = false;
+
+  // ── Currency ──────────────────────────────────────────────────────────────
+  // Populated from the detected currency in totalAmountFormatted
+  late String _selectedCurrencyCode;
+  bool _currencyChanged = false; // true once user picks a different currency
 
   bool get _isExpense => widget.scanType == ScanType.expense;
+
+  // ── Can the user leave? ───────────────────────────────────────────────────
+  // Block "Done" if:
+  //   1. expense scan AND type not saved yet
+  //   2. currency was changed but not yet saved (i.e. user picked a new one
+  //      but the SAVE button on the type toggle was never tapped — since we
+  //      send currency together with the expense type save)
+  bool get _canLeave {
+    if (_isExpense && !_typeSaved) return false;
+    if (_currencyChanged && !_typeSaved) return false;
+    return true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Seed currency from what was detected in the response
+    final detected = widget.result.extracted.detectedCurrencyCode;
+    final saved    = SharedPrefHelper.getString(SharedPrefHelper.selectedCurrencyCode);
+    _selectedCurrencyCode = detected ?? saved.toUpperCase();
+    if (_selectedCurrencyCode.isEmpty) _selectedCurrencyCode = 'USD';
+  }
+
+  // ── Save expense type + currency ──────────────────────────────────────────
 
   Future<void> _saveExpenseType() async {
     setState(() => _isSavingType = true);
     try {
-      final jobId = widget.result.invoiceId;
+      final jobId   = widget.result.invoiceId;
       final response = await ApiService.post(
         context,
         Endpoints.UPDATE_EXPENSE_TYPE,
         body: {
-          'invoiceId':       jobId,
-          'type': _expenseType,   // 'PERSONAL' | 'BUSINESS'
+          'invoiceId': jobId,
+          'type':      _expenseType,
+          'currency':  _selectedCurrencyCode,   // ← currency sent here
         },
-        // {"invoiceId":"dd6cff6d-2f46-47db-abdd-acbbf2c76c7b","type":"PERSONAL"}
         showLoader: false,
       );
 
@@ -1578,36 +890,42 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
         if (mounted) {
           setState(() => _typeSaved = true);
           GeneralFunctions.showSuccess(widget.rootContext,
-              'Marked as ${_expenseType == 'PERSONAL' ? 'Personal' : 'Business'} expense');
+              'Saved as ${_expenseType == 'PERSONAL' ? 'Personal' : 'Business'} · $_selectedCurrencyCode');
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-              response?['message']?.toString() ?? 'Update failed.',
-              style: const TextStyle(fontFamily: 'DMSans', fontSize: 13),
-            ),
-            backgroundColor: WerlogColors.coral,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            margin:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ));
+          GeneralFunctions.showError(widget.rootContext,
+              response?['message']?.toString() ?? 'Update failed.');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Something went wrong.',
-              style: TextStyle(fontFamily: 'DMSans', fontSize: 13)),
-          backgroundColor: WerlogColors.coral,
-          behavior: SnackBarBehavior.floating,
-        ));
+        GeneralFunctions.showError(widget.rootContext, 'Something went wrong.');
       }
     } finally {
       if (mounted) setState(() => _isSavingType = false);
     }
+  }
+
+  // ── Currency picker bottom sheet ──────────────────────────────────────────
+
+  void _openCurrencyPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CurrencyPickerSheet(
+        selectedCode: _selectedCurrencyCode,
+        onSelected: (item) {
+          HapticFeedback.lightImpact();
+          setState(() {
+            _selectedCurrencyCode = item.code;
+            _currencyChanged      = true;
+            _typeSaved            = false; // require re-save when currency changes
+          });
+        },
+      ),
+    );
   }
 
   @override
@@ -1626,177 +944,137 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
         ),
         child: Column(children: [
 
-          // ── Drag handle ──────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(
-                  color: WerlogColors.border,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
+          // Drag handle
+          Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(color: WerlogColors.border, borderRadius: BorderRadius.circular(2)),
+          )),
 
-          // ── Header ───────────────────────────────────────────────────────
+          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             child: Row(children: [
               Container(
                 width: 36, height: 36,
-                decoration: BoxDecoration(
-                    color: WerlogColors.tealSurface,
-                    borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(color: WerlogColors.tealSurface, borderRadius: BorderRadius.circular(10)),
                 alignment: Alignment.center,
-                child: const Icon(Icons.description_outlined,
-                    color: WerlogColors.teal, size: 18),
+                child: const Icon(Icons.description_outlined, color: WerlogColors.teal, size: 18),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Extracted Details',
-                        style: WerlogTextStyles.sectionTitle
-                            .copyWith(fontSize: 15)),
-                    const SizedBox(height: 1),
-                    Text(
-                      'Processed in ${(totalMs / 1000).toStringAsFixed(1)}s · ${widget.result.engine}',
-                      style: WerlogTextStyles.caption,
-                    ),
-                  ],
-                ),
-              ),
-
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Extracted Details', style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 15)),
+                const SizedBox(height: 1),
+                Text('Processed in ${(totalMs/1000).toStringAsFixed(1)}s · ${widget.result.engine}',
+                    style: WerlogTextStyles.caption),
+              ])),
               _ConfidenceBadge(label: ext.confidenceLabel),
             ]),
           ),
 
-          // ── Low confidence disclaimer caption ─────────────────────────────
-          // if (ext.confidenceLabel.toUpperCase() == 'LOW')
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: DisclaimerWidget.weakScanCaption(context),
-            ),
+          // Low-confidence caption
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: DisclaimerWidget.weakScanCaption(context),
+          ),
 
           const SizedBox(height: 12),
           Divider(color: WerlogColors.border, height: 1, thickness: 0.5),
 
-          // ── Scrollable body ───────────────────────────────────────────────
-          Expanded(
-            child: ListView(
-              controller: scrollCtrl,
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              children: [
+          // Scrollable body
+          Expanded(child: ListView(
+            controller: scrollCtrl,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            children: [
 
-                // ── Expense type toggle — EXPENSE only ─────────────────────
-                if (_isExpense) ...[
-                  _ExpenseTypeToggle(
-                    selected:    _expenseType,
-                    isSaving:    _isSavingType,
-                    typeSaved:    _typeSaved,
-                    onChanged:   (v) => setState(() => _expenseType = v),
-                    onSave:      _saveExpenseType,
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
-                // Needs-review banner
-                if (ext.needsReview) _ReviewBanner(),
-                if (ext.needsReview) const SizedBox(height: 14),
-
-                // ── Extracted fields card ──────────────────────────────────
-                _SectionCard(
-                  title: 'Document Info',
-                  icon: Icons.receipt_long_outlined,
-                  children: [
-                    _FieldRow(
-                        label: 'Vendor',
-                        value: ext.vendorName,
-                        placeholder: 'Not detected'),
-                    _FieldRow(
-                        label: 'Total Amount',
-                        value: ext.totalAmountFormatted,
-                        placeholder: 'Not detected',
-                        valueColor: ext.totalAmountFormatted != null
-                            ? WerlogColors.teal
-                            : null),
-                    _FieldRow(
-                        label: 'Invoice Date',
-                        value: ext.invoiceDateFormatted,
-                        placeholder: 'Not detected'),
-                    _FieldRow(
-                        label: 'Category',
-                        value: ext.autoCategoryName,
-                        placeholder: 'Uncategorized'),
-                    _FieldRow(
-                        label: 'Line Items',
-                        value: '${ext.lineItemCount}',
-                        isLast: true),
-                  ],
+              // ── Expense type + currency (expense only) ────────────────
+              if (_isExpense) ...[
+                _ExpenseTypeToggle(
+                  selected:  _expenseType,
+                  isSaving:  _isSavingType,
+                  typeSaved: _typeSaved,
+                  selectedCurrencyCode: _selectedCurrencyCode,
+                  currencyChanged:      _currencyChanged,
+                  onChanged:   (v) => setState(() { _expenseType = v; _typeSaved = false; }),
+                  onSave:      _saveExpenseType,
+                  onChangeCurrency: _openCurrencyPicker,
                 ),
                 const SizedBox(height: 14),
+              ],
 
-                // ── Line items preview ─────────────────────────────────────
-                if (ext.lineItemsPreview.isNotEmpty)
-                  _SectionCard(
-                    title: 'Line Items Preview',
-                    icon: Icons.list_alt_outlined,
-                    children: [
-                      ...ext.lineItemsPreview.asMap().entries.map((e) =>
-                          _LineItemRow(
-                            item: e.value,
-                            isLast: e.key == ext.lineItemsPreview.length - 1,
-                          )),
-                    ],
-                  ),
-                if (ext.lineItemsPreview.isNotEmpty) const SizedBox(height: 14),
+              // Needs-review banner
+              if (ext.needsReview) _ReviewBanner(),
+              if (ext.needsReview) const SizedBox(height: 14),
 
-                // ── Processing steps ───────────────────────────────────────
-                _SectionCard(
-                  title: 'Processing Pipeline',
-                  icon: Icons.bolt_outlined,
-                  children: [
-                    ...widget.result.completedSteps.asMap().entries.map(
-                          (e) => _PipelineStepRow(
-                        step: e.value,
-                        isLast: e.key == widget.result.completedSteps.length - 1,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
+              // Document info
+              _SectionCard(title: 'Document Info', icon: Icons.receipt_long_outlined, children: [
+                _FieldRow(label: 'Vendor',       value: ext.vendorName,            placeholder: 'Not detected'),
+                _FieldRow(label: 'Total Amount', value: _selectedCurrencyCode+" "+(ext.totalAmountFormatted ?? "0.00"),  placeholder: 'Not detected',
+                    valueColor: ext.totalAmountFormatted != null ? WerlogColors.teal : null),
+                _FieldRow(label: 'Invoice Date', value: ext.invoiceDateFormatted,  placeholder: 'Not detected'),
+                _FieldRow(label: 'Category',     value: ext.autoCategoryName,      placeholder: 'Uncategorized'),
+                _FieldRow(label: 'Line Items',   value: '${ext.lineItemCount}',    isLast: true),
+              ]),
+              const SizedBox(height: 14),
 
-                // ── Done button ────────────────────────────────────────────
-                GestureDetector(
-                  onTap: () {
-                    // ── Guard: expense scan must have saved type first ─────────────
+              // Line items
+              if (ext.lineItemsPreview.isNotEmpty) ...[
+                _SectionCard(title: 'Line Items Preview', icon: Icons.list_alt_outlined, children: [
+                  ...ext.lineItemsPreview.asMap().entries.map((e) =>
+                      _LineItemRow(item: e.value, isLast: e.key == ext.lineItemsPreview.length-1, currencyCode: _selectedCurrencyCode)),
+                ]),
+                const SizedBox(height: 14),
+              ],
+
+              // Pipeline
+              _SectionCard(title: 'Processing Pipeline', icon: Icons.bolt_outlined, children: [
+                ...widget.result.completedSteps.asMap().entries.map((e) =>
+                    _PipelineStepRow(step: e.value, isLast: e.key == widget.result.completedSteps.length-1)),
+              ]),
+              const SizedBox(height: 24),
+
+              // ── Done button ────────────────────────────────────────────
+              GestureDetector(
+                onTap: () {
+                  if (!_canLeave) {
+                    // Determine which guard fired
                     if (_isExpense && !_typeSaved) {
                       GeneralFunctions.showError(widget.rootContext,
-                          "Please select and save the expense type (Personal or Business) before continuing.");
-                      return;
+                          _currencyChanged
+                              ? 'Currency changed — please save before leaving.'
+                              : 'Please save the expense type before continuing.');
                     }
+                    return;
+                  }
 
-                    GeneralFunctions.forceSessionRefresh(context,
-                        onComplete: () {
-                          if (mounted) setState(() {}); // optional — re-render with fresh data
-                        });
-
-                    widget.onDone();
-                  },
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                        color: WerlogColors.teal,
-                        borderRadius: BorderRadius.circular(13)),
-                    alignment: Alignment.center,
-                    child: Text('Done — Back to Dashboard',
-                        style: WerlogTextStyles.button),
+                  GeneralFunctions.forceSessionRefresh(context,
+                      onComplete: () { if (mounted) setState(() {}); });
+                  widget.onDone();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: _canLeave ? WerlogColors.teal : WerlogColors.teal.withOpacity(0.38),
+                    borderRadius: BorderRadius.circular(13),
                   ),
+                  alignment: Alignment.center,
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    if (!_canLeave)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(Icons.lock_outline_rounded, color: Colors.white70, size: 15),
+                      ),
+                    Text(
+                      _canLeave ? 'Done — Back to Dashboard' : 'Save required before leaving',
+                      style: WerlogTextStyles.button.copyWith(
+                          color: _canLeave ? Colors.white : Colors.white70, fontSize: 13),
+                    ),
+                  ]),
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          )),
         ]),
       ),
     );
@@ -1804,22 +1082,248 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXPENSE TYPE TOGGLE  (shown only for ScanType.expense)
+// CURRENCY PICKER BOTTOM SHEET
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CurrencyPickerSheet extends StatefulWidget {
+  final String selectedCode;
+  final ValueChanged<CurrencyItem> onSelected;
+
+  const _CurrencyPickerSheet({required this.selectedCode, required this.onSelected});
+
+  @override
+  State<_CurrencyPickerSheet> createState() => _CurrencyPickerSheetState();
+}
+
+class _CurrencyPickerSheetState extends State<_CurrencyPickerSheet> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<CurrencyItem> get _filtered {
+    final list = GeneralFunctions.kCurrencies;
+    if (_query.isEmpty) return list;
+    final q = _query.toLowerCase();
+    return list.where((c) =>
+    c.code.toLowerCase().contains(q) ||
+        c.name.toLowerCase().contains(q) ||
+        c.country.toLowerCase().contains(q)).toList();
+  }
+
+  // Group by region
+  Map<String, List<CurrencyItem>> get _grouped {
+    final map = <String, List<CurrencyItem>>{};
+    for (final c in _filtered) {
+      map.putIfAbsent(c.region, () => []).add(c);
+    }
+    return map;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final grouped = _grouped;
+    final regions = grouped.keys.toList()..sort();
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.80,
+      decoration: const BoxDecoration(
+        color: WerlogColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      child: Column(children: [
+
+        // Handle
+        const SizedBox(height: 12),
+        Container(width: 36, height: 4,
+            decoration: BoxDecoration(color: WerlogColors.border, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 16),
+
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(color: WerlogColors.tealSurface, borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.currency_exchange_rounded, color: WerlogColors.teal, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Select Currency', style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 15)),
+              Text('Detected from your document · tap to change',
+                  style: WerlogTextStyles.caption),
+            ])),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(color: WerlogColors.surfaceAlt, shape: BoxShape.circle),
+                child: const Icon(Icons.close_rounded, size: 14, color: WerlogColors.textSecondary),
+              ),
+            ),
+          ]),
+        ),
+
+        const SizedBox(height: 14),
+
+        // Search
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: WerlogColors.surface,
+              border: Border.all(color: WerlogColors.border),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (v) => setState(() => _query = v),
+              style: WerlogTextStyles.bodySmall.copyWith(fontSize: 13, color: WerlogColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Search currency…',
+                hintStyle: WerlogTextStyles.caption.copyWith(fontSize: 12),
+                prefixIcon: const Icon(Icons.search_rounded, size: 16, color: WerlogColors.textTertiary),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                    icon: const Icon(Icons.clear_rounded, size: 14, color: WerlogColors.textTertiary),
+                    onPressed: () { _searchCtrl.clear(); setState(() => _query = ''); })
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+        Divider(color: WerlogColors.border, height: 1, thickness: 0.5),
+
+        // List
+        Expanded(child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          itemCount: regions.fold(0, (s, r) => s! + 1 + (grouped[r]?.length ?? 0)),
+          itemBuilder: (_, i) {
+            int cursor = 0;
+            for (final region in regions) {
+              if (i == cursor) {
+                // Region header
+                return Padding(
+                  padding: const EdgeInsets.only(top: 14, bottom: 6),
+                  child: Text(region.toUpperCase(),
+                      style: WerlogTextStyles.caption.copyWith(
+                          fontSize: 10, letterSpacing: 0.8,
+                          color: WerlogColors.textTertiary)),
+                );
+              }
+              cursor++;
+              final items = grouped[region]!;
+              if (i < cursor + items.length) {
+                final item   = items[i - cursor];
+                final isSel  = item.code == widget.selectedCode;
+                return GestureDetector(
+                  onTap: () {
+                    widget.onSelected(item);
+                    Navigator.pop(context);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSel ? WerlogColors.tealSurface : WerlogColors.surface,
+                      border: Border.all(
+                        color: isSel ? WerlogColors.teal.withOpacity(0.4) : WerlogColors.border,
+                        width: isSel ? 1.2 : 0.8,
+                      ),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Row(children: [
+                      // Symbol circle
+                      Container(
+                        width: 38, height: 38,
+                        decoration: BoxDecoration(
+                          color: isSel ? WerlogColors.teal.withOpacity(0.15) : WerlogColors.surfaceAlt,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(item.symbol,
+                            style: TextStyle(
+                              fontFamily: 'DMSans', fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isSel ? WerlogColors.teal : WerlogColors.textSecondary,
+                            )),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(item.name,
+                            style: WerlogTextStyles.bodySmall.copyWith(
+                              fontSize: 13, color: WerlogColors.textPrimary,
+                              fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
+                            )),
+                        const SizedBox(height: 2),
+                        Text(item.country,
+                            style: WerlogTextStyles.caption.copyWith(fontSize: 10)),
+                      ])),
+                      // Code badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSel ? WerlogColors.teal : WerlogColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(item.code,
+                            style: TextStyle(
+                              fontFamily: 'DMSans', fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isSel ? Colors.white : WerlogColors.textTertiary,
+                            )),
+                      ),
+                      if (isSel) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.check_circle_rounded, color: WerlogColors.teal, size: 18),
+                      ],
+                    ]),
+                  ),
+                );
+              }
+              cursor += items.length;
+            }
+            return const SizedBox.shrink();
+          },
+        )),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPENSE TYPE TOGGLE  (now includes currency row)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ExpenseTypeToggle extends StatelessWidget {
-  final String selected;       // 'PERSONAL' | 'BUSINESS'
-  final bool isSaving;
-  final bool typeSaved;
+  final String  selected;
+  final bool    isSaving;
+  final bool    typeSaved;
+  final String  selectedCurrencyCode;
+  final bool    currencyChanged;
   final ValueChanged<String> onChanged;
   final VoidCallback onSave;
+  final VoidCallback onChangeCurrency;
 
   const _ExpenseTypeToggle({
     required this.selected,
     required this.isSaving,
     required this.typeSaved,
+    required this.selectedCurrencyCode,
+    required this.currencyChanged,
     required this.onChanged,
     required this.onSave,
+    required this.onChangeCurrency,
   });
 
   @override
@@ -1833,60 +1337,115 @@ class _ExpenseTypeToggle extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // ── Section label ─────────────────────────────────────────────────
+        // Section label
         Row(children: [
           Container(
             width: 28, height: 28,
-            decoration: BoxDecoration(
-              color: WerlogColors.tealSurface,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.tune_rounded,
-                size: 14, color: WerlogColors.teal),
+            decoration: BoxDecoration(color: WerlogColors.tealSurface, borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.tune_rounded, size: 14, color: WerlogColors.teal),
           ),
           const SizedBox(width: 9),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Expense Type',
-                style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 13)),
-            Text('Is this a personal or business expense?',
-                style: WerlogTextStyles.caption),
+            Text('Expense Type', style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 13)),
+            Text('Is this a personal or business expense?', style: WerlogTextStyles.caption),
           ]),
         ]),
 
         const SizedBox(height: 12),
 
-        // ── Toggle pills ──────────────────────────────────────────────────
+        // Toggle pills
         Container(
           height: 44,
-          decoration: BoxDecoration(
-            color: WerlogColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: WerlogColors.surfaceAlt, borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.all(3),
           child: Row(children: [
-            _TypePill(
-              label:    'Personal',
-              icon:     Icons.person_outline_rounded,
-              selected: selected == 'PERSONAL',
-              color:    WerlogColors.blue,
-              colorBg:  WerlogColors.blueSurface,
-              onTap:    () => onChanged('PERSONAL'),
-            ),
+            _TypePill(label: 'Personal', icon: Icons.person_outline_rounded,
+                selected: selected == 'PERSONAL', color: WerlogColors.blue,
+                colorBg: WerlogColors.blueSurface, onTap: () => onChanged('PERSONAL')),
             const SizedBox(width: 3),
-            _TypePill(
-              label:    'Business',
-              icon:     Icons.business_center_outlined,
-              selected: selected == 'BUSINESS',
-              color:    WerlogColors.teal,
-              colorBg:  WerlogColors.tealSurface,
-              onTap:    () => onChanged('BUSINESS'),
-            ),
+            _TypePill(label: 'Business', icon: Icons.business_center_outlined,
+                selected: selected == 'BUSINESS', color: WerlogColors.teal,
+                colorBg: WerlogColors.tealSurface, onTap: () => onChanged('BUSINESS')),
           ]),
         ),
 
         const SizedBox(height: 12),
+        Divider(color: WerlogColors.borderLight, height: 1, thickness: 0.5),
+        const SizedBox(height: 12),
 
-        // ── Save button ───────────────────────────────────────────────────
+        // ── Currency row ──────────────────────────────────────────────────
+        Row(children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(color: WerlogColors.tealSurface, borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.currency_exchange_rounded, size: 14, color: WerlogColors.teal),
+          ),
+          const SizedBox(width: 9),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Currency', style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 13)),
+            Text('Detected from document', style: WerlogTextStyles.caption),
+          ])),
+          // Currency badge + CHANGE button
+          GestureDetector(
+            onTap: onChangeCurrency,
+            child: Row(children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: currencyChanged ? WerlogColors.teal : WerlogColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: currencyChanged ? WerlogColors.teal : WerlogColors.border,
+                  ),
+                ),
+                child: Text(selectedCurrencyCode,
+                    style: TextStyle(
+                      fontFamily: 'DMSans', fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: currencyChanged ? Colors.white : WerlogColors.textPrimary,
+                    )),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: WerlogColors.tealSurface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: WerlogColors.teal.withOpacity(0.3)),
+                ),
+                child: Text('CHANGE',
+                    style: WerlogTextStyles.caption.copyWith(
+                        fontSize: 10, color: WerlogColors.teal,
+                        fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+              ),
+            ]),
+          ),
+        ]),
+
+        // Currency-changed hint
+        if (currencyChanged) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: WerlogColors.amberSurface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: WerlogColors.amber.withOpacity(0.3)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.info_outline, size: 13, color: WerlogColors.amber),
+              const SizedBox(width: 6),
+              Text('Currency changed — tap Save to apply.',
+                  style: WerlogTextStyles.caption.copyWith(
+                      fontSize: 10, color: WerlogColors.amberDark)),
+            ]),
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // Save button
         Visibility(
           visible: !typeSaved,
           child: SizedBox(
@@ -1897,209 +1456,152 @@ class _ExpenseTypeToggle extends StatelessWidget {
                 duration: const Duration(milliseconds: 200),
                 height: 42,
                 decoration: BoxDecoration(
-                  color: isSaving
-                      ? WerlogColors.teal.withOpacity(0.5)
-                      : WerlogColors.teal,
+                  color: isSaving ? WerlogColors.teal.withOpacity(0.5) : WerlogColors.teal,
                   borderRadius: BorderRadius.circular(11),
                 ),
                 alignment: Alignment.center,
                 child: isSaving
-                    ? const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
-                )
-                    : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.check_circle_outline_rounded,
-                        color: Colors.white, size: 15),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Save as ${selected == 'PERSONAL' ? 'Personal' : 'Business'}',
-                      style: WerlogTextStyles.button.copyWith(fontSize: 13),
-                    ),
-                  ],
-                ),
+                    ? const SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 15),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Save as ${selected == 'PERSONAL' ? 'Personal' : 'Business'} · $selectedCurrencyCode',
+                    style: WerlogTextStyles.button.copyWith(fontSize: 13),
+                  ),
+                ]),
               ),
             ),
           ),
         ),
+
+        // Saved indicator
+        if (typeSaved) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: WerlogColors.tealSurface,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: WerlogColors.teal.withOpacity(0.3)),
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.check_circle_rounded, color: WerlogColors.teal, size: 15),
+              const SizedBox(width: 7),
+              Text('Saved — ${selected == 'PERSONAL' ? 'Personal' : 'Business'} · $selectedCurrencyCode',
+                  style: WerlogTextStyles.bodySmall.copyWith(
+                      fontSize: 12, color: WerlogColors.teal, fontWeight: FontWeight.w500)),
+            ]),
+          ),
+        ],
       ]),
     );
   }
 }
 
-// ── Single pill inside the toggle ─────────────────────────────────────────────
 class _TypePill extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool selected;
-  final Color color;
-  final Color colorBg;
+  final Color color, colorBg;
   final VoidCallback onTap;
 
-  const _TypePill({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.color,
-    required this.colorBg,
-    required this.onTap,
-  });
+  const _TypePill({required this.label, required this.icon, required this.selected,
+    required this.color, required this.colorBg, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: selected ? colorBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(
-              color: selected ? color.withOpacity(0.3) : Colors.transparent,
-              width: 0.8,
-            ),
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon,
-                size: 14,
-                color: selected ? color : WerlogColors.textTertiary),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'DMSans',
-                fontSize: 12,
-                fontWeight:
-                selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? color : WerlogColors.textTertiary,
-              ),
-            ),
-          ]),
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: selected ? colorBg : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: selected ? color.withOpacity(0.3) : Colors.transparent, width: 0.8),
         ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 14, color: selected ? color : WerlogColors.textTertiary),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(
+            fontFamily: 'DMSans', fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? color : WerlogColors.textTertiary,
+          )),
+        ]),
       ),
-    );
-  }
+    ),
+  );
 }
 
-// ── Confidence badge ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// REMAINING SHARED WIDGETS  (unchanged from original)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ConfidenceBadge extends StatelessWidget {
-  final String label; // LOW | MEDIUM | HIGH
+  final String label;
   const _ConfidenceBadge({required this.label});
 
   @override
   Widget build(BuildContext context) {
     Color bg, text;
     switch (label.toUpperCase()) {
-      case 'HIGH':
-        bg = WerlogColors.tealSurface;
-        text = WerlogColors.teal;
-        break;
-      case 'MEDIUM':
-        bg = WerlogColors.amberSurface;
-        text = WerlogColors.amber;
-        break;
-      default:
-        bg = WerlogColors.coralSurface;
-        text = WerlogColors.coral;
+      case 'HIGH':   bg = WerlogColors.tealSurface;  text = WerlogColors.teal;  break;
+      case 'MEDIUM': bg = WerlogColors.amberSurface; text = WerlogColors.amber; break;
+      default:       bg = WerlogColors.coralSurface; text = WerlogColors.coral;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-          color: bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(
-        '${label[0]}${label.substring(1).toLowerCase()} confidence',
-        style: TextStyle(
-            fontFamily: 'DMSans',
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-            color: text),
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Text('${label[0]}${label.substring(1).toLowerCase()} confidence',
+          style: TextStyle(fontFamily: 'DMSans', fontSize: 10, fontWeight: FontWeight.w500, color: text)),
     );
   }
 }
-
-// ── Needs-review banner ───────────────────────────────────────────────────────
 
 class _ReviewBanner extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      decoration: BoxDecoration(
-        color: WerlogColors.amberSurface,
-        border: Border.all(color: WerlogColors.amber.withOpacity(0.35)),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline,
-              color: WerlogColors.amber, size: 16),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Some fields may need manual review — confidence is low.',
-              style: WerlogTextStyles.caption.copyWith(
-                  color: WerlogColors.amberDark, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+    decoration: BoxDecoration(
+      color: WerlogColors.amberSurface,
+      border: Border.all(color: WerlogColors.amber.withOpacity(0.35)),
+      borderRadius: BorderRadius.circular(11),
+    ),
+    child: Row(children: [
+      const Icon(Icons.info_outline, color: WerlogColors.amber, size: 16),
+      const SizedBox(width: 10),
+      Expanded(child: Text('Some fields may need manual review — confidence is low.',
+          style: WerlogTextStyles.caption.copyWith(color: WerlogColors.amberDark, height: 1.4))),
+    ]),
+  );
 }
-
-// ── Section card ─────────────────────────────────────────────────────────────
 
 class _SectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final List<Widget> children;
-
-  const _SectionCard(
-      {required this.title, required this.icon, required this.children});
+  const _SectionCard({required this.title, required this.icon, required this.children});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: WerlogColors.surface,
-        border: Border.all(color: WerlogColors.border),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Row(
-              children: [
-                Icon(icon, size: 14, color: WerlogColors.teal),
-                const SizedBox(width: 7),
-                Text(title, style: WerlogTextStyles.sectionTitle),
-              ],
-            ),
-          ),
-          Divider(
-              color: WerlogColors.borderLight,
-              height: 1,
-              thickness: 0.5),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
-            child: Column(children: children),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+        color: WerlogColors.surface, border: Border.all(color: WerlogColors.border),
+        borderRadius: BorderRadius.circular(13)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          child: Row(children: [
+            Icon(icon, size: 14, color: WerlogColors.teal),
+            const SizedBox(width: 7),
+            Text(title, style: WerlogTextStyles.sectionTitle),
+          ])),
+      Divider(color: WerlogColors.borderLight, height: 1, thickness: 0.5),
+      Padding(padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+          child: Column(children: children)),
+    ]),
+  );
 }
-
-// ── Field row ─────────────────────────────────────────────────────────────────
 
 class _FieldRow extends StatelessWidget {
   final String label;
@@ -2108,90 +1610,55 @@ class _FieldRow extends StatelessWidget {
   final bool isLast;
   final Color? valueColor;
 
-  const _FieldRow({
-    required this.label,
-    this.value,
-    this.placeholder = '—',
-    this.isLast = false,
-    this.valueColor,
-  });
+  const _FieldRow({required this.label, this.value, this.placeholder = '—',
+    this.isLast = false, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
     final hasValue = value != null && value!.isNotEmpty;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          child: Row(
-            children: [
-              Text(label, style: WerlogTextStyles.caption),
-              const Spacer(),
-              Text(
-                hasValue ? value! : placeholder,
-                style: WerlogTextStyles.bodySmall.copyWith(
-                  fontSize: 12,
-                  fontWeight:
-                  hasValue ? FontWeight.w500 : FontWeight.w400,
-                  color: hasValue
-                      ? (valueColor ?? WerlogColors.textPrimary)
-                      : WerlogColors.textDisabled,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (!isLast)
-          Divider(
-              color: WerlogColors.borderLight,
-              height: 1,
-              thickness: 0.5),
-      ],
-    );
+    return Column(children: [
+      Padding(padding: const EdgeInsets.symmetric(vertical: 9), child: Row(children: [
+        Text(label, style: WerlogTextStyles.caption),
+        const Spacer(),
+        Text(hasValue ? value! : placeholder, style: WerlogTextStyles.bodySmall.copyWith(
+          fontSize: 12,
+          fontWeight: hasValue ? FontWeight.w500 : FontWeight.w400,
+          color: hasValue ? (valueColor ?? WerlogColors.textPrimary) : WerlogColors.textDisabled,
+        )),
+      ])),
+      if (!isLast) Divider(color: WerlogColors.borderLight, height: 1, thickness: 0.5),
+    ]);
   }
 }
-
-// ── Line item row ─────────────────────────────────────────────────────────────
 
 class _LineItemRow extends StatelessWidget {
   final OcrLineItem item;
   final bool isLast;
-  const _LineItemRow({required this.item, this.isLast = false});
+  final String currencyCode;
+  const _LineItemRow({required this.item, this.isLast = false, this.currencyCode = ''});
+
+  /// Prepends the currency code if the amount doesn't already start with it.
+  String get _displayAmount {
+    final amt = item.amountFormatted.trim();
+    if (amt.isEmpty) return amt;
+    if (currencyCode.isEmpty) return amt;
+    // Avoid doubling e.g. "PKR PKR 1730.00"
+    if (amt.toUpperCase().startsWith(currencyCode.toUpperCase())) return amt;
+    return '$currencyCode $amt';
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          child: Row(
-            children: [
-              const Icon(Icons.fiber_manual_record,
-                  size: 5, color: WerlogColors.textTertiary),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Text(item.description,
-                      style: WerlogTextStyles.bodySmall
-                          .copyWith(fontSize: 12))),
-              Text(item.amountFormatted,
-                  style: WerlogTextStyles.bodySmall.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: WerlogColors.textPrimary)),
-            ],
-          ),
-        ),
-        if (!isLast)
-          Divider(
-              color: WerlogColors.borderLight,
-              height: 1,
-              thickness: 0.5),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Column(children: [
+    Padding(padding: const EdgeInsets.symmetric(vertical: 9), child: Row(children: [
+      const Icon(Icons.fiber_manual_record, size: 5, color: WerlogColors.textTertiary),
+      const SizedBox(width: 8),
+      Expanded(child: Text(item.description, style: WerlogTextStyles.bodySmall.copyWith(fontSize: 12))),
+      Text(_displayAmount, style: WerlogTextStyles.bodySmall.copyWith(
+          fontSize: 12, fontWeight: FontWeight.w500, color: WerlogColors.textPrimary)),
+    ])),
+    if (!isLast) Divider(color: WerlogColors.borderLight, height: 1, thickness: 0.5),
+  ]);
 }
-
-// ── Pipeline step row ─────────────────────────────────────────────────────────
 
 class _PipelineStepRow extends StatelessWidget {
   final OcrCompletedStep step;
@@ -2201,43 +1668,18 @@ class _PipelineStepRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ms = step.durationMs;
-    final duration = ms >= 1000
-        ? '${(ms / 1000).toStringAsFixed(1)}s'
-        : '${ms}ms';
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          child: Row(
-            children: [
-              Container(
-                width: 18,
-                height: 18,
-                decoration: const BoxDecoration(
-                    color: WerlogColors.tealSurface,
-                    shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: const Icon(Icons.check,
-                    size: 10, color: WerlogColors.teal),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: Text(step.label,
-                      style: WerlogTextStyles.bodySmall
-                          .copyWith(fontSize: 12))),
-              Text(duration,
-                  style: WerlogTextStyles.caption
-                      .copyWith(color: WerlogColors.teal)),
-            ],
-          ),
-        ),
-        if (!isLast)
-          Divider(
-              color: WerlogColors.borderLight,
-              height: 1,
-              thickness: 0.5),
-      ],
-    );
+    final duration = ms >= 1000 ? '${(ms/1000).toStringAsFixed(1)}s' : '${ms}ms';
+    return Column(children: [
+      Padding(padding: const EdgeInsets.symmetric(vertical: 9), child: Row(children: [
+        Container(width: 18, height: 18,
+            decoration: const BoxDecoration(color: WerlogColors.tealSurface, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: const Icon(Icons.check, size: 10, color: WerlogColors.teal)),
+        const SizedBox(width: 10),
+        Expanded(child: Text(step.label, style: WerlogTextStyles.bodySmall.copyWith(fontSize: 12))),
+        Text(duration, style: WerlogTextStyles.caption.copyWith(color: WerlogColors.teal)),
+      ])),
+      if (!isLast) Divider(color: WerlogColors.borderLight, height: 1, thickness: 0.5),
+    ]);
   }
 }

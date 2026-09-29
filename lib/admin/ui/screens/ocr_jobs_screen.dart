@@ -84,7 +84,9 @@ class _OcrJobsScreenState extends State<OcrJobsScreen> {
     final pending   = _mockJobs.where((j) => j.status == OcrJobStatus.pending).length;
     final failed    = _mockJobs.where((j) => j.status == OcrJobStatus.failed).length;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
       backgroundColor: AppColors.background,
       bottomNavigationBar: const AdminBottomNav(currentIndex: 2),
       body: SafeArea(
@@ -113,7 +115,9 @@ class _OcrJobsScreenState extends State<OcrJobsScreen> {
           ),
         ]),
       ),
+    ),
     );
+
   }
 
   void _retry(OcrJob job) {

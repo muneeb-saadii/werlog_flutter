@@ -20,7 +20,9 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
       backgroundColor: AppColors.background,
       bottomNavigationBar: const AdminBottomNav(currentIndex: 4),
       body: SafeArea(
@@ -137,7 +139,9 @@ class MoreScreen extends StatelessWidget {
           ]),
         ),
       ),
+    ),
     );
+
   }
 
   void _notImplemented(BuildContext context, String label) {

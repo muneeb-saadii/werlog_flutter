@@ -1,28 +1,35 @@
 import 'package:flutter/material.dart';
 import '../models/admin_user.dart';
+import '../../ui/screens/admin_login_screen.dart';
 import '../../ui/screens/dashboard_screen.dart';
 import '../../ui/screens/users_list_screen.dart';
 import '../../ui/screens/user_detail_screen.dart';
 import '../../ui/screens/ocr_jobs_screen.dart';
 import '../../ui/screens/invoices_screen.dart';
 import '../../ui/screens/more_screen.dart';
+import '../../ui/screens/review_queue_screen.dart';
+import '../../ui/screens/plans_billing_screen.dart';
+import '../../ui/screens/audit_log_screen.dart';
 
 class AdminRoutes {
   AdminRoutes._();
 
-  static const String dashboard  = '/admin/dashboard';
-  static const String usersList  = '/admin/users';
-  static const String userDetail = '/admin/users/detail';
-  static const String ocrJobs    = '/admin/ocr-jobs';
-  static const String invoices   = '/admin/invoices';
-  static const String more       = '/admin/more';
-  // Sub-screens opened from More (pushed, not replaced)
+  static const String login        = '/admin/login';
+  static const String dashboard    = '/admin/dashboard';
+  static const String usersList    = '/admin/users';
+  static const String userDetail   = '/admin/users/detail';
+  static const String ocrJobs      = '/admin/ocr-jobs';
+  static const String invoices     = '/admin/invoices';
+  static const String more         = '/admin/more';
   static const String reviewQueue  = '/admin/review-queue';
   static const String plansBilling = '/admin/plans';
   static const String auditLog     = '/admin/audit-log';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case login:
+        return MaterialPageRoute(
+            builder: (_) => const AdminLoginScreen(), settings: settings);
       case dashboard:
         return MaterialPageRoute(
             builder: (_) => const DashboardScreen(), settings: settings);
@@ -42,13 +49,21 @@ class AdminRoutes {
       case more:
         return MaterialPageRoute(
             builder: (_) => const MoreScreen(), settings: settings);
-      default:
+      case reviewQueue:
         return MaterialPageRoute(
-          builder: (_) => Scaffold(
-              body: Center(
-                  child: Text('No route for ${settings.name}'))),
-          settings: settings,
-        );
+            builder: (_) => const ReviewQueueScreen(), settings: settings);
+      case plansBilling:
+        return MaterialPageRoute(
+            builder: (_) => const PlansBillingScreen(), settings: settings);
+      case auditLog:
+        return MaterialPageRoute(
+            builder: (_) => const AuditLogScreen(), settings: settings);
+      default:
+        // Any unrecognised route (including "/" and "/admin" from the
+        // parent navigator bleeding through) falls back to dashboard.
+        debugPrint('[AdminRoutes] unknown route: ${settings.name} — redirecting to dashboard');
+        return MaterialPageRoute(
+            builder: (_) => const DashboardScreen(), settings: settings);
     }
   }
 }

@@ -3,6 +3,7 @@
 //  (go_router, auto_route, etc.)
 // ──────────────────────────────────────────────────────────────
 import 'package:flutter/cupertino.dart';
+import 'package:wellness/admin/admin_app.dart';
 import 'package:wellness/client/core/routing/AppRoutes.dart';
 import 'package:wellness/client/core/utils/shared_pref_helper.dart';
 // import 'package:wellness/ui/screens/main_dashboard_screen_old.dart';
@@ -45,9 +46,11 @@ class _AppNavigatorState extends State<AppNavigator> {
     if(_screen == 1){
       final user = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
       if(user != null){
-        final userRes = user['meResponse'];
-        final email = userRes?['email'] ?? '';
-        if(email == "muhammadmuneeb8992@gmail.com"){
+        // final userRes = user['meResponse'];
+        // print("yelo: $userRes");
+        // final email = userRes?['email'] ?? '';
+        // if(email == "muhammadmuneeb8992@gmail.com"){
+        if(AdminApp.isSuperAdmin()){
           _screen = 6;
         }else {
           _screen = 5;
