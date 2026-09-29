@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../client/core/utils/general_functions.dart';
+import '../../../client/core/utils/shared_pref_helper.dart';
+import '../../core/api/admin_api_service.dart';
+import '../../core/api/admin_endpoints.dart';
+import '../../core/routes/admin_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
@@ -6,174 +11,138 @@ import '../widgets/admin_bottom_nav.dart';
 import 'audit_log_screen.dart';
 import 'plans_billing_screen.dart';
 import 'review_queue_screen.dart';
+import 'subscription_receipts_screen.dart';
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
 
-  // Hard-coded admin profile — replace with real session data
-  static const String _adminName  = 'Admin Panel';
-  static const String _adminEmail = 'admin@werlog.com';
-  static const String _adminRole  = 'Super Admin';
-  static const String _version    = 'v2.4.1 · build 3021';
+  @override
+  State<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends State<MoreScreen> {
+
+  static const String _version = 'v2.4.1 · build 3021';
+
+  // ── Admin profile (read from saved session) ───────────────────────────────
+  String _name    = 'Admin';
+  String _email   = '';
+  String _initial = 'A';
+
+  // ── Dynamic stats ─────────────────────────────────────────────────────────
+  int?   _reviewCount;
+  int?   _planCount;
+  int?   _paidSubs;
 
   @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      child: Scaffold(
-      backgroundColor: AppColors.background,
-      bottomNavigationBar: const AdminBottomNav(currentIndex: 4),
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 100),
-          child: Column(children: [
-
-            // ── Dark header ─────────────────────────────────────────────
-            _MoreHeader(),
-
-            const SizedBox(height: 20),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppMetrics.pagePadding),
-              child: Column(children: [
-
-                // ── Operations section ─────────────────────────────────
-                _SectionLabel('OPERATIONS'),
-                const SizedBox(height: 8),
-                _MenuCard(items: [
-                  _MenuItem(
-                    icon: Icons.rate_review_rounded,
-                    iconBg: AppColors.suspendedBg,
-                    iconFg: AppColors.suspendedText,
-                    label: 'Review Queue',
-                    subtitle: '14 low-confidence items',
-                    badge: '14',
-                    badgeBg: AppColors.suspendedBg,
-                    badgeFg: AppColors.suspendedText,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => const ReviewQueueScreen())),
-                  ),
-                  _MenuItem(
-                    icon: Icons.account_balance_wallet_rounded,
-                    iconBg: AppColors.proBg,
-                    iconFg: AppColors.proText,
-                    label: 'Plans & Billing',
-                    subtitle: '3 plans · 15 paid subscribers',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => const PlansBillingScreen())),
-                  ),
-                  _MenuItem(
-                    icon: Icons.history_rounded,
-                    iconBg: AppColors.activeBg,
-                    iconFg: AppColors.activeText,
-                    label: 'Audit Log',
-                    subtitle: 'Every admin action, tracked',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => const AuditLogScreen())),
-                    hasDivider: false,
-                  ),
-                ]),
-
-                const SizedBox(height: 20),
-
-                // ── System section ─────────────────────────────────────
-                // _SectionLabel('SYSTEM'),
-                // const SizedBox(height: 8),
-                // _MenuCard(items: [
-                //   _MenuItem(
-                //     icon: Icons.notifications_outlined,
-                //     iconBg: AppColors.deletedBg,
-                //     iconFg: AppColors.textSecondary,
-                //     label: 'Notifications',
-                //     subtitle: 'Alert settings & push config',
-                //     onTap: () => _notImplemented(context, 'Notifications'),
-                //   ),
-                //   _MenuItem(
-                //     icon: Icons.tune_rounded,
-                //     iconBg: AppColors.deletedBg,
-                //     iconFg: AppColors.textSecondary,
-                //     label: 'System Settings',
-                //     subtitle: 'Engine config, rate limits',
-                //     onTap: () => _notImplemented(context, 'System Settings'),
-                //     hasDivider: false,
-                //   ),
-                // ]),
-
-                const SizedBox(height: 20),
-
-                // ── Account section ────────────────────────────────────
-                _SectionLabel('ACCOUNT'),
-                const SizedBox(height: 8),
-                _MenuCard(items: [
-                  _MenuItem(
-                    icon: Icons.lock_outline_rounded,
-                    iconBg: AppColors.deletedBg,
-                    iconFg: AppColors.textSecondary,
-                    label: 'Change Password',
-                    onTap: () => _notImplemented(context, 'Change Password'),
-                  ),
-                  _MenuItem(
-                    icon: Icons.logout_rounded,
-                    iconBg: const Color(0xFFFBDEDA),
-                    iconFg: const Color(0xFFB94040),
-                    label: 'Logout',
-                    onTap: () => _confirmLogout(context),
-                    hasDivider: false,
-                    danger: true,
-                  ),
-                ]),
-
-                const SizedBox(height: 28),
-
-                // ── Version ────────────────────────────────────────────
-                Text(_version,
-                    style: AppTextStyles.footerNote.copyWith(
-                        color: AppColors.textSecondary, fontSize: 12),
-                    textAlign: TextAlign.center),
-              ]),
-            ),
-          ]),
-        ),
-      ),
-    ),
-    );
-
+  void initState() {
+    super.initState();
+    _loadProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchStats());
   }
 
-  void _notImplemented(BuildContext context, String label) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('$label — coming soon'),
-      duration: const Duration(seconds: 1),
-      backgroundColor: AppColors.darkGreen,
-    ));
+  void _loadProfile() {
+    try {
+      final data = SharedPrefHelper.getObject(SharedPrefHelper.loginData);
+      final me   = data?['meResponse'] as Map<String, dynamic>?;
+      if (me != null) {
+        _name    = me['fullName']?.toString() ?? 'Admin';
+        _email   = me['email']?.toString()    ?? '';
+        _initial = _name.isNotEmpty ? _name[0].toUpperCase() : 'A';
+      }
+    } catch (e) {
+      debugPrint('[More] profile error => $e');
+    }
   }
 
-  void _confirmLogout(BuildContext context) {
-    final outerContext = context;  // ← capture before showDialog
+  Future<void> _fetchStats() async {
+    try {
+      final results = await Future.wait([
+        AdminApiService.get(context, AdminEndpoints.adminAuditQueue,
+            queryParams: {'limit': '1', 'includeReviewed': 'false'},
+            showLoader: false),
+        AdminApiService.get(context, AdminEndpoints.adminPlans,
+            showLoader: false),
+      ]);
+
+      if (!mounted) return;
+
+      // Review queue count
+      final qR = results[0];
+      if (qR != null) {
+        final raw = qR['data'];
+        if (raw is List)
+          _reviewCount = (qR['total'] as num?)?.toInt() ?? raw.length;
+        else if (raw is Map)
+          _reviewCount = (raw['totalElements'] as num?)?.toInt()
+              ?? (raw['total'] as num?)?.toInt()
+              ?? (raw['content'] as List?)?.length ?? 0;
+      }
+
+      // Plans
+      final pR = results[1];
+      if (pR != null) {
+        final raw = pR['data'];
+        if (raw is List) {
+          _planCount = raw.length;
+          _paidSubs = raw
+              .whereType<Map<String, dynamic>>()
+              .fold<int>(0, (s, p) {
+            final count = p['subscriberCount']
+                ?? p['totalSubscribers']
+                ?? p['activeSubscriptions'];
+            return s + ((count as num?)?.toInt() ?? 0);
+          });
+        }
+      }
+
+      setState(() {});
+    } catch (e) {
+      debugPrint('[More] stats error => $e');
+    }
+  }
+
+  String get _reviewSubtitle =>
+      _reviewCount == null ? 'Loading…'
+          : _reviewCount == 0  ? 'All caught up'
+          : '$_reviewCount low-confidence items';
+
+  String? get _reviewBadge =>
+      (_reviewCount != null && _reviewCount! > 0)
+          ? '$_reviewCount' : null;
+
+  String get _plansSubtitle =>
+      _planCount == null ? 'Loading…'
+          : '$_planCount plans · ${_paidSubs ?? 0} paid subscribers';
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+
+  Future<void> _logout(BuildContext outerCtx) async {
+    SharedPrefHelper.clearAll();
+    GeneralFunctions.restartApp();
+  }
+
+  void _confirmLogout() {
+    final outerCtx = context;
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(   // ← use dialogContext for pops
+      builder: (dlg) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Logout', style: AppTextStyles.cardTitle),
-        content: Text('Are you sure you want to sign out?',
+        title: const Text('Sign out?', style: AppTextStyles.cardTitle),
+        content: Text('You will be signed out and returned to the login screen.',
             style: AppTextStyles.rowLabel),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),  // ← dialogContext
-            child: Text('Cancel',
-                style: AppTextStyles.actionButton.copyWith(
-                    color: AppColors.textSecondary)),
+            onPressed: () => Navigator.of(dlg).pop(),
+            child: Text('Cancel', style: AppTextStyles.actionButton
+                .copyWith(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(dialogContext).pop();  // ← close dialog first
-              // TODO: clear session then navigate to login
-              // Navigator.of(outerContext).pushNamedAndRemoveUntil(
-              //   AdminRoutes.login, (route) => false);
+              Navigator.of(dlg).pop();
+              _logout(outerCtx);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.dangerRed,
@@ -181,21 +150,134 @@ class MoreScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20)),
             ),
-            child: const Text('Logout',
-                style: TextStyle(
-                    fontFamily: 'DMSans',
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
+            child: const Text('Logout', style: TextStyle(
+                fontFamily: 'DMSans', fontWeight: FontWeight.w700,
+                color: Colors.white)),
           ),
         ],
       ),
     );
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        bottomNavigationBar: const AdminBottomNav(currentIndex: 4),
+        body: SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 100),
+            child: Column(children: [
+
+              _ProfileHeader(name: _name, email: _email, initial: _initial),
+
+              const SizedBox(height: 20),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppMetrics.pagePadding),
+                child: Column(children: [
+
+                  // ── Operations ──────────────────────────────────────────
+                  const _SectionLabel('OPERATIONS'),
+                  const SizedBox(height: 8),
+                  _MenuCard(items: [
+                    _MenuItem(
+                      icon:     Icons.rate_review_rounded,
+                      iconBg:   AppColors.suspendedBg,
+                      iconFg:   AppColors.suspendedText,
+                      label:    'Review Queue',
+                      subtitle: _reviewSubtitle,
+                      badge:    _reviewBadge,
+                      badgeBg:  AppColors.suspendedBg,
+                      badgeFg:  AppColors.suspendedText,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const ReviewQueueScreen())),
+                    ),
+                    _MenuItem(
+                      icon:     Icons.account_balance_wallet_rounded,
+                      iconBg:   AppColors.proBg,
+                      iconFg:   AppColors.proText,
+                      label:    'Plans & Billing',
+                      subtitle: _plansSubtitle,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const PlansBillingScreen())),
+                    ),
+                    _MenuItem(
+                      icon:      Icons.history_rounded,
+                      iconBg:    AppColors.activeBg,
+                      iconFg:    AppColors.activeText,
+                      label:     'Audit Log',
+                      subtitle:  'Every admin action, tracked',
+                      hasDivider: false,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const AuditLogScreen())),
+                    ),
+                  ]),
+
+                  const SizedBox(height: 20),
+
+                  // ── Billing ─────────────────────────────────────────────
+                  // const _SectionLabel('BILLING'),
+                  // const SizedBox(height: 8),
+                  // _MenuCard(items: [
+                  //   _MenuItem(
+                  //     icon:      Icons.receipt_long_rounded,
+                  //     iconBg:    AppColors.proBg,
+                  //     iconFg:    AppColors.proText,
+                  //     label:     'Payment Receipts',
+                  //     subtitle:  'Subscription invoices per subscriber',
+                  //     hasDivider: false,
+                  //     onTap: () => Navigator.push(context, MaterialPageRoute(
+                  //         builder: (_) => const SubscriptionReceiptsScreen())),
+                  //   ),
+                  // ]),
+                  //
+                  // const SizedBox(height: 20),
+
+                  // ── Account ─────────────────────────────────────────────
+                  const _SectionLabel('ACCOUNT'),
+                  const SizedBox(height: 8),
+                  _MenuCard(items: [
+                    _MenuItem(
+                      icon:      Icons.logout_rounded,
+                      iconBg:    const Color(0xFFFBDEDA),
+                      iconFg:    const Color(0xFFB94040),
+                      label:     'Logout',
+                      hasDivider: false,
+                      danger:    true,
+                      onTap:     _confirmLogout,
+                    ),
+                  ]),
+
+                  const SizedBox(height: 28),
+
+                  Text(_version,
+                      style: AppTextStyles.footerNote.copyWith(
+                          color: AppColors.textSecondary, fontSize: 12),
+                      textAlign: TextAlign.center),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// ── Profile header ────────────────────────────────────────────────────────────
 
-class _MoreHeader extends StatelessWidget {
+class _ProfileHeader extends StatelessWidget {
+  final String name, email, initial;
+  const _ProfileHeader({required this.name, required this.email,
+    required this.initial});
+
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
@@ -206,32 +288,20 @@ class _MoreHeader extends StatelessWidget {
     ),
     padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
     child: Column(children: [
-
-      // Avatar
       Container(
         width: 72, height: 72,
         decoration: const BoxDecoration(
-          color: AppColors.accentGreen,
-          shape: BoxShape.circle,
-        ),
+            color: AppColors.accentGreen, shape: BoxShape.circle),
         alignment: Alignment.center,
-        child: const Text('A',
-            style: TextStyle(
-                fontFamily: 'DMSans', fontSize: 30,
-                fontWeight: FontWeight.w800,
-                color: Colors.white)),
+        child: Text(initial, style: const TextStyle(
+            fontFamily: 'DMSans', fontSize: 30,
+            fontWeight: FontWeight.w800, color: Colors.white)),
       ),
-
       const SizedBox(height: 12),
-
-      Text(MoreScreen._adminName,
-          style: AppTextStyles.headerTitle.copyWith(fontSize: 20)),
+      Text(name, style: AppTextStyles.headerTitle.copyWith(fontSize: 20)),
       const SizedBox(height: 4),
-      Text(MoreScreen._adminEmail,
-          style: AppTextStyles.headerSubtitle),
+      Text(email, style: AppTextStyles.headerSubtitle),
       const SizedBox(height: 10),
-
-      // Admin role badge
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
@@ -240,15 +310,12 @@ class _MoreHeader extends StatelessWidget {
           border: Border.all(
               color: AppColors.accentGreen.withOpacity(0.4), width: 1),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.shield_rounded,
-              size: 13, color: AppColors.accentGreen),
-          const SizedBox(width: 5),
-          Text(MoreScreen._adminRole,
-              style: TextStyle(
-                  fontFamily: AppTextStyles.fontFamily,
-                  fontSize: 12, fontWeight: FontWeight.w700,
-                  color: AppColors.accentGreen)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: const [
+          Icon(Icons.shield_rounded, size: 13, color: AppColors.accentGreen),
+          SizedBox(width: 5),
+          Text('Super Admin', style: TextStyle(
+              fontFamily: 'DMSans', fontSize: 12,
+              fontWeight: FontWeight.w700, color: AppColors.accentGreen)),
         ]),
       ),
     ]),
@@ -284,14 +351,11 @@ class _MenuCard extends StatelessWidget {
           blurRadius: 8, offset: const Offset(0, 2))],
     ),
     child: Column(
-      children: items.asMap().entries.map((e) {
-        final item = e.value;
-        return Column(children: [
-          item,
-          if (item.hasDivider)
-            const Divider(height: 1, indent: 68, color: AppColors.divider),
-        ]);
-      }).toList(),
+      children: items.asMap().entries.map((e) => Column(children: [
+        e.value,
+        if (e.value.hasDivider)
+          const Divider(height: 1, indent: 68, color: AppColors.divider),
+      ])).toList(),
     ),
   );
 }
@@ -302,12 +366,10 @@ class _MenuItem extends StatelessWidget {
   final IconData icon;
   final Color iconBg, iconFg;
   final String label;
-  final String? subtitle;
-  final String? badge;
+  final String? subtitle, badge;
   final Color? badgeBg, badgeFg;
   final VoidCallback onTap;
-  final bool hasDivider;
-  final bool danger;
+  final bool hasDivider, danger;
 
   const _MenuItem({
     required this.icon,
@@ -340,11 +402,8 @@ class _MenuItem extends StatelessWidget {
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: AppTextStyles.rowValue.copyWith(
-                    color: danger
-                        ? AppColors.dangerRed
-                        : AppColors.textPrimary)),
+            Text(label, style: AppTextStyles.rowValue.copyWith(
+                color: danger ? AppColors.dangerRed : AppColors.textPrimary)),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
               Text(subtitle!,
@@ -354,15 +413,14 @@ class _MenuItem extends StatelessWidget {
         )),
         if (badge != null) ...[
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 9, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(
-                color: badgeBg, borderRadius: BorderRadius.circular(20)),
-            child: Text(badge!,
-                style: TextStyle(
-                    fontFamily: AppTextStyles.fontFamily,
-                    fontSize: 11.5, fontWeight: FontWeight.w700,
-                    color: badgeFg)),
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(20)),
+            child: Text(badge!, style: TextStyle(
+                fontFamily: AppTextStyles.fontFamily,
+                fontSize: 11.5, fontWeight: FontWeight.w700,
+                color: badgeFg)),
           ),
           const SizedBox(width: 6),
         ],
