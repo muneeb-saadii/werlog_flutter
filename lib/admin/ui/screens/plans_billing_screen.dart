@@ -4,6 +4,7 @@ import '../../core/api/admin_endpoints.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
+import '../widgets/admin_bottom_nav.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -234,6 +235,7 @@ class _PlansBillingScreenState extends State<PlansBillingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 3),
       body: SafeArea(
         bottom: false,
         child: Column(children: [

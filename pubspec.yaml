@@ -54,6 +54,7 @@ dependencies:
   firebase_core:
   flutter_local_notifications: ^18.0.1
   firebase_messaging: ^16.0.2
+  firebase_remote_config: ^6.1.4
   camera: ^0.11.1
   permission_handler: ^12.0.0+1
   image_cropper: ^9.1.0

@@ -2318,7 +2318,7 @@ class _RecentInvoiceCard extends StatelessWidget {
   }
 
   String get _formattedAmount {
-    final currency = invoice['currency']?.toString() ?? '';
+    final currency = GeneralFunctions.currencySymbol;//invoice['currency']?.toString() ?? '';
     final amount   = (invoice['totalAmount'] as num?)?.toDouble() ?? 0.0;
     return '$currency ${amount.toStringAsFixed(2)}';
   }

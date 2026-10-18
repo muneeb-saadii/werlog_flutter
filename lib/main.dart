@@ -3,55 +3,37 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-// import 'package:wellness/ui/views/add_schdule_request/add_schedule_request.dart';
-// import 'package:wellness/ui/views/admin_side/dashboard/admin_dashboard.dart';
-// import 'package:wellness/ui/views/bottom_bar/bottom_bar.dart';
-// import 'package:wellness/ui/views/chat_module/chat_list/chat_list.dart';
-// import 'package:wellness/ui/views/chat_module/message_screen/message_screen.dart';
-// import 'package:wellness/ui/views/goal/goal_screen.dart';
-// import 'package:wellness/ui/views/login/login_view.dart';
-// import 'package:wellness/ui/views/mark_attendance/mark_attendance.dart';
-// import 'package:wellness/ui/views/measurements/measurement_view.dart';
-// import 'package:wellness/ui/views/myschedule_user/all_schedules.dart';
-// import 'package:wellness/ui/views/myschedule_user/my_schedules.dart';
-// import 'package:wellness/ui/views/myschedule_user/myschedule_user.dart';
-// import 'package:wellness/ui/views/name/name_view.dart';
-// import 'package:wellness/ui/views/question/question_screen.dart';
-// import 'package:wellness/ui/views/resgister/register.dart';
-// import 'package:wellness/ui/views/splash/splash_view.dart';
-// import 'package:wellness/ui/views/trainer/manage_client/screens/client_dashboard_screen.dart';
-// import 'package:wellness/ui/views/trainer/progree_tracker/progress_tracker_trainer.dart';
-// import 'package:wellness/ui/views/trainer_bottom_bar/trainer_bottom_bar.dart';
-// import 'package:wellness/ui/views/trainer_clients/trainer_clients.dart';
-// import 'package:wellness/ui/views/trainer_profile/trainer_profile_view.dart';
-// import 'package:wellness/ui/views/trainer_scedule/trainer_schedule.dart';
-// import 'package:wellness/ui/views/trainer_welcome/trainer_dashboard.dart';
-// import 'package:wellness/ui/views/user/nutrition/screens/nutrition_screen.dart';
-// import 'package:wellness/ui/views/user/progress_tracker/log/screens/progress_track_screen.dart';
-// import 'package:wellness/ui/views/user_releated_data/edit_profile_screen.dart';
 
 import 'client/core/app_navigator.dart';
 import 'client/core/firebase-service/firebase-service.dart';
+import 'client/core/remote_config/remote_config_service.dart'; // ← new
 import 'client/core/utils/shared_pref_helper.dart';
 import 'client/core/widgets/restart_widget.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await SharedPrefHelper.init();
+
+  // 1. Initialise Firebase first
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // await NotificationService.initialize();
-  // await NotificationService.getToken();
+
+  // 2. Fetch Remote Config and resolve APP_BASE_URL before the app renders
+  //    This ensures ApiService.baseUrl and AdminApiService.baseUrl are correct
+  //    from the very first API call.
+  await RemoteConfigService.init();
+
+  // 3. Push notifications (device only)
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-    // Only initialize notifications on real device
     await NotificationService.initialize();
     await NotificationService.getToken();
   }
-  // runApp(const MyApp());
+
   runApp(
     RestartWidget(
       key: RestartWidget.my_key,
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
@@ -61,43 +43,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return /*MaterialApp(
-      home: Dashboard(), // ✅ nothing wrapping this
-    );*/MaterialApp(
+    return MaterialApp(
       title: 'Werlog',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
-      home: /*MainDashboardScreen()*/AppNavigator(),
+      home: AppNavigator(),
       initialRoute: '/splash',
-      // routes: {
-      //   '/splash': (context) => const SplashView(),
-        // '/login': (context) => const LoginView(),
-        // '/name': (context) => NameScreen(),
-        // '/profile': (context) => ProfileScreen(),
-        // '/measurement': (context) => MeasurementScreen(),
-        // '/goal': (context) => GoalScreen(),
-        // '/question': (context) => const QuestionScreen(),
-        // '/trainer-profile': (context) => const TrainerProfileView(),
-        // '/home': (context) => const MainBottomNav(),
-        // '/admin-dashboard': (context) => AdminDashboard(),
-        // '/signup': (context) => SignupScreen(),
-        // '/trainer-dashboard': (context) => TrainerDashboard(),
-        // '/chat-list': (context) => ChatListScreen(),
-        // '/message-screen': (context) =>
-        //     MessageScreen(name: 'test', chatId: 1, senderId: 1),
-        // '/schedule-user': (context) => MyScheduleUserScreen(),
-        // '/all-schedule-user': (context) => AllScheduleUserScreen(),
-        // '/schedule-trainer': (context) => ScheduleTrainerScreen(),
-        // '/my-schedule': (context) => MySchedules(),
-        // '/mark-attendance': (context) => AttendanceScreen(),
-        // '/add-schedule': (context) => AddScheduleRequest(),
-        // //  '/trainer-clients': (context) => TrainerClients(),
-        // '/trainer-bottom-bar': (context) => TrainerBottomNav(),
-        // '/track-progress-screen': (context) => ProgressTrackScreen(),
-        // '/trainer-track-progress-screen': (context) => TrainerProgressTrackScreen(),
-        // '/nutrition-screen': (context) => NutritionScreen(),
-        // '/client-dashboard-screen': (context) => ClientDashboardScreen(),
-      // },
     );
   }
 }

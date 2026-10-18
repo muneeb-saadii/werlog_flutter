@@ -734,7 +734,7 @@ class _InvoiceCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${currency.isNotEmpty ? currency : 'PKR'} ${invoice.totalAmount.toStringAsFixed(2)}',
+                    '${GeneralFunctions.currencySymbol} ${invoice.totalAmount.toStringAsFixed(2)}',
                     style: WerlogTextStyles.txAmount.copyWith(
                         fontWeight: FontWeight.w600, fontSize: 13),
                   ),
@@ -784,11 +784,11 @@ class _InvoiceCard extends StatelessWidget {
                               .copyWith(color: WerlogColors.textSecondary),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
-                    Text(
-                      '${currency.isNotEmpty ? currency : 'PKR'} ${item.amount.toStringAsFixed(0)}',
-                      style: WerlogTextStyles.captionSmall
-                          .copyWith(color: WerlogColors.textSecondary),
-                    ),
+                    // Text(
+                    //   '${currency.isNotEmpty ? currency : 'PKR'} ${item.amount.toStringAsFixed(0)}',
+                    //   style: WerlogTextStyles.captionSmall
+                    //       .copyWith(color: WerlogColors.textSecondary),
+                    // ),
                   ]),
                 )),
 

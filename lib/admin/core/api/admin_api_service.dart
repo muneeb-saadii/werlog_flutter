@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/routes/admin_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../../client/core/remote_config/remote_config_service.dart'; // ← new
 import '../../../client/core/theme/session_refresh_screen.dart';
 import '../../../client/core/utils/shared_pref_helper.dart';
 import 'admin_endpoints.dart';
@@ -18,9 +19,7 @@ class _AdminLoader {
 
   static void show(BuildContext context) {
     if (_entry != null) return;
-    _entry = OverlayEntry(
-      builder: (_) => const _AdminLoaderWidget(),
-    );
+    _entry = OverlayEntry(builder: (_) => const _AdminLoaderWidget());
     Overlay.of(context).insert(_entry!);
   }
 
@@ -48,12 +47,14 @@ class AdminApiService {
 
   AdminApiService._();
 
-  static const String baseUrl    = 'https://werlog.com/api/';
-  static const String baseImgUrl = 'https://werlog.com';
+  // ── BASE URL  — resolved from Firebase Remote Config ─────────────────────
+  //    Same source as the client ApiService so both modules always agree.
+  static String get baseUrl    => RemoteConfigService.baseUrl;
+  static String get baseImgUrl => RemoteConfigService.baseImgUrl;
 
   static bool _isRefreshing = false;
 
-  // ── Headers ──────────────────────────────────────────────────────────────────
+  // ── Headers ───────────────────────────────────────────────────────────────
 
   static Map<String, String> _headers({String? token}) => {
     'Content-Type': 'application/json',
@@ -61,7 +62,7 @@ class AdminApiService {
     if (token != null) 'Authorization': 'Bearer $token',
   };
 
-  // ── Token helpers ─────────────────────────────────────────────────────────────
+  // ── Token helpers ─────────────────────────────────────────────────────────
 
   static String _accessToken() =>
       SharedPrefHelper.getString(SharedPrefHelper.accessToken);
@@ -69,14 +70,14 @@ class AdminApiService {
   static String _refreshToken() =>
       SharedPrefHelper.getString(SharedPrefHelper.refreshToken);
 
-  // ── GET ───────────────────────────────────────────────────────────────────────
+  // ── GET ───────────────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>?> get(
-    BuildContext context,
-    String endpoint, {
-    Map<String, dynamic>? queryParams,
-    bool showLoader = true,
-  }) async {
+      BuildContext context,
+      String endpoint, {
+        Map<String, dynamic>? queryParams,
+        bool showLoader = true,
+      }) async {
     try {
       if (showLoader) _AdminLoader.show(context);
 
@@ -84,8 +85,7 @@ class AdminApiService {
       var uri = Uri.parse('$baseUrl$endpoint');
       if (queryParams != null && queryParams.isNotEmpty) {
         uri = uri.replace(
-          queryParameters:
-              queryParams.map((k, v) => MapEntry(k, v.toString())),
+          queryParameters: queryParams.map((k, v) => MapEntry(k, v.toString())),
         );
       }
 
@@ -106,24 +106,24 @@ class AdminApiService {
       return _parse(response);
     } on SocketException {
       if (showLoader) _AdminLoader.hide();
-      debugPrint('[AdminAPI] GET  NETWORK ERROR => No internet');
+      debugPrint('[AdminAPI] GET NETWORK ERROR => No internet');
       throw 'No internet connection';
     } catch (e) {
       if (showLoader) _AdminLoader.hide();
-      debugPrint('[AdminAPI] GET  ERROR => $e');
+      debugPrint('[AdminAPI] GET ERROR => $e');
       rethrow;
     }
   }
 
-  // ── POST ──────────────────────────────────────────────────────────────────────
+  // ── POST ──────────────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>?> post(
-    BuildContext context,
-    String endpoint, {
-    Map<String, dynamic>? body,
-    bool showLoader = true,
-    bool useRefreshToken = false,  // for the refresh-token call itself
-  }) async {
+      BuildContext context,
+      String endpoint, {
+        Map<String, dynamic>? body,
+        bool showLoader = true,
+        bool useRefreshToken = false,
+      }) async {
     try {
       if (showLoader) _AdminLoader.show(context);
 
@@ -143,8 +143,7 @@ class AdminApiService {
       debugPrint('[AdminAPI] STATUS => ${response.statusCode}');
       debugPrint('[AdminAPI] BODY   => ${response.body.substring(0, response.body.length.clamp(0, 300))}');
 
-      if (!useRefreshToken &&
-          await _handleUnauthorised(context, response)) {
+      if (!useRefreshToken && await _handleUnauthorised(context, response)) {
         return await post(context, endpoint,
             body: body, showLoader: showLoader);
       }
@@ -160,14 +159,14 @@ class AdminApiService {
     }
   }
 
-  // ── PATCH ─────────────────────────────────────────────────────────────────────
+  // ── PATCH ─────────────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>?> patch(
-    BuildContext context,
-    String endpoint, {
-    Map<String, dynamic>? body,
-    bool showLoader = true,
-  }) async {
+      BuildContext context,
+      String endpoint, {
+        Map<String, dynamic>? body,
+        bool showLoader = true,
+      }) async {
     try {
       if (showLoader) _AdminLoader.show(context);
 
@@ -201,13 +200,13 @@ class AdminApiService {
     }
   }
 
-  // ── DELETE ────────────────────────────────────────────────────────────────────
+  // ── DELETE ────────────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>?> delete(
-    BuildContext context,
-    String endpoint, {
-    bool showLoader = true,
-  }) async {
+      BuildContext context,
+      String endpoint, {
+        bool showLoader = true,
+      }) async {
     try {
       if (showLoader) _AdminLoader.show(context);
 
@@ -235,11 +234,8 @@ class AdminApiService {
     }
   }
 
-  // ── Session refresh ───────────────────────────────────────────────────────────
+  // ── Session refresh ───────────────────────────────────────────────────────
 
-  /// Called internally when any API returns 401 / 403 with an auth error.
-  /// Shows [SessionRefreshScreen] (the same screen as the client module),
-  /// saves new tokens on success, and returns true so the caller retries.
   static Future<bool> _tryRefreshSession(BuildContext context) async {
     if (_isRefreshing) return false;
     _isRefreshing = true;
@@ -252,12 +248,9 @@ class AdminApiService {
           barrierDismissible: false,
           pageBuilder: (_, __, ___) => SessionRefreshScreen(
             onRefreshComplete: (responseData) async {
-              // responseData is the full refresh API response
               final data = (responseData['data'] ?? responseData)
-                  as Map<String, dynamic>;
-
+              as Map<String, dynamic>;
               debugPrint('[AdminAPI] REFRESH COMPLETE => saving new tokens');
-
               await SharedPrefHelper.saveString(
                   SharedPrefHelper.accessToken,
                   data['accessToken']?.toString() ?? '');
@@ -266,7 +259,6 @@ class AdminApiService {
                   data['refreshToken']?.toString() ?? '');
               await SharedPrefHelper.saveObject(
                   SharedPrefHelper.loginData, data);
-
               success = true;
             },
             onSignOut: () => _navigateToLogin(context),
@@ -282,13 +274,9 @@ class AdminApiService {
     return success;
   }
 
-  /// Checks the response for auth errors, triggers refresh if needed.
-  /// Returns true if refresh succeeded (caller should retry).
   static Future<bool> _handleUnauthorised(
       BuildContext context, http.Response response) async {
-    if (response.statusCode != 401 && response.statusCode != 403) {
-      return false;
-    }
+    if (response.statusCode != 401 && response.statusCode != 403) return false;
     try {
       final data    = jsonDecode(response.body) as Map<String, dynamic>;
       final message = (data['message'] ?? '').toString().toLowerCase();
@@ -311,8 +299,7 @@ class AdminApiService {
         .pushNamedAndRemoveUntil(AdminRoutes.login, (r) => false);
   }
 
-  // ── Refresh token API call ────────────────────────────────────────────────────
-  // Exposed for SessionRefreshScreen to call.
+  // ── Refresh token API call ────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> callRefreshTokenApi() async {
     final rt = _refreshToken();
@@ -334,11 +321,10 @@ class AdminApiService {
     if (response.statusCode == 200 && data['result']?.toString() == '1') {
       return data;
     }
-    throw Exception(
-        data['message']?.toString() ?? 'Session refresh failed');
+    throw Exception(data['message']?.toString() ?? 'Session refresh failed');
   }
 
-  // ── Response parser ───────────────────────────────────────────────────────────
+  // ── Response parser ───────────────────────────────────────────────────────
 
   static Map<String, dynamic>? _parse(http.Response response) {
     try {
@@ -351,14 +337,13 @@ class AdminApiService {
     }
   }
 
-  // ── Convenience: show snackbar error ─────────────────────────────────────────
+  // ── Snackbar helpers ──────────────────────────────────────────────────────
 
   static void showError(BuildContext context, String message) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message,
-          style: const TextStyle(
-              fontFamily: 'DMSans', fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontFamily: 'DMSans', fontWeight: FontWeight.w500)),
       backgroundColor: AppColors.dangerRed,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -370,8 +355,7 @@ class AdminApiService {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message,
-          style: const TextStyle(
-              fontFamily: 'DMSans', fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontFamily: 'DMSans', fontWeight: FontWeight.w500)),
       backgroundColor: AppColors.accentGreen,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

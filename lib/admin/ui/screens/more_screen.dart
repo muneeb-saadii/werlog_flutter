@@ -9,11 +9,10 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_theme.dart';
 import '../widgets/admin_bottom_nav.dart';
 import 'audit_log_screen.dart';
+import 'invoices_screen.dart';          // ← NEW
 import 'plans_billing_screen.dart';
 import 'review_queue_screen.dart';
 import 'subscription_receipts_screen.dart';
-
-// ── Screen ────────────────────────────────────────────────────────────────────
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -26,15 +25,14 @@ class _MoreScreenState extends State<MoreScreen> {
 
   static const String _version = 'v2.4.1 · build 3021';
 
-  // ── Admin profile (read from saved session) ───────────────────────────────
   String _name    = 'Admin';
   String _email   = '';
   String _initial = 'A';
 
-  // ── Dynamic stats ─────────────────────────────────────────────────────────
-  int?   _reviewCount;
-  int?   _planCount;
-  int?   _paidSubs;
+  int? _reviewCount;
+  int? _planCount;
+  int? _paidSubs;
+  int? _invoiceCount;    // ← NEW
 
   @override
   void initState() {
@@ -65,11 +63,13 @@ class _MoreScreenState extends State<MoreScreen> {
             showLoader: false),
         AdminApiService.get(context, AdminEndpoints.adminPlans,
             showLoader: false),
+        AdminApiService.get(context, AdminEndpoints.adminInvoices,
+            queryParams: {'page': '0', 'size': '1'}, showLoader: false),
       ]);
 
       if (!mounted) return;
 
-      // Review queue count
+      // Review queue
       final qR = results[0];
       if (qR != null) {
         final raw = qR['data'];
@@ -98,6 +98,19 @@ class _MoreScreenState extends State<MoreScreen> {
         }
       }
 
+      // Invoices count
+      final iR = results[2];
+      if (iR != null) {
+        final raw = iR['data'];
+        if (raw is List) {
+          _invoiceCount = (iR['total'] as num?)?.toInt() ?? raw.length;
+        } else if (raw is Map) {
+          _invoiceCount = (raw['totalElements'] as num?)?.toInt()
+              ?? (raw['total'] as num?)?.toInt()
+              ?? (raw['content'] as List?)?.length ?? 0;
+        }
+      }
+
       setState(() {});
     } catch (e) {
       debugPrint('[More] stats error => $e');
@@ -110,14 +123,14 @@ class _MoreScreenState extends State<MoreScreen> {
           : '$_reviewCount low-confidence items';
 
   String? get _reviewBadge =>
-      (_reviewCount != null && _reviewCount! > 0)
-          ? '$_reviewCount' : null;
+      (_reviewCount != null && _reviewCount! > 0) ? '$_reviewCount' : null;
 
   String get _plansSubtitle =>
       _planCount == null ? 'Loading…'
           : '$_planCount plans · ${_paidSubs ?? 0} paid subscribers';
 
-  // ── Logout ────────────────────────────────────────────────────────────────
+  String get _invoicesSubtitle =>
+      _invoiceCount == null ? 'Loading…' : '$_invoiceCount total invoices';
 
   Future<void> _logout(BuildContext outerCtx) async {
     SharedPrefHelper.clearAll();
@@ -140,13 +153,9 @@ class _MoreScreenState extends State<MoreScreen> {
                 .copyWith(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(dlg).pop();
-              _logout(outerCtx);
-            },
+            onPressed: () { Navigator.of(dlg).pop(); _logout(outerCtx); },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.dangerRed,
-              elevation: 0,
+              backgroundColor: AppColors.dangerRed, elevation: 0,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20)),
             ),
@@ -158,8 +167,6 @@ class _MoreScreenState extends State<MoreScreen> {
       ),
     );
   }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +182,6 @@ class _MoreScreenState extends State<MoreScreen> {
             child: Column(children: [
 
               _ProfileHeader(name: _name, email: _email, initial: _initial),
-
               const SizedBox(height: 20),
 
               Padding(
@@ -183,37 +189,28 @@ class _MoreScreenState extends State<MoreScreen> {
                     horizontal: AppMetrics.pagePadding),
                 child: Column(children: [
 
-                  // ── Operations ──────────────────────────────────────────
+                  // ── Operations ────────────────────────────────────────
                   const _SectionLabel('OPERATIONS'),
                   const SizedBox(height: 8),
                   _MenuCard(items: [
                     _MenuItem(
-                      icon:     Icons.rate_review_rounded,
-                      iconBg:   AppColors.suspendedBg,
-                      iconFg:   AppColors.suspendedText,
-                      label:    'Review Queue',
+                      icon:    Icons.rate_review_rounded,
+                      iconBg:  AppColors.suspendedBg,
+                      iconFg:  AppColors.suspendedText,
+                      label:   'Review Queue',
                       subtitle: _reviewSubtitle,
-                      badge:    _reviewBadge,
-                      badgeBg:  AppColors.suspendedBg,
-                      badgeFg:  AppColors.suspendedText,
+                      badge:   _reviewBadge,
+                      badgeBg: AppColors.suspendedBg,
+                      badgeFg: AppColors.suspendedText,
                       onTap: () => Navigator.push(context, MaterialPageRoute(
                           builder: (_) => const ReviewQueueScreen())),
                     ),
                     _MenuItem(
-                      icon:     Icons.account_balance_wallet_rounded,
-                      iconBg:   AppColors.proBg,
-                      iconFg:   AppColors.proText,
-                      label:    'Plans & Billing',
-                      subtitle: _plansSubtitle,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => const PlansBillingScreen())),
-                    ),
-                    _MenuItem(
-                      icon:      Icons.history_rounded,
-                      iconBg:    AppColors.activeBg,
-                      iconFg:    AppColors.activeText,
-                      label:     'Audit Log',
-                      subtitle:  'Every admin action, tracked',
+                      icon:    Icons.history_rounded,
+                      iconBg:  AppColors.activeBg,
+                      iconFg:  AppColors.activeText,
+                      label:   'Audit Log',
+                      subtitle: 'Every admin action, tracked',
                       hasDivider: false,
                       onTap: () => Navigator.push(context, MaterialPageRoute(
                           builder: (_) => const AuditLogScreen())),
@@ -222,25 +219,35 @@ class _MoreScreenState extends State<MoreScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── Billing ─────────────────────────────────────────────
-                  // const _SectionLabel('BILLING'),
-                  // const SizedBox(height: 8),
-                  // _MenuCard(items: [
-                  //   _MenuItem(
-                  //     icon:      Icons.receipt_long_rounded,
-                  //     iconBg:    AppColors.proBg,
-                  //     iconFg:    AppColors.proText,
-                  //     label:     'Payment Receipts',
-                  //     subtitle:  'Subscription invoices per subscriber',
-                  //     hasDivider: false,
-                  //     onTap: () => Navigator.push(context, MaterialPageRoute(
-                  //         builder: (_) => const SubscriptionReceiptsScreen())),
-                  //   ),
-                  // ]),
-                  //
-                  // const SizedBox(height: 20),
+                  // ── Billing ───────────────────────────────────────────
+                  const _SectionLabel('BILLING'),
+                  const SizedBox(height: 8),
+                  _MenuCard(items: [
+                    // Invoices now lives here
+                    _MenuItem(
+                      icon:    Icons.receipt_long_rounded,
+                      iconBg:  AppColors.deletedBg,
+                      iconFg:  AppColors.textSecondary,
+                      label:   'Invoices',
+                      subtitle: _invoicesSubtitle,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const InvoicesScreen())),
+                    ),
+                    _MenuItem(
+                      icon:    Icons.receipt_outlined,
+                      iconBg:  AppColors.proBg,
+                      iconFg:  AppColors.proText,
+                      label:   'Payment Receipts',
+                      subtitle: 'Subscription invoices per subscriber',
+                      hasDivider: false,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const SubscriptionReceiptsScreen())),
+                    ),
+                  ]),
 
-                  // ── Account ─────────────────────────────────────────────
+                  const SizedBox(height: 20),
+
+                  // ── Account ───────────────────────────────────────────
                   const _SectionLabel('ACCOUNT'),
                   const SizedBox(height: 8),
                   _MenuCard(items: [
@@ -256,7 +263,6 @@ class _MoreScreenState extends State<MoreScreen> {
                   ]),
 
                   const SizedBox(height: 28),
-
                   Text(_version,
                       style: AppTextStyles.footerNote.copyWith(
                           color: AppColors.textSecondary, fontSize: 12),
@@ -271,12 +277,11 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 }
 
-// ── Profile header ────────────────────────────────────────────────────────────
+// ── Widgets (same as before) ──────────────────────────────────────────────────
 
 class _ProfileHeader extends StatelessWidget {
   final String name, email, initial;
-  const _ProfileHeader({required this.name, required this.email,
-    required this.initial});
+  const _ProfileHeader({required this.name, required this.email, required this.initial});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -307,8 +312,7 @@ class _ProfileHeader extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.accentGreen.withOpacity(0.25),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: AppColors.accentGreen.withOpacity(0.4), width: 1),
+          border: Border.all(color: AppColors.accentGreen.withOpacity(0.4), width: 1),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: const [
           Icon(Icons.shield_rounded, size: 13, color: AppColors.accentGreen),
@@ -322,20 +326,15 @@ class _ProfileHeader extends StatelessWidget {
   );
 }
 
-// ── Section label ─────────────────────────────────────────────────────────────
-
 class _SectionLabel extends StatelessWidget {
   final String label;
   const _SectionLabel(this.label);
-
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
     child: Text(label, style: AppTextStyles.sectionLabel),
   );
 }
-
-// ── Menu card ─────────────────────────────────────────────────────────────────
 
 class _MenuCard extends StatelessWidget {
   final List<_MenuItem> items;
@@ -360,8 +359,6 @@ class _MenuCard extends StatelessWidget {
   );
 }
 
-// ── Menu item ─────────────────────────────────────────────────────────────────
-
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final Color iconBg, iconFg;
@@ -372,17 +369,9 @@ class _MenuItem extends StatelessWidget {
   final bool hasDivider, danger;
 
   const _MenuItem({
-    required this.icon,
-    required this.iconBg,
-    required this.iconFg,
-    required this.label,
-    this.subtitle,
-    this.badge,
-    this.badgeBg,
-    this.badgeFg,
-    required this.onTap,
-    this.hasDivider = true,
-    this.danger = false,
+    required this.icon, required this.iconBg, required this.iconFg,
+    required this.label, this.subtitle, this.badge, this.badgeBg, this.badgeFg,
+    required this.onTap, this.hasDivider = true, this.danger = false,
   });
 
   @override
@@ -399,28 +388,22 @@ class _MenuItem extends StatelessWidget {
           child: Icon(icon, color: iconFg, size: 20),
         ),
         const SizedBox(width: 14),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: AppTextStyles.rowValue.copyWith(
-                color: danger ? AppColors.dangerRed : AppColors.textPrimary)),
-            if (subtitle != null) ...[
-              const SizedBox(height: 2),
-              Text(subtitle!,
-                  style: AppTextStyles.emailSubtle.copyWith(fontSize: 12)),
-            ],
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: AppTextStyles.rowValue.copyWith(
+              color: danger ? AppColors.dangerRed : AppColors.textPrimary)),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(subtitle!, style: AppTextStyles.emailSubtle.copyWith(fontSize: 12)),
           ],
-        )),
+        ])),
         if (badge != null) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(
-                color: badgeBg,
-                borderRadius: BorderRadius.circular(20)),
+                color: badgeBg, borderRadius: BorderRadius.circular(20)),
             child: Text(badge!, style: TextStyle(
                 fontFamily: AppTextStyles.fontFamily,
-                fontSize: 11.5, fontWeight: FontWeight.w700,
-                color: badgeFg)),
+                fontSize: 11.5, fontWeight: FontWeight.w700, color: badgeFg)),
           ),
           const SizedBox(width: 6),
         ],

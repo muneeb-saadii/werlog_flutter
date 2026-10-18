@@ -3,8 +3,8 @@ import '../../core/routes/admin_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
-/// Bottom tab bar — Home · Users · Ops (raised) · Invoices · More
-/// currentIndex: 0=Home 1=Users 2=Ops 3=Invoices 4=More
+/// Bottom tab bar — Home · Users · Ops (raised) · Plans · More
+/// currentIndex: 0=Home 1=Users 2=Ops 3=Plans 4=More
 class AdminBottomNav extends StatelessWidget {
   final int currentIndex;
   const AdminBottomNav({super.key, required this.currentIndex});
@@ -34,9 +34,10 @@ class AdminBottomNav extends StatelessWidget {
           _OpsNavItem(
               selected: currentIndex == 2,
               onTap: () => _go(context, AdminRoutes.ocrJobs)),
-          _NavItem(icon: Icons.receipt_long_rounded, label: 'Invoices',
+          // ── Tab 3 changed from Invoices → Plans ──────────────────────
+          _NavItem(icon: Icons.workspace_premium_rounded, label: 'Plans',
               selected: currentIndex == 3,
-              onTap: () => _go(context, AdminRoutes.invoices)),
+              onTap: () => _go(context, AdminRoutes.plansBilling)),
           _NavItem(icon: Icons.menu_rounded, label: 'More',
               selected: currentIndex == 4,
               onTap: () => _go(context, AdminRoutes.more)),
@@ -52,7 +53,7 @@ class _NavItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   const _NavItem({required this.icon, required this.label,
-      required this.selected, required this.onTap});
+    required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -65,8 +66,7 @@ class _NavItem extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 3),
-          Text(label,
-              style: AppTextStyles.navLabel.copyWith(color: color)),
+          Text(label, style: AppTextStyles.navLabel.copyWith(color: color)),
         ]),
       ),
     );
@@ -94,11 +94,8 @@ class _OpsNavItem extends StatelessWidget {
             color: Colors.white, size: 24),
       ),
       const SizedBox(height: 3),
-      Text('Ops',
-          style: AppTextStyles.navLabel.copyWith(
-              color: selected
-                  ? AppColors.accentGreen
-                  : AppColors.darkGreen)),
+      Text('Ops', style: AppTextStyles.navLabel.copyWith(
+          color: selected ? AppColors.accentGreen : AppColors.darkGreen)),
     ]),
   );
 }

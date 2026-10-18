@@ -19,10 +19,10 @@ class AdminRoutes {
   static const String usersList    = '/admin/users';
   static const String userDetail   = '/admin/users/detail';
   static const String ocrJobs      = '/admin/ocr-jobs';
-  static const String invoices     = '/admin/invoices';
+  static const String invoices     = '/admin/invoices';   // still accessible from More
   static const String more         = '/admin/more';
   static const String reviewQueue  = '/admin/review-queue';
-  static const String plansBilling = '/admin/plans';
+  static const String plansBilling = '/admin/plans';      // now tab 3 in bottom nav
   static const String auditLog     = '/admin/audit-log';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -59,8 +59,6 @@ class AdminRoutes {
         return MaterialPageRoute(
             builder: (_) => const AuditLogScreen(), settings: settings);
       default:
-        // Any unrecognised route (including "/" and "/admin" from the
-        // parent navigator bleeding through) falls back to dashboard.
         debugPrint('[AdminRoutes] unknown route: ${settings.name} — redirecting to dashboard');
         return MaterialPageRoute(
             builder: (_) => const DashboardScreen(), settings: settings);

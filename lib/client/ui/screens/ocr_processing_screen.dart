@@ -130,12 +130,15 @@ class OcrExtracted {
   final String? autoCategoryName;
   final String? autoCategoryIcon;
   final List<OcrLineItem> lineItemsPreview;
+  /// Currency code returned at the same level as vendorName (e.g. "PKR", "CAD").
+  /// Null when the server did not detect / return a currency.
+  final String? currency;
 
   OcrExtracted({
     this.vendorName, this.totalAmountFormatted, this.invoiceDateFormatted,
     this.lineItemCount = 0, required this.confidenceLabel,
     required this.needsReview, this.autoCategoryName, this.autoCategoryIcon,
-    required this.lineItemsPreview,
+    required this.lineItemsPreview, this.currency,
   });
 
   factory OcrExtracted.fromJson(Map<String, dynamic> json) => OcrExtracted(
@@ -149,17 +152,32 @@ class OcrExtracted {
     autoCategoryIcon: json['autoCategoryIcon'],
     lineItemsPreview: (json['lineItemsPreview'] as List? ?? [])
         .map((i) => OcrLineItem.fromJson(i)).toList(),
+    // "currency" lives at the same level as vendorName in the extracted object
+    currency: _parseCurrencyCode(json['currency']),
   );
 
-  /// Extracts currency code from totalAmountFormatted.
-  /// e.g. "PKR 1730.00" → "PKR", "$ 50.00" → null (symbol, not code)
+  /// Returns a clean 3-4 letter ISO code, or null if absent / invalid.
+  static String? _parseCurrencyCode(dynamic raw) {
+    if (raw == null) return null;
+    final s = raw.toString().trim().toUpperCase();
+    if (s.isEmpty) return null;
+    if (RegExp(r'^[A-Z]{2,4}$').hasMatch(s)) return s;
+    return null;
+  }
+
+  /// Returns the best available currency code:
+  /// 1. `currency` field (new — same level as vendorName)
+  /// 2. Prefix of `totalAmountFormatted` (e.g. "PKR 1730.00" → "PKR")
+  /// 3. null — no currency could be detected
   String? get detectedCurrencyCode {
+    // Prefer the dedicated currency field
+    if (currency != null && currency!.isNotEmpty) return currency;
+    // Fall back to parsing the formatted total
     final raw = totalAmountFormatted?.trim();
     if (raw == null || raw.isEmpty) return null;
     final parts = raw.split(RegExp(r'\s+'));
     if (parts.length < 2) return null;
     final candidate = parts.first;
-    // Must look like a 3-letter ISO code (all caps letters)
     if (RegExp(r'^[A-Z]{2,4}$').hasMatch(candidate)) return candidate;
     return null;
   }
@@ -840,19 +858,24 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
   bool   _typeSaved    = false;
 
   // ── Currency ──────────────────────────────────────────────────────────────
-  // Populated from the detected currency in totalAmountFormatted
-  late String _selectedCurrencyCode;
+  // Null  → server returned no currency; user must select before saving.
+  // Non-null → either detected from response or selected by user.
+  String? _selectedCurrencyCode;
   bool _currencyChanged = false; // true once user picks a different currency
 
   bool get _isExpense => widget.scanType == ScanType.expense;
 
+  /// True when currency was detected or the user has already chosen one.
+  bool get _hasCurrency => _selectedCurrencyCode != null &&
+      _selectedCurrencyCode!.isNotEmpty;
+
   // ── Can the user leave? ───────────────────────────────────────────────────
   // Block "Done" if:
   //   1. expense scan AND type not saved yet
-  //   2. currency was changed but not yet saved (i.e. user picked a new one
-  //      but the SAVE button on the type toggle was never tapped — since we
-  //      send currency together with the expense type save)
+  //   2. currency was changed but not yet saved
+  //   3. expense scan AND currency is still null (user hasn't selected one)
   bool get _canLeave {
+    if (_isExpense && _selectedCurrencyCode == null) return false;
     if (_isExpense && !_typeSaved) return false;
     if (_currencyChanged && !_typeSaved) return false;
     return true;
@@ -861,16 +884,21 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
   @override
   void initState() {
     super.initState();
-    // Seed currency from what was detected in the response
-    final detected = widget.result.extracted.detectedCurrencyCode;
-    final saved    = SharedPrefHelper.getString(SharedPrefHelper.selectedCurrencyCode);
-    _selectedCurrencyCode = detected ?? saved.toUpperCase();
-    if (_selectedCurrencyCode.isEmpty) _selectedCurrencyCode = 'USD';
+    // Use the detected currency (currency field or parsed from totalAmountFormatted).
+    // If null — currency is unknown; _selectedCurrencyCode stays null so the
+    // widget can show the "select a currency" prompt.
+    _selectedCurrencyCode = widget.result.extracted.detectedCurrencyCode;
   }
 
   // ── Save expense type + currency ──────────────────────────────────────────
 
   Future<void> _saveExpenseType() async {
+    if (_selectedCurrencyCode == null) {
+      // This should not happen (Save is hidden when currency is null)
+      // but guard defensively
+      _openCurrencyPicker();
+      return;
+    }
     setState(() => _isSavingType = true);
     try {
       final jobId   = widget.result.invoiceId;
@@ -880,7 +908,7 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
         body: {
           'invoiceId': jobId,
           'type':      _expenseType,
-          'currency':  _selectedCurrencyCode,   // ← currency sent here
+          'currency':  _selectedCurrencyCode!,  // ← safe — guarded above
         },
         showLoader: false,
       );
@@ -915,7 +943,7 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _CurrencyPickerSheet(
-        selectedCode: _selectedCurrencyCode,
+        selectedCode: _selectedCurrencyCode ?? '',
         onSelected: (item) {
           HapticFeedback.lightImpact();
           setState(() {
@@ -926,6 +954,28 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
         },
       ),
     );
+  }
+
+  String _formatAmountWithCurrency(String? amount, String? currencyCode) {
+    var value = (amount ?? '').trim();
+    if (value.isEmpty) return value;
+
+    // Always remove any existing currency code prefix (e.g. "PKR 1730.00" → "1730.00")
+    if (currencyCode != null && currencyCode.isNotEmpty) {
+      value = value.replaceFirst(
+        RegExp('^${RegExp.escape(currencyCode)}\\s*', caseSensitive: false), '',
+      );
+    }
+
+    // Always strip leading currency symbols ($, €, £, ₹, Rs. etc.)
+    value = value.replaceFirst(
+      RegExp(r'^(?:[$€£¥₹₨₩₽¢]|Rs\.?|৳|₺|₴)\s*'), '',
+    ).trim();
+
+    // If no currency known, return the clean numeric value as-is
+    if (currencyCode == null || currencyCode.isEmpty) return value;
+
+    return '$currencyCode $value';
   }
 
   @override
@@ -1008,7 +1058,8 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
               // Document info
               _SectionCard(title: 'Document Info', icon: Icons.receipt_long_outlined, children: [
                 _FieldRow(label: 'Vendor',       value: ext.vendorName,            placeholder: 'Not detected'),
-                _FieldRow(label: 'Total Amount', value: _selectedCurrencyCode+" "+(ext.totalAmountFormatted ?? "0.00"),  placeholder: 'Not detected',
+                // _FieldRow(label: 'Total Amount', value: _selectedCurrencyCode+" "+(ext.totalAmountFormatted ?? "0.00"),  placeholder: 'Not detected',
+                _FieldRow(label: 'Total Amount', value: _formatAmountWithCurrency(ext.totalAmountFormatted, _selectedCurrencyCode,),  placeholder: 'Not detected',
                     valueColor: ext.totalAmountFormatted != null ? WerlogColors.teal : null),
                 _FieldRow(label: 'Invoice Date', value: ext.invoiceDateFormatted,  placeholder: 'Not detected'),
                 _FieldRow(label: 'Category',     value: ext.autoCategoryName,      placeholder: 'Uncategorized'),
@@ -1020,7 +1071,7 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
               if (ext.lineItemsPreview.isNotEmpty) ...[
                 _SectionCard(title: 'Line Items Preview', icon: Icons.list_alt_outlined, children: [
                   ...ext.lineItemsPreview.asMap().entries.map((e) =>
-                      _LineItemRow(item: e.value, isLast: e.key == ext.lineItemsPreview.length-1, currencyCode: _selectedCurrencyCode)),
+                      _LineItemRow(item: e.value, isLast: e.key == ext.lineItemsPreview.length-1, currencyCode: _selectedCurrencyCode ?? '')),
                 ]),
                 const SizedBox(height: 14),
               ],
@@ -1036,8 +1087,11 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
               GestureDetector(
                 onTap: () {
                   if (!_canLeave) {
-                    // Determine which guard fired
-                    if (_isExpense && !_typeSaved) {
+                    if (_isExpense && _selectedCurrencyCode == null) {
+                      GeneralFunctions.showError(widget.rootContext,
+                          'Please select a currency before continuing.');
+                      _openCurrencyPicker();
+                    } else if (_isExpense && !_typeSaved) {
                       GeneralFunctions.showError(widget.rootContext,
                           _currencyChanged
                               ? 'Currency changed — please save before leaving.'
@@ -1309,7 +1363,7 @@ class _ExpenseTypeToggle extends StatelessWidget {
   final String  selected;
   final bool    isSaving;
   final bool    typeSaved;
-  final String  selectedCurrencyCode;
+  final String? selectedCurrencyCode; // null = not yet detected by server
   final bool    currencyChanged;
   final ValueChanged<String> onChanged;
   final VoidCallback onSave;
@@ -1319,7 +1373,7 @@ class _ExpenseTypeToggle extends StatelessWidget {
     required this.selected,
     required this.isSaving,
     required this.typeSaved,
-    required this.selectedCurrencyCode,
+    required this.selectedCurrencyCode, // nullable — null means not yet detected
     required this.currencyChanged,
     required this.onChanged,
     required this.onSave,
@@ -1377,54 +1431,109 @@ class _ExpenseTypeToggle extends StatelessWidget {
         Row(children: [
           Container(
             width: 28, height: 28,
-            decoration: BoxDecoration(color: WerlogColors.tealSurface, borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.currency_exchange_rounded, size: 14, color: WerlogColors.teal),
+            decoration: BoxDecoration(color: WerlogColors.tealSurface,
+                borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.currency_exchange_rounded,
+                size: 14, color: WerlogColors.teal),
           ),
           const SizedBox(width: 9),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Currency', style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 13)),
-            Text('Detected from document', style: WerlogTextStyles.caption),
-          ])),
-          // Currency badge + CHANGE button
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Currency', style: WerlogTextStyles.sectionTitle.copyWith(fontSize: 13)),
+              Text(
+                selectedCurrencyCode == null
+                    ? 'Not detected — tap to select'
+                    : currencyChanged ? 'Changed — tap Save to apply'
+                    : 'Detected from document',
+                style: WerlogTextStyles.caption.copyWith(
+                  color: selectedCurrencyCode == null
+                      ? WerlogColors.coral
+                      : currencyChanged ? WerlogColors.amberDark
+                      : null,
+                ),
+              ),
+            ],
+          )),
+          // ── Badge + action button ─────────────────────────────────────
           GestureDetector(
             onTap: onChangeCurrency,
             child: Row(children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: currencyChanged ? WerlogColors.teal : WerlogColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: currencyChanged ? WerlogColors.teal : WerlogColors.border,
+              if (selectedCurrencyCode != null) ...[
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: currencyChanged
+                        ? WerlogColors.teal : WerlogColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: currencyChanged
+                          ? WerlogColors.teal : WerlogColors.border,
+                    ),
                   ),
+                  child: Text(selectedCurrencyCode!,
+                      style: TextStyle(
+                        fontFamily: 'DMSans', fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: currencyChanged
+                            ? Colors.white : WerlogColors.textPrimary,
+                      )),
                 ),
-                child: Text(selectedCurrencyCode,
-                    style: TextStyle(
-                      fontFamily: 'DMSans', fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: currencyChanged ? Colors.white : WerlogColors.textPrimary,
-                    )),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+              ],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: WerlogColors.tealSurface,
+                  // Red tint when no currency yet — draws attention
+                  color: selectedCurrencyCode == null
+                      ? WerlogColors.coralSurface : WerlogColors.tealSurface,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: WerlogColors.teal.withOpacity(0.3)),
+                  border: Border.all(
+                    color: selectedCurrencyCode == null
+                        ? WerlogColors.coral.withOpacity(0.4)
+                        : WerlogColors.teal.withOpacity(0.3),
+                  ),
                 ),
-                child: Text('CHANGE',
-                    style: WerlogTextStyles.caption.copyWith(
-                        fontSize: 10, color: WerlogColors.teal,
-                        fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                child: Text(
+                  selectedCurrencyCode == null ? 'SELECT' : 'CHANGE',
+                  style: WerlogTextStyles.caption.copyWith(
+                      fontSize: 10,
+                      color: selectedCurrencyCode == null
+                          ? WerlogColors.coral : WerlogColors.teal,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5),
+                ),
               ),
             ]),
           ),
         ]),
 
-        // Currency-changed hint
-        if (currencyChanged) ...[
+        // ── "Must select currency" warning (shown when null) ──────────────
+        if (selectedCurrencyCode == null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: WerlogColors.coralSurface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: WerlogColors.coral.withOpacity(0.35)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.warning_amber_rounded,
+                  size: 14, color: WerlogColors.coral),
+              const SizedBox(width: 7),
+              Expanded(child: Text(
+                'Currency not detected. Please select a currency before saving.',
+                style: WerlogTextStyles.caption.copyWith(
+                    fontSize: 10.5, color: WerlogColors.coral, height: 1.4),
+              )),
+            ]),
+          ),
+        ],
+
+        // ── "Currency changed" hint (shown when changed but not yet saved) ─
+        if (selectedCurrencyCode != null && currencyChanged) ...[
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -1445,10 +1554,9 @@ class _ExpenseTypeToggle extends StatelessWidget {
 
         const SizedBox(height: 12),
 
-        // Save button
-        Visibility(
-          visible: !typeSaved,
-          child: SizedBox(
+        // Save button — hidden when currency not yet selected OR already saved
+        if (!typeSaved && selectedCurrencyCode != null)
+          SizedBox(
             width: double.infinity,
             child: GestureDetector(
               onTap: isSaving ? null : onSave,
@@ -1456,25 +1564,28 @@ class _ExpenseTypeToggle extends StatelessWidget {
                 duration: const Duration(milliseconds: 200),
                 height: 42,
                 decoration: BoxDecoration(
-                  color: isSaving ? WerlogColors.teal.withOpacity(0.5) : WerlogColors.teal,
+                  color: isSaving
+                      ? WerlogColors.teal.withOpacity(0.5) : WerlogColors.teal,
                   borderRadius: BorderRadius.circular(11),
                 ),
                 alignment: Alignment.center,
                 child: isSaving
                     ? const SizedBox(width: 18, height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
                     : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 15),
+                  const Icon(Icons.check_circle_outline_rounded,
+                      color: Colors.white, size: 15),
                   const SizedBox(width: 6),
                   Text(
-                    'Save as ${selected == 'PERSONAL' ? 'Personal' : 'Business'} · $selectedCurrencyCode',
+                    'Save as ${selected == 'PERSONAL' ? 'Personal' : 'Business'}'
+                        ' · ${selectedCurrencyCode!}',
                     style: WerlogTextStyles.button.copyWith(fontSize: 13),
                   ),
                 ]),
               ),
             ),
           ),
-        ),
 
         // Saved indicator
         if (typeSaved) ...[
@@ -1486,11 +1597,16 @@ class _ExpenseTypeToggle extends StatelessWidget {
               border: Border.all(color: WerlogColors.teal.withOpacity(0.3)),
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.check_circle_rounded, color: WerlogColors.teal, size: 15),
+              const Icon(Icons.check_circle_rounded,
+                  color: WerlogColors.teal, size: 15),
               const SizedBox(width: 7),
-              Text('Saved — ${selected == 'PERSONAL' ? 'Personal' : 'Business'} · $selectedCurrencyCode',
-                  style: WerlogTextStyles.bodySmall.copyWith(
-                      fontSize: 12, color: WerlogColors.teal, fontWeight: FontWeight.w500)),
+              Text(
+                'Saved — ${selected == 'PERSONAL' ? 'Personal' : 'Business'}'
+                    '${selectedCurrencyCode != null ? ' · $selectedCurrencyCode' : ''}',
+                style: WerlogTextStyles.bodySmall.copyWith(
+                    fontSize: 12, color: WerlogColors.teal,
+                    fontWeight: FontWeight.w500),
+              ),
             ]),
           ),
         ],
@@ -1638,12 +1754,32 @@ class _LineItemRow extends StatelessWidget {
   const _LineItemRow({required this.item, this.isLast = false, this.currencyCode = ''});
 
   /// Prepends the currency code if the amount doesn't already start with it.
+  // String get _displayAmount {
+  //   final amt = item.amountFormatted.trim();
+  //   if (amt.isEmpty) return amt;
+  //   if (currencyCode.isEmpty) return amt;
+  //   // Avoid doubling e.g. "PKR PKR 1730.00"
+  //   if (amt.toUpperCase().startsWith(currencyCode.toUpperCase())) return amt;
+  //   return '$currencyCode $amt';
+  // }
   String get _displayAmount {
-    final amt = item.amountFormatted.trim();
+    var amt = item.amountFormatted.trim();
     if (amt.isEmpty) return amt;
+
+    // Remove currency code prefix if present
+    if (currencyCode.isNotEmpty) {
+      amt = amt.replaceFirst(
+        RegExp('^${RegExp.escape(currencyCode)}\\s*', caseSensitive: false), '',
+      ).trim();
+    }
+
+    // Always strip leading currency symbols ($, €, £, ₹, Rs. etc.)
+    amt = amt.replaceFirst(
+      RegExp(r'^(?:[$€£¥₹₨₩₽¢]|Rs\.?|৳|₺|₴)\s*'), '',
+    ).trim();
+
+    // Return with code prefix, or bare number if no code
     if (currencyCode.isEmpty) return amt;
-    // Avoid doubling e.g. "PKR PKR 1730.00"
-    if (amt.toUpperCase().startsWith(currencyCode.toUpperCase())) return amt;
     return '$currencyCode $amt';
   }
 

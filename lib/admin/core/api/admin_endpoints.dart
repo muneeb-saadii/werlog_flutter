@@ -1,17 +1,22 @@
-/// All admin-side API endpoint paths.
-/// Prefix with [AdminApiService.baseUrl] before use.
 class AdminEndpoints {
   AdminEndpoints._();
 
-  // ── Auth ──────────────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────────────────
   static const String login   = 'v1/auth/login';
   static const String refresh = 'v1/auth/refresh';
   static const String me      = 'v1/auth/me';
 
-  // ── Analytics ─────────────────────────────────────────────────────
-  static const String analyticsOverview = 'v1/admin/analytics/overview';
-  static const String analyticsSignups  = 'v1/admin/analytics/signups';
-  static const String analyticsOcrUsage = 'v1/admin/analytics/ocr-usage';
+  // ── Analytics ──────────────────────────────────────────────────────
+  static const String analyticsOverview  = 'v1/admin/analytics/overview';
+  static const String analyticsSignups   = 'v1/admin/analytics/signups';
+  static const String analyticsOcrUsage  = 'v1/admin/analytics/ocr-usage';
+  static const String analyticsTokenUsage = 'v1/admin/analytics/token-usage';   // NEW
+  static const String analyticsRevenue    = 'v1/admin/analytics/revenue';        // NEW
+  // per-user token usage
+  static const String analyticsAllUsersTokenUsage =
+      'v1/admin/analytics/users/token-usage';                                    // NEW
+  static String analyticsUserTokenUsage(String userId) =>
+      'v1/admin/analytics/users/$userId/token-usage';                            // NEW
 
   // ── Users ──────────────────────────────────────────────────────────
   static const String adminUsers = 'v1/admin/users';
@@ -22,8 +27,7 @@ class AdminEndpoints {
   static String adminUserImpersonate(String id)=> 'v1/admin/users/$id/impersonate';
   static String adminUserDelete(String id)     => 'v1/admin/users/$id';
 
-  // ── Subscription invoices ──────────────────────────────────────────
-  /// GET /admin/users/{userId}/subscription-invoices
+  // Subscription invoices
   static String adminUserSubscriptionInvoices(String userId) =>
       'v1/admin/users/$userId/subscription-invoices';
 

@@ -9,6 +9,13 @@ import '../widgets/status_badge.dart';
 import '../widgets/user_avatar.dart';
 import 'subscription_receipts_screen.dart';
 
+// ── Shared bar entry (reused from dashboard) ──────────────────────────────────
+class _BarEntry {
+  final String label;
+  final int    value;
+  const _BarEntry({required this.label, required this.value});
+}
+
 class UserDetailScreen extends StatefulWidget {
   final AdminUser user;
   const UserDetailScreen({super.key, required this.user});
@@ -21,28 +28,49 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
   bool    _actionLoading = false;
   String? _loadingAction;
-
-  // Local mutable copy so we can reflect refreshed state
   late AdminUser _user;
+
+  // ── Token usage ───────────────────────────────────────────────────────────
+  bool _tokenLoading    = true;
+  int  _thisMonthTokens = 0;
+  int  _totalTokens     = 0;
 
   @override
   void initState() {
     super.initState();
     _user = widget.user;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchTokenUsage());
   }
 
-  // ── Refresh user detail from API after any action ─────────────────────────
+  Future<void> _fetchTokenUsage() async {
+    setState(() => _tokenLoading = true);
+    try {
+      final resp = await AdminApiService.get(
+        context,
+        AdminEndpoints.analyticsUserTokenUsage(_user.id),
+        showLoader: false,
+      );
+      debugPrint('[UserDetail] tokenUsage => $resp');
+      if (!mounted) return;
+      if (resp != null) {
+        final d = resp['data'] as Map<String, dynamic>? ?? {};
+        _thisMonthTokens = (d['thisMonthTokens'] as num?)?.toInt() ?? 0;
+        _totalTokens     = (d['totalTokens']     as num?)?.toInt() ?? 0;
+      }
+    } catch (e) {
+      debugPrint('[UserDetail] tokenUsage error => $e');
+    } finally {
+      if (mounted) setState(() => _tokenLoading = false);
+    }
+  }
+
+  // ── Refresh user after action ─────────────────────────────────────────────
 
   Future<void> _refreshUser() async {
     try {
       final resp = await AdminApiService.get(
-        context,
-        AdminEndpoints.adminUserDetail(_user.id),
-        showLoader: false,
-      );
-      debugPrint('[UserDetail] refresh => $resp');
+          context, AdminEndpoints.adminUserDetail(_user.id), showLoader: false);
       if (!mounted || resp == null) return;
-
       final raw = (resp['data'] as Map<String, dynamic>?) ?? resp;
       UserStatus status;
       switch ((raw['status'] ?? '').toString().toUpperCase()) {
@@ -73,7 +101,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       });
     } catch (e) {
       debugPrint('[UserDetail] refresh error => $e');
-      // Non-fatal: we still have the pre-action state visible
     }
   }
 
@@ -82,38 +109,29 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     try { return DateTime.parse(v.toString()); } catch (_) { return null; }
   }
 
-  // ── Generic action helper ─────────────────────────────────────────────────
-
   Future<void> _callAction(
       String label,
-      Future<Map<String, dynamic>?> Function() call,
-      ) async {
+      Future<Map<String, dynamic>?> Function() call) async {
     setState(() { _actionLoading = true; _loadingAction = label; });
     try {
       final resp = await call();
-      debugPrint('[UserDetail] $label response => $resp');
       if (!mounted) return;
-
-      final ok = resp != null &&
-          (resp['result']?.toString() == '1' ||
+      final ok = resp != null && (
+          resp['result']?.toString() == '1' ||
               resp['status']?.toString().toLowerCase() == 'success');
-
       if (ok) {
         AdminApiService.showSuccess(context, '$label successful');
-        await _refreshUser(); // ← re-fetch and re-render
+        await _refreshUser();
       } else {
         AdminApiService.showError(context,
             resp?['message']?.toString() ?? '$label failed');
       }
     } catch (e) {
-      debugPrint('[UserDetail] $label error => $e');
       if (mounted) AdminApiService.showError(context, '$label failed');
     } finally {
       if (mounted) setState(() { _actionLoading = false; _loadingAction = null; });
     }
   }
-
-  // ── Grant plan dialog ─────────────────────────────────────────────────────
 
   void _grantPlan() {
     String selectedPlan = 'PRO';
@@ -126,29 +144,24 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         content: StatefulBuilder(
           builder: (_, setSt) => Column(
             mainAxisSize: MainAxisSize.min,
-            children: ['FREE', 'PRO', 'BUSINESS'].map((p) =>
-                RadioListTile<String>(
-                  title: Text(p, style: AppTextStyles.rowValue),
-                  value: p, groupValue: selectedPlan,
-                  activeColor: AppColors.accentGreen,
-                  onChanged: (v) { if (v != null) setSt(() => selectedPlan = v); },
-                ),
-            ).toList(),
+            children: ['FREE','PRO','BUSINESS'].map((p) => RadioListTile<String>(
+              title: Text(p, style: AppTextStyles.rowValue),
+              value: p, groupValue: selectedPlan,
+              activeColor: AppColors.accentGreen,
+              onChanged: (v) { if (v != null) setSt(() => selectedPlan = v); },
+            )).toList(),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dlg).pop(),
-            child: Text('Cancel', style: AppTextStyles.actionButton
-                .copyWith(color: AppColors.textSecondary)),
-          ),
+          TextButton(onPressed: () => Navigator.of(dlg).pop(),
+              child: Text('Cancel', style: AppTextStyles.actionButton
+                  .copyWith(color: AppColors.textSecondary))),
           ElevatedButton(
             onPressed: () {
               Navigator.of(dlg).pop();
-              _callAction('Grant $selectedPlan', () =>
-                  AdminApiService.post(ctx,
-                      AdminEndpoints.adminUserGrantPlan(_user.id),
-                      body: {'planCode': selectedPlan}, showLoader: false));
+              _callAction('Grant $selectedPlan', () => AdminApiService.post(ctx,
+                  AdminEndpoints.adminUserGrantPlan(_user.id),
+                  body: {'planCode': selectedPlan}, showLoader: false));
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.darkGreen, elevation: 0,
@@ -163,69 +176,23 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     );
   }
 
-  // ── Impersonate dialog ────────────────────────────────────────────────────
-
-  void _impersonate() {
-    final ctx = context;
-    showDialog(
-      context: context,
-      builder: (dlg) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Impersonate ${_user.name}?', style: AppTextStyles.cardTitle),
-        content: Text(
-            'You will act as this user in the system. '
-                'All actions will be logged in the audit trail.',
-            style: AppTextStyles.rowLabel),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dlg).pop(),
-            child: Text('Cancel', style: AppTextStyles.actionButton
-                .copyWith(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(dlg).pop();
-              _callAction('Impersonate', () =>
-                  AdminApiService.post(ctx,
-                      AdminEndpoints.adminUserImpersonate(_user.id),
-                      showLoader: false));
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkGreen, elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20))),
-            child: const Text('Impersonate', style: TextStyle(
-                fontFamily: 'DMSans', fontWeight: FontWeight.w700,
-                color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Suspend / Reactivate dialog ───────────────────────────────────────────
-
   void _toggleSuspend() {
     final isSuspended = _user.status == UserStatus.suspended;
-    final action      = isSuspended ? 'Reactivate' : 'Suspend';
+    final action = isSuspended ? 'Reactivate' : 'Suspend';
     final ctx = context;
     showDialog(
       context: context,
       builder: (dlg) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('$action ${_user.name}?', style: AppTextStyles.cardTitle),
-        content: Text(
-            isSuspended
-                ? 'This will restore the user\'s access to the platform.'
-                : 'This will block the user\'s access. '
-                'This action is logged in the audit trail.',
+        content: Text(isSuspended
+            ? 'Restore the user\'s access to the platform.'
+            : 'Block the user\'s access. Logged in the audit trail.',
             style: AppTextStyles.rowLabel),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dlg).pop(),
-            child: Text('Cancel', style: AppTextStyles.actionButton
-                .copyWith(color: AppColors.textSecondary)),
-          ),
+          TextButton(onPressed: () => Navigator.of(dlg).pop(),
+              child: Text('Cancel', style: AppTextStyles.actionButton
+                  .copyWith(color: AppColors.textSecondary))),
           ElevatedButton(
             onPressed: () {
               Navigator.of(dlg).pop();
@@ -250,7 +217,8 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     );
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  static String _fmtNum(int n) =>
+      n >= 1000 ? '${(n/1000).toStringAsFixed(1)}K' : '$n';
 
   @override
   Widget build(BuildContext context) {
@@ -264,9 +232,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           padding: const EdgeInsets.only(bottom: 40),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
 
-            // ── Header ────────────────────────────────────────────────────
             _DetailHeader(user: _user),
-
             const SizedBox(height: 12),
 
             Padding(
@@ -276,50 +242,59 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
 
-                  // Profile card floats out of header
                   Transform.translate(
                     offset: const Offset(0, -5),
                     child: _ProfileCard(user: _user),
                   ),
 
                   const SizedBox(height: AppMetrics.gapMd),
-
                   _DetailsCard(user: _user),
 
+                  // ── Token consumption ──────────────────────────────────
                   const SizedBox(height: AppMetrics.gapLg),
+                  const Text('TOKEN CONSUMPTION',
+                      style: AppTextStyles.sectionLabel),
+                  const SizedBox(height: 12),
 
-                  // ── Actions label ──────────────────────────────────────
+                  _tokenLoading
+                      ? const Center(child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(
+                          color: AppColors.accentGreen, strokeWidth: 2)))
+                      : _TokenCard(
+                    thisMonth: _thisMonthTokens,
+                    total:     _totalTokens,
+                  ),
+
+                  // ── Actions ────────────────────────────────────────────
+                  const SizedBox(height: AppMetrics.gapLg),
                   const Text('ACTIONS', style: AppTextStyles.sectionLabel),
                   const SizedBox(height: 12),
 
-                  // Row 1: Grant plan + Suspend/Reactivate
                   Row(children: [
                     Expanded(child: _ActionButton(
-                      label:   'Grant plan',
-                      icon:    Icons.card_membership_rounded,
+                      label: 'Grant plan',
+                      icon:  Icons.card_membership_rounded,
                       loading: _loadingAction == 'Grant PRO' ||
                           _loadingAction == 'Grant FREE' ||
                           _loadingAction == 'Grant BUSINESS',
-                      onTap:   _actionLoading ? null : _grantPlan,
+                      onTap: _actionLoading ? null : _grantPlan,
                     )),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: _ActionButton(
-                        label:   isSuspended ? 'Reactivate user' : 'Suspend user',
-                        icon:    isSuspended
-                            ? Icons.check_circle_outline_rounded
-                            : Icons.pause_circle_outline_rounded,
-                        danger:  !isSuspended,
-                        loading: _loadingAction == 'Suspend' ||
-                            _loadingAction == 'Reactivate',
-                        onTap:   _actionLoading ? null : _toggleSuspend,
-                      ),
-                    ),
+                    Expanded(child: _ActionButton(
+                      label:   isSuspended ? 'Reactivate user' : 'Suspend user',
+                      icon:    isSuspended
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.pause_circle_outline_rounded,
+                      danger:  !isSuspended,
+                      loading: _loadingAction == 'Suspend' ||
+                          _loadingAction == 'Reactivate',
+                      onTap:   _actionLoading ? null : _toggleSuspend,
+                    )),
                   ]),
 
+                  // ── Billing ────────────────────────────────────────────
                   const SizedBox(height: 20),
-
-                  // ── Payment Receipts ───────────────────────────────────
                   const Text('BILLING', style: AppTextStyles.sectionLabel),
                   const SizedBox(height: 12),
 
@@ -334,7 +309,69 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// ── Token card ────────────────────────────────────────────────────────────────
+
+class _TokenCard extends StatelessWidget {
+  final int thisMonth, total;
+  const _TokenCard({required this.thisMonth, required this.total});
+
+  static String _fmt(int n) =>
+      n >= 1000 ? '${(n/1000).toStringAsFixed(1)}K' : '$n';
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.cardWhite,
+      borderRadius: BorderRadius.circular(AppMetrics.cardRadius),
+      boxShadow: [BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 8, offset: const Offset(0, 2))],
+    ),
+    child: Row(children: [
+      Expanded(child: _TokenMetric(
+        label: 'This month',
+        value: _fmt(thisMonth),
+        icon: Icons.calendar_today_rounded,
+        color: const Color(0xFF6C8EF5),
+      )),
+      Container(width: 1, height: 48, color: AppColors.divider),
+      Expanded(child: _TokenMetric(
+        label: 'All time',
+        value: _fmt(total),
+        icon: Icons.bolt_rounded,
+        color: AppColors.accentGreen,
+      )),
+    ]),
+  );
+}
+
+class _TokenMetric extends StatelessWidget {
+  final String label, value;
+  final IconData icon;
+  final Color color;
+  const _TokenMetric({required this.label, required this.value,
+    required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Container(
+      width: 36, height: 36,
+      decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          shape: BoxShape.circle),
+      child: Icon(icon, color: color, size: 18),
+    ),
+    const SizedBox(height: 8),
+    Text(value, style: TextStyle(
+        fontFamily: 'DMSans', fontSize: 20,
+        fontWeight: FontWeight.w700, color: color)),
+    const SizedBox(height: 2),
+    Text(label, style: AppTextStyles.footerNote.copyWith(fontSize: 11)),
+  ]);
+}
+
+// ── Existing widgets (unchanged) ──────────────────────────────────────────────
 
 class _DetailHeader extends StatelessWidget {
   final AdminUser user;
@@ -354,13 +391,10 @@ class _DetailHeader extends StatelessWidget {
         icon: const Icon(Icons.chevron_left_rounded,
             color: Colors.white, size: 26),
       ),
-      Expanded(child: Text('User details',
-          style: AppTextStyles.headerTitle)),
+      Expanded(child: Text('User details', style: AppTextStyles.headerTitle)),
     ]),
   );
 }
-
-// ── Profile card ──────────────────────────────────────────────────────────────
 
 class _ProfileCard extends StatelessWidget {
   final AdminUser user;
@@ -372,8 +406,7 @@ class _ProfileCard extends StatelessWidget {
     decoration: BoxDecoration(
         color: AppColors.cardWhite,
         borderRadius: BorderRadius.circular(AppMetrics.cardRadius),
-        boxShadow: [BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
             blurRadius: 10, offset: const Offset(0, 3))]),
     child: Column(children: [
       UserAvatar(initials: user.initials, color: user.avatarColor, size: 76),
@@ -391,8 +424,6 @@ class _ProfileCard extends StatelessWidget {
   );
 }
 
-// ── Details card ──────────────────────────────────────────────────────────────
-
 class _DetailsCard extends StatelessWidget {
   final AdminUser user;
   const _DetailsCard({required this.user});
@@ -400,30 +431,32 @@ class _DetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <(String, String)>[
-      ('Role',         user.role.isNotEmpty ? user.role : '—'),
-      ('Plan',         user.subscriptionSummary),
-      ('Last login',   user.lastLoginLabel),
-      ('Joined',       user.joinedLabel),
-      ('User ID',      user.shortId),
+      ('Role',       user.role.isNotEmpty ? user.role : '—'),
+      ('Plan',       user.subscriptionSummary),
+      ('Last login', user.lastLoginLabel),
+      ('Joined',     user.joinedLabel),
+      ('User ID',    user.shortId),
     ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       decoration: BoxDecoration(
           color: AppColors.cardWhite,
           borderRadius: BorderRadius.circular(AppMetrics.cardRadius),
-          boxShadow: [BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
               blurRadius: 8, offset: const Offset(0, 2))]),
       child: Column(
         children: List.generate(rows.length, (i) => Column(children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(rows[i].$1, style: AppTextStyles.rowLabel),
-              Flexible(child: Text(rows[i].$2,
-                  style: AppTextStyles.rowValue,
-                  textAlign: TextAlign.right)),
-            ]),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(rows[i].$1, style: AppTextStyles.rowLabel),
+                Flexible(child: Text(rows[i].$2,
+                    style: AppTextStyles.rowValue,
+                    textAlign: TextAlign.right)),
+              ],
+            ),
           ),
           if (i < rows.length - 1)
             const Divider(height: 1, color: AppColors.divider),
@@ -432,8 +465,6 @@ class _DetailsCard extends StatelessWidget {
     );
   }
 }
-
-// ── Action button ─────────────────────────────────────────────────────────────
 
 class _ActionButton extends StatelessWidget {
   final String label;
@@ -471,19 +502,14 @@ class _ActionButton extends StatelessWidget {
           Icon(icon, size: 16,
               color: danger ? AppColors.dangerRed : AppColors.textPrimary),
           const SizedBox(width: 7),
-          Text(label,
-              style: danger
-                  ? AppTextStyles.actionButtonDanger
-                  : AppTextStyles.actionButton),
+          Text(label, style: danger
+              ? AppTextStyles.actionButtonDanger
+              : AppTextStyles.actionButton),
         ]),
       ),
     ),
   );
 }
-
-// ── Invoices entry card ───────────────────────────────────────────────────────
-// Tapping this fetches subscription invoices for this specific user
-// then pushes the detail screen from subscription_receipts_screen.dart.
 
 class _InvoicesEntryCard extends StatefulWidget {
   final AdminUser user;
@@ -494,7 +520,6 @@ class _InvoicesEntryCard extends StatefulWidget {
 }
 
 class _InvoicesEntryCardState extends State<_InvoicesEntryCard> {
-
   bool _loading = false;
 
   Future<void> _viewInvoices() async {
@@ -505,9 +530,7 @@ class _InvoicesEntryCardState extends State<_InvoicesEntryCard> {
         AdminEndpoints.adminUserSubscriptionInvoices(widget.user.id),
         showLoader: false,
       );
-      debugPrint('[UserDetail] invoices => $resp');
       if (!mounted) return;
-
       if (resp != null && resp['result']?.toString() == '1') {
         final record = UserReceiptData.fromJson(
             resp['data'] as Map<String, dynamic>);
@@ -518,7 +541,6 @@ class _InvoicesEntryCardState extends State<_InvoicesEntryCard> {
             resp?['message']?.toString() ?? 'Failed to load invoices');
       }
     } catch (e) {
-      debugPrint('[UserDetail] invoices error => $e');
       if (mounted) AdminApiService.showError(context, 'Failed to load invoices');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -549,30 +571,20 @@ class _InvoicesEntryCardState extends State<_InvoicesEntryCard> {
             Container(
               width: 36, height: 36,
               decoration: BoxDecoration(
-                color: isPaid ? AppColors.activeBg : AppColors.deletedBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.receipt_long_rounded,
-                  size: 18,
-                  color: isPaid
-                      ? AppColors.activeText
-                      : AppColors.textSecondary),
+                  color: isPaid ? AppColors.activeBg : AppColors.deletedBg,
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(Icons.receipt_long_rounded, size: 18,
+                  color: isPaid ? AppColors.activeText : AppColors.textSecondary),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Payment Receipts',
-                    style: AppTextStyles.actionButton),
-                const SizedBox(height: 2),
-                Text(
-                  isPaid
-                      ? 'View subscription invoices for ${widget.user.plan.label}'
-                      : 'No paid subscription',
-                  style: AppTextStyles.emailSubtle.copyWith(fontSize: 12),
-                ),
-              ],
-            )),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Payment Receipts', style: AppTextStyles.actionButton),
+              const SizedBox(height: 2),
+              Text(isPaid
+                  ? 'View subscription invoices for ${widget.user.plan.label}'
+                  : 'No paid subscription',
+                  style: AppTextStyles.emailSubtle.copyWith(fontSize: 12)),
+            ])),
             _loading
                 ? const SizedBox(width: 18, height: 18,
                 child: CircularProgressIndicator(

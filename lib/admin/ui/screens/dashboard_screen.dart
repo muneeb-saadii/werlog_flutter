@@ -9,6 +9,14 @@ import '../../core/theme/app_theme.dart';
 import '../widgets/admin_bottom_nav.dart';
 import '../widgets/stat_card.dart';
 
+// ── Shared chart entry model ──────────────────────────────────────────────────
+
+class _BarEntry {
+  final String label;
+  final int    value;
+  const _BarEntry({required this.label, required this.value});
+}
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -18,10 +26,17 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
 
-  bool            _loading  = true;
+  bool            _loading = true;
   DashboardStats? _stats;
-  List<_SignupEntry> _signups = [];
   String          _adminName = 'Admin';
+
+  List<_BarEntry> _signups     = [];
+  List<_BarEntry> _tokens      = [];   // monthly token total
+  List<_BarEntry> _revenue     = [];   // monthly revenue (cents → display)
+  List<_BarEntry> _invoiceCounts = []; // from overview invoicesLast30Days fallback
+
+  int  _totalTokens  = 0;
+  int  _totalRevCents = 0;
 
   @override
   void initState() {
@@ -41,52 +56,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _fetch() async {
     setState(() => _loading = true);
     try {
-      final overview = await AdminApiService.get(
-          context, AdminEndpoints.analyticsOverview, showLoader: false);
-      debugPrint('[Dashboard] overview => $overview');
-
-      final signupsResp = await AdminApiService.get(
-        context, AdminEndpoints.analyticsSignups,
-        queryParams: {'days': '30'}, showLoader: false,
-      );
-      debugPrint('[Dashboard] signups => $signupsResp');
+      final results = await Future.wait([
+        AdminApiService.get(context, AdminEndpoints.analyticsOverview,  showLoader: false),
+        AdminApiService.get(context, AdminEndpoints.analyticsSignups,
+            queryParams: {'days': '30'}, showLoader: false),
+        AdminApiService.get(context, AdminEndpoints.analyticsTokenUsage,
+            queryParams: {'months': '12'}, showLoader: false),
+        AdminApiService.get(context, AdminEndpoints.analyticsRevenue,
+            queryParams: {'months': '12'}, showLoader: false),
+      ]);
 
       if (!mounted) return;
 
+      // ── Overview ─────────────────────────────────────────────────────
+      final overview = results[0];
       if (overview != null) {
-        // Handle both root-level and nested data key
         final d = (overview['data'] is Map<String, dynamic>)
             ? overview['data'] as Map<String, dynamic>
             : overview;
         _stats = DashboardStats(
-          pendingJobs:         _int(d['pendingJobs'])         ?? _int(d['pending_jobs'])        ?? 0,
-          failedJobs:          _int(d['failedJobs'])          ?? _int(d['failed_jobs'])         ?? 0,
-          mrrUsd:              _int(d['mrrUsd'])              ?? _int(d['mrr'])                 ?? 0,
-          totalUsers:          _int(d['totalUsers'])          ?? _int(d['total_users'])         ?? 0,
-          newUsersThisMonth:   _int(d['newUsersThisMonth'])   ?? _int(d['new_users_this_month'])?? 0,
-          activeUsers:         _int(d['activeUsers'])         ?? _int(d['active_users'])        ?? 0,
-          activeUsersPercent:  _dbl(d['activeUsersPercent'])  ?? _dbl(d['active_users_pct'])    ?? 0,
-          totalInvoices:       _int(d['totalInvoices'])       ?? _int(d['total_invoices'])      ?? 0,
-          invoicesLast30Days:  _int(d['invoicesLast30Days'])  ?? _int(d['invoices_last_30'])    ?? 0,
-          activeSubscriptions: _int(d['activeSubscriptions']) ?? _int(d['active_subs'])         ?? 0,
+          pendingJobs:         _int(d['pendingJobs'])         ?? 0,
+          failedJobs:          _int(d['failedJobs'])          ?? 0,
+          mrrUsd:              _int(d['mrrUsd'])              ?? 0,
+          totalUsers:          _int(d['totalUsers'])          ?? 0,
+          newUsersThisMonth:   _int(d['newUsersThisMonth'])   ?? 0,
+          activeUsers:         _int(d['activeUsers'])         ?? 0,
+          activeUsersPercent:  _dbl(d['activeUsersPercent'])  ?? 0,
+          totalInvoices:       _int(d['totalInvoices'])       ?? 0,
+          invoicesLast30Days:  _int(d['invoicesLast30Days'])  ?? 0,
+          activeSubscriptions: _int(d['activeSubscriptions']) ?? 0,
           signupsLast30Days:   [],
           unreadNotifications: _int(d['unreadNotifications']) ?? 0,
         );
       }
 
-      if (signupsResp != null) {
-        // API may return list of {date, count} maps or plain ints
-        final raw = signupsResp['data'] as List<dynamic>?
-            ?? signupsResp['signups'] as List<dynamic>?
-            ?? [];
+      // ── Signups ──────────────────────────────────────────────────────
+      final signupsR = results[1];
+      if (signupsR != null) {
+        final raw = (signupsR['data'] as List<dynamic>?)
+            ?? (signupsR['signups'] as List<dynamic>?) ?? [];
         _signups = raw.map((e) {
           if (e is Map) {
-            final count = _int(e['count']) ?? _int(e['signups']) ?? 0;
-            final date  = e['date']?.toString() ?? e['day']?.toString() ?? '';
-            return _SignupEntry(count: count, date: date);
+            return _BarEntry(
+              label: _shortDate(e['date']?.toString() ?? e['day']?.toString() ?? ''),
+              value: _int(e['count']) ?? _int(e['signups']) ?? 0,
+            );
           }
-          return _SignupEntry(count: (e as num?)?.toInt() ?? 0, date: '');
+          return _BarEntry(label: '', value: (e as num?)?.toInt() ?? 0);
         }).toList();
+      }
+
+      // ── Token usage ───────────────────────────────────────────────────
+      // Response: { data: { totalTokens, monthly: [{month, totalTokens, ...}] } }
+      final tokenR = results[2];
+      if (tokenR != null) {
+        final d = tokenR['data'] as Map<String, dynamic>?;
+        if (d != null) {
+          _totalTokens = _int(d['totalTokens']) ?? 0;
+          final monthly = d['monthly'] as List<dynamic>? ?? [];
+          _tokens = monthly.map((e) => _BarEntry(
+            label: _shortMonth(e['month']?.toString() ?? ''),
+            value: _int(e['totalTokens']) ?? 0,
+          )).toList();
+        }
+      }
+
+      // ── Revenue ───────────────────────────────────────────────────────
+      // Response: { data: { totalRevenueCents, monthly: [{month, revenueCents}] } }
+      final revR = results[3];
+      if (revR != null) {
+        final d = revR['data'] as Map<String, dynamic>?;
+        if (d != null) {
+          _totalRevCents = _int(d['totalRevenueCents']) ?? 0;
+          final monthly = d['monthly'] as List<dynamic>? ?? [];
+          _revenue = monthly.map((e) => _BarEntry(
+            label: _shortMonth(e['month']?.toString() ?? ''),
+            value: _int(e['revenueCents']) ?? _int(e['revenue']) ?? 0,
+          )).toList();
+        }
       }
 
     } catch (e) {
@@ -97,16 +144,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // ── helpers ───────────────────────────────────────────────────────────────
+
   static int? _int(dynamic v) => v == null ? null : (v as num?)?.toInt();
   static double? _dbl(dynamic v) => v == null ? null : (v as num?)?.toDouble();
-
   static String _fmt(int n) => n >= 1000 ? '${(n/1000).toStringAsFixed(1)}K' : '$n';
+
+  static String _shortDate(String s) {
+    try {
+      final d = DateTime.parse(s);
+      return '${d.day}/${d.month}';
+    } catch (_) { return s; }
+  }
+
+  static String _shortMonth(String s) {
+    // s = "2026-10"
+    try {
+      final parts = s.split('-');
+      if (parts.length < 2) return s;
+      const months = ['','Jan','Feb','Mar','Apr','May','Jun',
+        'Jul','Aug','Sep','Oct','Nov','Dec'];
+      final m = int.tryParse(parts[1]) ?? 0;
+      return m > 0 && m <= 12 ? months[m] : s;
+    } catch (_) { return s; }
+  }
 
   String get _greeting {
     final h = DateTime.now().hour;
     if (h < 12) return 'Good morning';
     if (h < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  String get _revenueLabel {
+    final dollars = _totalRevCents / 100;
+    return dollars >= 1000
+        ? '\$${(dollars/1000).toStringAsFixed(1)}K'
+        : '\$${dollars.toStringAsFixed(0)}';
   }
 
   @override
@@ -120,76 +194,132 @@ class _DashboardScreenState extends State<DashboardScreen> {
         body: SafeArea(
           bottom: false,
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
+              ? const Center(child: CircularProgressIndicator(
+              color: AppColors.accentGreen))
               : RefreshIndicator(
             onRefresh: _fetch,
             color: AppColors.accentGreen,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                _Header(greeting: _greeting, adminName: _adminName),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppMetrics.pagePadding, 0,
-                      AppMetrics.pagePadding, 0),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              padding: const EdgeInsets.only(bottom: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
 
-                    // System pulse card — lifted out of header
-                    Transform.translate(
-                      offset: const Offset(0, -20),
-                      child: _SystemPulseCard(
-                        pending: s?.pendingJobs ?? 0,
-                        failed:  s?.failedJobs  ?? 0,
-                        mrr:     s?.mrrUsd      ?? 0,
-                      ),
+                  _Header(greeting: _greeting, adminName: _adminName),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppMetrics.pagePadding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+
+                        // System pulse
+                        Transform.translate(
+                          offset: const Offset(0, -20),
+                          child: _SystemPulseCard(
+                            pending: s?.pendingJobs ?? 0,
+                            failed:  s?.failedJobs  ?? 0,
+                            mrr:     s?.mrrUsd      ?? 0,
+                          ),
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        // Row 1 — users
+                        Row(children: [
+                          Expanded(child: StatCard(
+                            value: _fmt(s?.totalUsers ?? 0),
+                            label: 'Total users',
+                            delta: '↑ ${s?.newUsersThisMonth ?? 0} this month',
+                          )),
+                          const SizedBox(width: AppMetrics.gapMd),
+                          Expanded(child: StatCard(
+                            value: _fmt(s?.activeUsers ?? 0),
+                            label: 'Active users',
+                            delta: '${s?.activeUsersPercent.toStringAsFixed(1) ?? '0'}% active',
+                          )),
+                        ]),
+
+                        const SizedBox(height: AppMetrics.gapMd),
+
+                        // Row 2 — invoices + subscriptions
+                        Row(children: [
+                          Expanded(child: StatCard(
+                            value: _fmt(s?.totalInvoices ?? 0),
+                            label: 'Total invoices',
+                            delta: '↑ ${s?.invoicesLast30Days ?? 0} / 30d',
+                          )),
+                          const SizedBox(width: AppMetrics.gapMd),
+                          Expanded(child: StatCard(
+                            value: '${s?.activeSubscriptions ?? 0}',
+                            label: 'Active subs',
+                            delta: 'paid plans',
+                            deltaColor: AppColors.textPrimary,
+                          )),
+                        ]),
+
+                        const SizedBox(height: AppMetrics.gapMd),
+
+                        // Row 3 — tokens + revenue
+                        Row(children: [
+                          Expanded(child: StatCard(
+                            value: _fmt(_totalTokens),
+                            label: 'Total tokens',
+                            delta: 'all time',
+                            deltaColor: AppColors.textSecondary,
+                          )),
+                          const SizedBox(width: AppMetrics.gapMd),
+                          Expanded(child: StatCard(
+                            value: _revenueLabel,
+                            label: 'Total revenue',
+                            delta: 'all time',
+                            deltaColor: AppColors.textSecondary,
+                          )),
+                        ]),
+
+                        // ── Signups chart ──────────────────────────
+                        if (_signups.isNotEmpty) ...[
+                          const SizedBox(height: AppMetrics.gapMd),
+                          _ChartCard(
+                            title: 'Signups',
+                            subtitle: '${_signups.length} days',
+                            entries: _signups,
+                            color: AppColors.accentGreen,
+                          ),
+                        ],
+
+                        // ── Token consumption chart ────────────────
+                        if (_tokens.isNotEmpty) ...[
+                          const SizedBox(height: AppMetrics.gapMd),
+                          _ChartCard(
+                            title: 'Token consumption',
+                            subtitle: 'monthly · last 12 mo',
+                            entries: _tokens,
+                            color: const Color(0xFF6C8EF5),
+                          ),
+                        ],
+
+                        // ── Revenue chart ──────────────────────────
+                        if (_revenue.isNotEmpty) ...[
+                          const SizedBox(height: AppMetrics.gapMd),
+                          _ChartCard(
+                            title: 'Revenue',
+                            subtitle: 'monthly · last 12 mo · USD',
+                            entries: _revenue,
+                            color: const Color(0xFFE89A3C),
+                            valueFormatter: (v) =>
+                            '\$${(v / 100).toStringAsFixed(0)}',
+                          ),
+                        ],
+
+                        const SizedBox(height: AppMetrics.gapMd),
+                      ],
                     ),
-
-                    const SizedBox(height: 4),
-
-                    // Stat cards row 1
-                    Row(children: [
-                      Expanded(child: StatCard(
-                        value: _fmt(s?.totalUsers ?? 0),
-                        label: 'Total users',
-                        delta: '↑ ${s?.newUsersThisMonth ?? 0} this month',
-                      )),
-                      const SizedBox(width: AppMetrics.gapMd),
-                      Expanded(child: StatCard(
-                        value: _fmt(s?.activeUsers ?? 0),
-                        label: 'Active users',
-                        delta: '${s?.activeUsersPercent.toStringAsFixed(1) ?? '0'}% active',
-                      )),
-                    ]),
-
-                    const SizedBox(height: AppMetrics.gapMd),
-
-                    // Stat cards row 2
-                    Row(children: [
-                      Expanded(child: StatCard(
-                        value: _fmt(s?.totalInvoices ?? 0),
-                        label: 'Total invoices',
-                        delta: '↑ ${s?.invoicesLast30Days ?? 0} / 30d',
-                      )),
-                      const SizedBox(width: AppMetrics.gapMd),
-                      Expanded(child: StatCard(
-                        value: '${s?.activeSubscriptions ?? 0}',
-                        label: 'Active subscriptions',
-                        delta: 'paid plans',
-                        deltaColor: AppColors.textPrimary,
-                      )),
-                    ]),
-
-                    // Signups chart
-                    if (_signups.isNotEmpty) ...[
-                      const SizedBox(height: AppMetrics.gapMd),
-                      _SignupsCard(entries: _signups),
-                    ],
-
-                    const SizedBox(height: AppMetrics.gapMd),
-                  ]),
-                ),
-              ]),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -198,23 +328,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ── Data model for a signup entry ─────────────────────────────────────────────
-
-class _SignupEntry {
-  final int    count;
-  final String date; // e.g. "2026-09-01"
-  const _SignupEntry({required this.count, required this.date});
-
-  String get shortLabel {
-    if (date.isEmpty) return '';
-    try {
-      final d = DateTime.parse(date);
-      return '${d.day}/${d.month}';
-    } catch (_) { return date; }
-  }
-}
-
-// ── Header ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  WIDGETS
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
   final String greeting, adminName;
@@ -241,8 +357,6 @@ class _Header extends StatelessWidget {
     ]),
   );
 }
-
-// ── System pulse card ─────────────────────────────────────────────────────────
 
 class _SystemPulseCard extends StatelessWidget {
   final int pending, failed, mrr;
@@ -276,10 +390,10 @@ class _SystemPulseCard extends StatelessWidget {
       Row(children: [
         _Metric(value: '$pending', label: 'Pending jobs'),
         const SizedBox(width: 28),
-        _Metric(value: '$failed', label: 'Failed jobs',
+        _Metric(value: '$failed',  label: 'Failed jobs',
             color: AppColors.failedHighlight),
         const SizedBox(width: 28),
-        _Metric(value: '\$$mrr', label: 'MRR'),
+        _Metric(value: '\$$mrr',   label: 'MRR'),
       ]),
     ]),
   );
@@ -302,85 +416,101 @@ class _Metric extends StatelessWidget {
   );
 }
 
-// ── Signups card with labelled bar chart ──────────────────────────────────────
+// ── Reusable chart card ───────────────────────────────────────────────────────
 
-class _SignupsCard extends StatelessWidget {
-  final List<_SignupEntry> entries;
-  const _SignupsCard({required this.entries});
+class _ChartCard extends StatelessWidget {
+  final String   title;
+  final String   subtitle;
+  final List<_BarEntry> entries;
+  final Color    color;
+  final String Function(int)? valueFormatter;
+
+  const _ChartCard({
+    required this.title,
+    required this.subtitle,
+    required this.entries,
+    required this.color,
+    this.valueFormatter,
+  });
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-        color: AppColors.cardWhite,
-        borderRadius: BorderRadius.circular(AppMetrics.cardRadius),
-        boxShadow: [BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8, offset: const Offset(0, 2))]),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Widget build(BuildContext context) {
+    final total = entries.fold(0, (s, e) => s + e.value);
+    final peak  = entries.isEmpty ? 0
+        : entries.map((e) => e.value).reduce((a, b) => a > b ? a : b);
+    final fmt   = valueFormatter ?? (v) => v >= 1000
+        ? '${(v/1000).toStringAsFixed(1)}K' : '$v';
 
-      // Header row
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Signups', style: AppTextStyles.cardTitle),
-          const SizedBox(height: 2),
-          Text(
-            'Total: ${entries.fold(0, (s, e) => s + e.count)} '
-                '· Peak: ${entries.isEmpty ? 0 : entries.map((e) => e.count).reduce((a,b)=>a>b?a:b)}',
-            style: AppTextStyles.footerNote.copyWith(
-                color: AppColors.textSecondary, fontSize: 11),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+          color: AppColors.cardWhite,
+          borderRadius: BorderRadius.circular(AppMetrics.cardRadius),
+          boxShadow: [BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8, offset: const Offset(0, 2))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+
+        Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: AppTextStyles.cardTitle),
+              const SizedBox(height: 2),
+              Text(
+                'Total: ${fmt(total)} · Peak: ${fmt(peak)}',
+                style: AppTextStyles.footerNote.copyWith(
+                    color: AppColors.textSecondary, fontSize: 11),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(20)),
+            child: Text(subtitle, style: AppTextStyles.footerNote),
           ),
         ]),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(20)),
-          child: Text('${entries.length} days',
-              style: AppTextStyles.footerNote),
-        ),
+
+        const SizedBox(height: 16),
+        _LabelledBarChart(entries: entries, color: color,
+            valueFormatter: valueFormatter),
       ]),
-
-      const SizedBox(height: 16),
-
-      // Bar chart with labels
-      _LabelledBarChart(entries: entries),
-    ]),
-  );
+    );
+  }
 }
 
-// ── Labelled bar chart ────────────────────────────────────────────────────────
-
 class _LabelledBarChart extends StatelessWidget {
-  final List<_SignupEntry> entries;
-  final double barHeight;
-
-  const _LabelledBarChart({required this.entries, this.barHeight = 100});
+  final List<_BarEntry> entries;
+  final Color color;
+  final String Function(int)? valueFormatter;
+  const _LabelledBarChart({required this.entries, required this.color,
+    this.valueFormatter});
 
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) return const SizedBox.shrink();
-
-    final maxVal = entries.map((e) => e.count).reduce((a,b)=>a>b?a:b);
-    // Show labels only every N bars to avoid crowding
+    final maxVal = entries.map((e) => e.value).reduce((a,b)=>a>b?a:b);
+    if (maxVal == 0) return _emptyLabel();
     final showEvery = entries.length > 14 ? 7 : entries.length > 7 ? 3 : 1;
 
     return Column(children: [
-      // Bars
       SizedBox(
-        height: barHeight,
+        height: 100,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: entries.asMap().entries.map((e) {
-            final fraction = maxVal == 0 ? 0.0 : e.value.count / maxVal;
-            final isHighest = e.value.count == maxVal;
+            final frac = maxVal == 0 ? 0.0 : e.value.value / maxVal;
+            final isTop = e.value.value == maxVal;
             return Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Tooltip(
-                  message: '${e.value.shortLabel}: ${e.value.count}',
+                  message: '${e.value.label}: ${e.value.value}',
                   child: FractionallySizedBox(
-                    heightFactor: 0.12 + fraction * 0.88,
+                    heightFactor: 0.12 + frac * 0.88,
                     alignment: Alignment.bottomCenter,
                     child: Container(
                       decoration: BoxDecoration(
@@ -389,11 +519,9 @@ class _LabelledBarChart extends StatelessWidget {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: isHighest
-                              ? [AppColors.accentGreen,
-                            AppColors.accentGreen.withOpacity(0.7)]
-                              : [AppColors.accentGreen.withOpacity(0.85),
-                            const Color(0xFF7FD3A6)],
+                          colors: isTop
+                              ? [color, color.withOpacity(0.7)]
+                              : [color.withOpacity(0.85), color.withOpacity(0.5)],
                         ),
                       ),
                     ),
@@ -404,45 +532,52 @@ class _LabelledBarChart extends StatelessWidget {
           }).toList(),
         ),
       ),
-
       const SizedBox(height: 6),
-
-      // X-axis labels
       Row(
         children: entries.asMap().entries.map((e) {
-          final showLabel = e.key % showEvery == 0;
-          return Expanded(
-            child: Text(
-              showLabel ? e.value.shortLabel : '',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
+          final show = e.key % showEvery == 0;
+          return Expanded(child: Text(
+            show ? e.value.label : '',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
                 fontFamily: 'DMSans', fontSize: 8.5,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          );
+                color: AppColors.textSecondary),
+          ));
         }).toList(),
       ),
-
       const SizedBox(height: 8),
-
-      // Y-axis legend row
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        _YLegend('0'),
-        _YLegend('${(maxVal / 2).round()}'),
-        _YLegend('$maxVal'),
+      Row(children: [
+        Expanded(child: _YL('0', align: TextAlign.start)),
+        Expanded(child: _YL(
+          (valueFormatter ?? (v) => '$v')((maxVal / 2).round()),
+          align: TextAlign.center,
+        )),
+        Expanded(child: _YL(
+          (valueFormatter ?? (v) => '$v')(maxVal),
+          align: TextAlign.end,
+        )),
       ]),
     ]);
   }
+
+  Widget _emptyLabel() => const Center(
+    child: Padding(
+      padding: EdgeInsets.all(16),
+      child: Text('No data yet',
+          style: TextStyle(fontFamily: 'DMSans', fontSize: 12,
+              color: AppColors.textSecondary)),
+    ),
+  );
 }
 
-class _YLegend extends StatelessWidget {
+class _YL extends StatelessWidget {
   final String label;
-  const _YLegend(this.label);
-
+  final TextAlign align;
+  const _YL(this.label, {this.align = TextAlign.start});
   @override
   Widget build(BuildContext context) => Text(label,
-      style: const TextStyle(
-          fontFamily: 'DMSans', fontSize: 9,
+      textAlign: align,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontFamily: 'DMSans', fontSize: 9,
           color: AppColors.textSecondary));
 }
