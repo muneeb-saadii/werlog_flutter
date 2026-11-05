@@ -2094,8 +2094,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           MaterialPageRoute(
             builder: (_) => CheckoutWebViewScreen(
               checkoutUrl: checkoutUrl,
-              successUrl: 'https://werlog.com/billing/success', // match your Stripe success_url
-              cancelUrl: 'https://werlog.com/billing/cancel',   // match your Stripe cancel_url
+              successUrl: 'https://app.werlog.com/billing/success', // match your Stripe success_url
+              cancelUrl: 'https://app.werlog.com/billing/cancel',   // match your Stripe cancel_url
             ),
           ),
         );

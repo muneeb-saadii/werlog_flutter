@@ -1,3 +1,4 @@
+import 'package:wellness/client/core/remote_config/remote_config_service.dart';
 // ─────────────────────────────────────────────────────────────
 //  app_models_extended.dart
 //  Data models for screens 07–14.
@@ -505,7 +506,7 @@ class ProfileData {
   }) : sections = sections ?? _defaultSections;
 }
 
-final List<SettingSection> _defaultSections = [
+List<SettingSection> get _defaultSections => [
   SettingSection(header: 'ACCOUNT', rows: [
     SettingRow(title: 'Personal info',         subtitle: 'Name, phone, timezone',     iconColorKey: 'g', iconEmoji: '◯'),
     SettingRow(title: 'Security',              subtitle: 'Reset/update password',     iconColorKey: 'g', iconEmoji: '⚿'),
@@ -531,6 +532,15 @@ final List<SettingSection> _defaultSections = [
     SettingRow(title: 'Contact support',   iconColorKey: 'c', iconEmoji: '✉'),
     SettingRow(title: 'Privacy Policy',   iconColorKey: 'c', iconEmoji: '◆'),
     SettingRow(title: 'Terms and Conditions',   iconColorKey: 'c', iconEmoji: 'ⓘ'),
+    // ── Shown only when APP_ENABLE_ACC_DELETION == true in Remote Config ──
+    if (RemoteConfigService.enableAccountDeletion)
+      SettingRow(
+        title:        'Delete Account',
+        subtitle:     'Permanently remove your data',
+        iconColorKey: 'r',
+        iconEmoji:    '🗑️',
+        trailing:     SettingTrailingType.chevron,
+      ),
     SettingRow(title: 'Sign out',          iconColorKey: 'r', iconEmoji: '⏻', trailing: SettingTrailingType.none),
   ]),
 ];

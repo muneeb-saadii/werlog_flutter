@@ -80,7 +80,7 @@ class OpsInvoice {
   }
 
   String get fullImageUrl =>
-      fileUrl.startsWith('http') ? fileUrl : 'https://werlog.com$fileUrl';
+      fileUrl.startsWith('http') ? fileUrl : 'https://app.werlog.com$fileUrl';
 
   bool get isImage =>
       mimeType.startsWith('image/') ||

@@ -10,6 +10,8 @@ import '../../core/models/app_models_extended.dart' hide defaultPlans;
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/general_functions.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../../core/remote_config/remote_config_service.dart';
+import 'profile_segment/delete_account_screen.dart';
 
 
 // ══════════════════════════════════════════════════════════════
@@ -1182,7 +1184,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> handleSettingTap(SettingRow r, int rIndex, int secIndex) async {
     print("::handleSettingTap : sec:$secIndex, row:$rIndex, title:${r.title}");
-    if(r.title.toLowerCase() == 'sign out'){
+    if (r.title.toLowerCase() == 'delete account') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const DeleteAccountScreen()),
+      );
+      return;
+    } else if(r.title.toLowerCase() == 'sign out'){
       final confirm = await showSignOutDialog(context);
       if (!confirm) return;
 
@@ -1313,8 +1320,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           MaterialPageRoute(
             builder: (_) => CheckoutWebViewScreen(
               checkoutUrl: checkoutUrl,
-              successUrl: 'https://werlog.com/billing/success', // match your Stripe success_url
-              cancelUrl: 'https://werlog.com/billing/cancel',   // match your Stripe cancel_url
+              successUrl: 'https://app.werlog.com/billing/success', // match your Stripe success_url
+              cancelUrl: 'https://app.werlog.com/billing/cancel',   // match your Stripe cancel_url
             ),
           ),
         );

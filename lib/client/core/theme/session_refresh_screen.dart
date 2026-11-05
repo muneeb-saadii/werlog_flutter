@@ -664,7 +664,7 @@ class _RefreshTokenService {
 
   // ── Thin helpers so this file has no direct imports ────────────────
 
-  static const String _baseUrl          = 'https://werlog.com/api/';
+  static String _baseUrl          = ApiService.baseUrl ?? 'https://app.werlog.com/api/';
   // Replace with Endpoints.REFRESH_SESSION_TOKEN value
   static const String _refreshEndpoint  = 'auth/refresh-token';
 

@@ -9,6 +9,7 @@ import '../../../admin/admin_module.dart';
 import '../../core/api/api_service.dart';
 import '../../core/api/endpoints.dart';
 import '../../core/models/app_models.dart';
+import '../../core/remote_config/remote_config_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/general_functions.dart';
 import '../../core/utils/shared_pref_helper.dart';
@@ -63,6 +64,7 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   late SignInScreenData _data;
   late int _tab; // 0 = sign in, 1 = sign up
+  bool _guestLoading = false; // guards double-taps on "Continue as Guest"
 
   // ── Google Sign-In ────────────────────────────────────────────────
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
@@ -228,6 +230,47 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  // ── Guest login ───────────────────────────────────────────────────
+  // Calls the normal login API with the guest credentials from Firebase
+  // Remote Config (GUEST_USER_EMAIL / GUEST_USER_PASSWORD). If Remote Config
+  // has nothing, RemoteConfigService already supplies the built-in defaults.
+  // The form fields (_data) are never touched.
+  Future<void> loginAsGuest() async {
+    if (_guestLoading) return;
+    GeneralFunctions.hideKeyboard(context);
+    setState(() => _guestLoading = true);
+
+    try {
+      final email    = RemoteConfigService.guestEmail;
+      final password = RemoteConfigService.guestPassword;
+      debugPrint('::loginAsGuest email => $email');
+
+      final response = await ApiService.post_auth(
+        context,
+        Endpoints.LOGIN_USER,
+        body: {
+          "email": email,
+          "password": password,
+        },
+      );
+
+      debugPrint('::loginAsGuest response => $response');
+      await handleAuthResponse(response, isGuest: true);
+
+    } catch (e) {
+      debugPrint('::loginAsGuest ERROR => $e');
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
+      if (mounted) {
+        GeneralFunctions.showError(
+          context,
+          msg.isNotEmpty ? msg : 'Guest login failed. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _guestLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -264,6 +307,9 @@ class _SignInScreenState extends State<SignInScreen> {
                       onGoogleLogin: _handleGoogleSignIn,
                       onAppleLogin: widget.onAppleLogin,
                       onToggleMode: widget.onToggleMode,
+                      showGuestLogin: RemoteConfigService.enableGuestLogin,
+                      guestLoading: _guestLoading,
+                      onGuestLogin: loginAsGuest,
                     ),
                   ],
                 ),
@@ -275,7 +321,7 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Future<void> handleAuthResponse(response) async {
+  Future<void> handleAuthResponse(response, {bool isGuest = false}) async {
     final result = response['result']=="1" ? true : false;
 
     if(result){
@@ -339,12 +385,16 @@ class _SignInScreenState extends State<SignInScreen> {
         await GeneralFunctions.initCurrencyForNewUser();
       }
 
-      meResponse['password'] = _data.passwordValue;
-      data['meResponse'] = meResponse;
-      await SharedPrefHelper.saveObject(
-        SharedPrefHelper.loginRememberData,
-        data,
-      );
+      // Guest credentials must never be remembered — otherwise the shared guest
+      // password would pre-fill this form for the next person who signs in.
+      if (!isGuest) {
+        meResponse['password'] = _data.passwordValue;
+        data['meResponse'] = meResponse;
+        await SharedPrefHelper.saveObject(
+          SharedPrefHelper.loginRememberData,
+          data,
+        );
+      }
 
       if (!emailVerified) {
         Navigator.push(
@@ -505,9 +555,16 @@ class _Form extends StatelessWidget {
   final VoidCallback? onAppleLogin;
   final VoidCallback? onToggleMode;
 
+  final bool showGuestLogin;
+  final bool guestLoading;
+  final VoidCallback? onGuestLogin;
+
   const _Form({
     required this.data,
     required this.isSignIn,
+    this.showGuestLogin = false,
+    this.guestLoading = false,
+    this.onGuestLogin,
     this.onForgotPassword,
     this.onSubmit,
     this.onGoogleLogin,
@@ -580,6 +637,12 @@ class _Form extends StatelessWidget {
           _GoogleSignInButton(onTap: onGoogleLogin),
           // Apple hidden for now:
           // _AppleSignInButton(onTap: onAppleLogin),
+
+          // ── Guest login — only when Remote Config enables it ─────────
+          if (showGuestLogin) ...[
+            const SizedBox(height: 12),
+            _GuestLoginButton(onTap: onGuestLogin, loading: guestLoading),
+          ],
         ],
       ),
     );
@@ -1359,3 +1422,188 @@ class _EmailVerifyScreenState extends State<EmailVerifyScreen> {
 
 
 }
+
+// ── Guest login button ─────────────────────────────────────────
+// Eye-catching gradient card: translucent icon badge, "INSTANT" pill,
+// decorative bubbles, ripple feedback, and a soft fade/slide entrance.
+class _GuestLoginButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  final bool loading;
+  const _GuestLoginButton({this.onTap, this.loading = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 550),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, (1 - t) * 14),
+          child: child,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: WerlogColors.teal.withOpacity(0.28),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            children: [
+              // Gradient background
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [WerlogColors.darkTeal, WerlogColors.teal],
+                    ),
+                  ),
+                ),
+              ),
+              // Decorative bubbles
+              Positioned(top: -26, right: -16, child: _guestBubble(92, 0.10)),
+              Positioned(bottom: -36, left: 70, child: _guestBubble(72, 0.07)),
+
+              // Content + ripple
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: loading ? null : onTap,
+                  splashColor: Colors.white.withOpacity(0.14),
+                  highlightColor: Colors.white.withOpacity(0.06),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
+                    child: Row(
+                      children: [
+                        // Icon badge
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.16),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.24),
+                              width: 1,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.explore_outlined,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Title + subtitle
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      'Continue as Guest',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: WerlogTextStyles.body.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14.5,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: WerlogColors.amberSurface,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'INSTANT',
+                                      style: TextStyle(
+                                        color: WerlogColors.amberDark,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.6,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Explore Werlog now — no account needed',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: WerlogTextStyles.caption.copyWith(
+                                  color: Colors.white.withOpacity(0.80),
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        // Trailing arrow / spinner
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: loading
+                              ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                              : const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 17,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Widget _guestBubble(double size, double opacity) => Container(
+  width: size,
+  height: size,
+  decoration: BoxDecoration(
+    color: Colors.white.withOpacity(opacity),
+    shape: BoxShape.circle,
+  ),
+);

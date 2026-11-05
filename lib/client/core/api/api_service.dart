@@ -514,6 +514,11 @@ class ApiService {
 
   static bool _isRefreshingSession = false;
 
+  /// Set to true when the user explicitly taps "Sign Out" on the
+  /// SessionRefreshScreen. Prevents _handleSessionExpired from
+  /// showing the "session expired" dialog after a deliberate sign-out.
+  static bool _userSignedOut = false;
+
   static Future<bool> _tryRefreshSession(BuildContext context) async {
     if (_isRefreshingSession) return false;
     _isRefreshingSession = true;
@@ -528,9 +533,11 @@ class ApiService {
           pageBuilder: (_, __, ___) => SessionRefreshScreen(
             onRefreshComplete: (responseData) async {
               debugPrint('SESSION REFRESH SUCCESS => $responseData');
+              _userSignedOut = false;  // reset — next 401 should show expired dialog
               success = true;
             },
             onSignOut: () {
+              _userSignedOut = true;   // mark explicit sign-out — skip expired dialog
               _navigateToSignIn(context);
             },
           ),
@@ -591,6 +598,12 @@ class ApiService {
   static bool _isSessionExpiredDialogShowing = false;
 
   static Future<void> _handleSessionExpired(BuildContext context) async {
+    // User explicitly signed out — no "session expired" dialog needed
+    if (_userSignedOut) {
+      _userSignedOut = false;
+      debugPrint('[ApiService] Skipping session-expired dialog — user signed out deliberately');
+      return;
+    }
     if (_isSessionExpiredDialogShowing) return;
     _isSessionExpiredDialogShowing = true;
 
