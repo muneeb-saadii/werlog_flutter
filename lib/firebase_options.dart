@@ -40,21 +40,23 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey:            'AIzaSyCSch9upZP9qYVj8ZSrQm8mRDtZWs7_AOw',
-    appId:             '1:418130924506:android:cf4cfe9e5e041d23a726e3',
+    apiKey: 'AIzaSyCSch9upZP9qYVj8ZSrQm8mRDtZWs7_AOw',
+    appId: '1:418130924506:android:cf4cfe9e5e041d23a726e3',
     messagingSenderId: '418130924506',
-    projectId:         'werlog-c52b7',
-    storageBucket:     'werlog-c52b7.firebasestorage.app',
+    projectId: 'werlog-c52b7',
+    storageBucket: 'werlog-c52b7.firebasestorage.app',
   );
-
   // ── iOS placeholder — add your iOS app in Firebase Console
   // and replace these values with your real google-services iOS plist values
+
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey:            'AIzaSyCSch9upZP9qYVj8ZSrQm8mRDtZWs7_AOw',
-    appId:             '1:418130924506:ios:REPLACE_WITH_IOS_APP_ID',
+    apiKey: 'AIzaSyDrmPFVxfOdzAxe79OpHbt8w7JamK9scZo',
+    appId: '1:418130924506:ios:16953e2c449e899ba726e3',
     messagingSenderId: '418130924506',
-    projectId:         'werlog-c52b7',
-    storageBucket:     'werlog-c52b7.firebasestorage.app',
-    iosBundleId:       'com.app.werlog',
+    projectId: 'werlog-c52b7',
+    storageBucket: 'werlog-c52b7.firebasestorage.app',
+    androidClientId: '418130924506-18r09va2usohleo46menjrbnl2s4b417.apps.googleusercontent.com',
+    iosClientId: '418130924506-24jiielscpu71u3tn3jnhfdlspgp14ff.apps.googleusercontent.com',
+    iosBundleId: 'com.app.werlog',
   );
 }
